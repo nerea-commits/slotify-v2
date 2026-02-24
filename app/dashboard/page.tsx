@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import NuevaCitaModal from '@/components/NuevaCitaModal';
+import ClientesSection from '@/components/ClientesSection';
 
 const ALL_SLOTS = Array.from({ length: 48 }, (_, i) => {
   const h = Math.floor(i / 2).toString().padStart(2, '0');
@@ -24,12 +25,10 @@ function toDS(d: Date) {
   return `${y}-${mo}-${dd}`;
 }
 
-// Extrae "YYYY-MM-DD" del string de Supabase sin conversión de zona horaria
 function rawDate(s: string): string {
   return (s || '').substring(0, 10);
 }
 
-// Extrae minutos totales del string de Supabase sin new Date()
 function rawTimeMin(s: string): number {
   if (!s) return 0;
   const sep = s.indexOf('T') !== -1 ? s.indexOf('T') : s.indexOf(' ');
@@ -60,6 +59,7 @@ export default function Dashboard() {
   const [preselectedTime, setPreselectedTime] = useState('');
   const [preselectedDate, setPreselectedDate] = useState<Date | null>(null);
   const [currentMinutes, setCurrentMinutes] = useState(-1);
+  const [activeSection, setActiveSection] = useState<string>('agenda');
 
   const empresaIdRef = useRef<string | null>(null);
   const profesionalIdRef = useRef<string | null>(null);
@@ -69,14 +69,12 @@ export default function Dashboard() {
     if (typeof window === 'undefined') return;
 
     async function init() {
-      // Verificar sesión auth
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         window.location.href = '/login';
         return;
       }
 
-      // Cargar empresa y perfil desde localStorage (establecidos en login)
       const eid = localStorage.getItem('slotify_empresa_id');
       const pid = localStorage.getItem('slotify_profesional_id');
       const admin = localStorage.getItem('slotify_rol') === 'admin';
@@ -139,7 +137,6 @@ export default function Dashboard() {
     setAllCitas(data || []);
   }
 
-  // ─── Horario ───
   const scheduleStart = empresa?.horario_inicio || '09:00';
   const scheduleEnd = empresa?.horario_fin || '18:00';
   const startMin = timeToMinutes(scheduleStart);
@@ -150,31 +147,24 @@ export default function Dashboard() {
   });
   const totalSlots = visibleSlots.length;
 
-  // ─── Días laborables: parseo ultra-defensivo de cualquier formato de Supabase ───
   const rawDias = empresa?.dias_laborables;
-  // Log detallado para debug
-  console.log('dias_laborables raw:', JSON.stringify(rawDias), 'tipo:', typeof rawDias, 'isArray:', Array.isArray(rawDias));
 
   function parseDiasLaborables(raw: any): number[] {
-    const fallback = [1, 2, 3, 4, 5]; // lunes a viernes por defecto
+    const fallback = [1, 2, 3, 4, 5];
     if (!raw) return fallback;
-    // Si es array, convertir cada elemento a número
     if (Array.isArray(raw)) {
       if (raw.length === 0) return fallback;
       const nums = raw.map((x: any) => {
         if (typeof x === 'number') return x;
         if (typeof x === 'string') return Number(x);
         if (typeof x === 'object' && x !== null) {
-          // Si es objeto, intentar extraer un valor numérico
           const val = x.value ?? x.day ?? x.id ?? Object.values(x)[0];
           return Number(val);
         }
         return NaN;
       }).filter((n: number) => !isNaN(n) && n >= 1 && n <= 7);
-      console.log('dias_laborables parsed:', nums);
       return nums.length > 0 ? nums : fallback;
     }
-    // Si es string tipo "{1,2,3,4,5}" (formato Postgres) o "1,2,3,4,5"
     if (typeof raw === 'string') {
       const cleaned = raw.replace(/[{}\[\]\s]/g, '');
       if (!cleaned) return fallback;
@@ -192,7 +182,6 @@ export default function Dashboard() {
     return diasLaborables.includes(isoDay);
   }
 
-  // ─── Helpers de citas ───
   function citasForDate(d: Date): any[] {
     const ds = toDS(d);
     return allCitas.filter(c => c.hora_inicio && rawDate(c.hora_inicio) === ds);
@@ -226,7 +215,6 @@ export default function Dashboard() {
     return { label: `${freeCount} libres`, color: C.orange };
   }
 
-  // ─── Nav ───
   function isToday(d: Date) { return d.toDateString() === new Date().toDateString(); }
   function formatDate(d: Date) { return d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); }
   function formatMonth(d: Date) { return d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }); }
@@ -274,8 +262,6 @@ export default function Dashboard() {
   }
 
   const weekDayNames = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
-
-  // Altura fija por slot en vista semana (px) — más pequeño que día (50px) para que quepa
   const WEEK_SLOT_H = 28;
 
   return (
@@ -304,398 +290,389 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* TABS */}
-      <div className="flex justify-center gap-2 py-3 px-4 flex-shrink-0"
-        style={{ background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}` }}>
-        {(['day', 'week', 'month'] as ViewMode[]).map(v => (
-          <button key={v} onClick={() => setView(v)}
-            className="px-5 py-2 rounded-full text-sm font-medium"
-            style={{
-              background: view === v ? C.green : 'transparent',
-              color: view === v ? '#fff' : C.textSec,
-              border: view === v ? 'none' : `1px solid ${C.surfaceAlt}`,
-            }}>
-            {v === 'day' ? 'Día' : v === 'week' ? 'Semana' : 'Mes'}
-          </button>
-        ))}
-      </div>
+      {/* SECCIONES QUE NO SON AGENDA */}
+      {activeSection !== 'agenda' && (
+        <div className="flex-1 overflow-y-auto" style={{ background: C.bg }}>
+          {activeSection === 'clientes' && (
+            <ClientesSection empresaId={empresa?.id || ''} />
+          )}
+          {activeSection === 'servicios' && (
+            <div className="flex items-center justify-center pt-32 text-gray-500">Servicios — próximamente</div>
+          )}
+          {activeSection === 'estadisticas' && (
+            <div className="flex items-center justify-center pt-32 text-gray-500">Estadísticas — próximamente</div>
+          )}
+          {activeSection === 'notificaciones' && (
+            <div className="flex items-center justify-center pt-32 text-gray-500">Notificaciones — próximamente</div>
+          )}
+          {activeSection === 'configuracion' && (
+            <div className="flex items-center justify-center pt-32 text-gray-500">Configuración — próximamente</div>
+          )}
+        </div>
+      )}
 
-      {/* ══════════════════════════════════════════
-          VISTA DÍA  (SIN CAMBIOS)
-      ══════════════════════════════════════════ */}
-      {view === 'day' && (<>
-        <div className="flex items-center justify-between px-4 py-3 flex-shrink-0"
+      {/* AGENDA */}
+      {activeSection === 'agenda' && (<>
+
+        {/* TABS */}
+        <div className="flex justify-center gap-2 py-3 px-4 flex-shrink-0"
           style={{ background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}` }}>
-          <button onClick={() => changeDay(-1)} className="p-2 rounded-full"><ChevronLeft className="w-4 h-4" /></button>
-          <div className="text-center">
-            <p className="text-sm font-medium capitalize">{formatDate(selectedDate)}</p>
-            {isToday(selectedDate) && <p className="text-xs font-semibold" style={{ color: C.green }}>Hoy</p>}
-          </div>
-          <button onClick={() => changeDay(1)} className="p-2 rounded-full"><ChevronRight className="w-4 h-4" /></button>
+          {(['day', 'week', 'month'] as ViewMode[]).map(v => (
+            <button key={v} onClick={() => setView(v)}
+              className="px-5 py-2 rounded-full text-sm font-medium"
+              style={{
+                background: view === v ? C.green : 'transparent',
+                color: view === v ? '#fff' : C.textSec,
+                border: view === v ? 'none' : `1px solid ${C.surfaceAlt}`,
+              }}>
+              {v === 'day' ? 'Día' : v === 'week' ? 'Semana' : 'Mes'}
+            </button>
+          ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto" style={{ paddingTop: 24, paddingBottom: 80 }}>
-          <div className="relative flex" style={{ minHeight: visibleSlots.length * 50, paddingLeft: 16, paddingRight: 16 }}>
-            <div style={{ width: 64, flexShrink: 0 }}>
-              {visibleSlots.map(slot => (
-                <div key={slot} className="flex items-start justify-end pr-3" style={{ height: 50 }}>
-                  <span style={{ fontSize: 11, color: C.textSec, fontWeight: slot.endsWith(':00') ? 600 : 400, opacity: slot.endsWith(':00') ? 1 : 0.4 }}>
-                    {slot}
-                  </span>
-                </div>
-              ))}
+        {/* VISTA DÍA */}
+        {view === 'day' && (<>
+          <div className="flex items-center justify-between px-4 py-3 flex-shrink-0"
+            style={{ background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}` }}>
+            <button onClick={() => changeDay(-1)} className="p-2 rounded-full"><ChevronLeft className="w-4 h-4" /></button>
+            <div className="text-center">
+              <p className="text-sm font-medium capitalize">{formatDate(selectedDate)}</p>
+              {isToday(selectedDate) && <p className="text-xs font-semibold" style={{ color: C.green }}>Hoy</p>}
             </div>
+            <button onClick={() => changeDay(1)} className="p-2 rounded-full"><ChevronRight className="w-4 h-4" /></button>
+          </div>
 
-            <div className="flex-1 relative" style={{ background: C.surface, borderRadius: 16, overflow: 'hidden' }}>
-              {visibleSlots.map(slot => (
-                <div key={slot}
-                  onClick={() => openModal(selectedDate, slot)}
-                  className="cursor-pointer"
-                  style={{ height: 50, borderBottom: `1px solid ${slot.endsWith(':00') ? C.surfaceAlt : 'rgba(36,50,71,0.4)'}` }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.greenBg; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                />
-              ))}
-
-              {/* Bloques de citas */}
-              <div className="absolute inset-0" style={{ pointerEvents: 'none' }}>
-                {citasForDate(selectedDate).map(cita => {
-                  const citaStart = rawTimeMin(cita.hora_inicio);
-                  const citaEnd = cita.hora_fin ? rawTimeMin(cita.hora_fin) : citaStart + 30;
-                  const dur = Math.max(citaEnd - citaStart, 30);
-                  const top = ((citaStart - startMin) / 30) * 50;
-                  const h = (dur / 30) * 50;
-                  const cancel = cita.estado === 'cancelada';
-                  const name = cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente';
-                  const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
-                  const color = citaColor(cita.estado);
-                  return (
-                    <div key={cita.id} onClick={() => setSelectedCita(cita)}
-                      style={{
-                        position: 'absolute', top, height: h, left: 8, right: 8,
-                        background: cancel ? C.occupied : '#1e3a2f',
-                        borderRadius: 10, borderLeft: `4px solid ${color}`,
-                        padding: '8px 12px', opacity: cancel ? 0.5 : 1,
-                        cursor: 'pointer', pointerEvents: 'auto',
-                        display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                      }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{name}</span>
-                      {svc && <span style={{ fontSize: 11, color: C.textSec }}>{svc}</span>}
-                      <span style={{ fontSize: 11, color, fontWeight: 600 }}>
-                        {cita.hora_inicio.substring(11, 16)} – {cita.hora_fin?.substring(11, 16) || ''}
-                      </span>
-                    </div>
-                  );
-                })}
+          <div className="flex-1 overflow-y-auto" style={{ paddingTop: 24, paddingBottom: 80 }}>
+            <div className="relative flex" style={{ minHeight: visibleSlots.length * 50, paddingLeft: 16, paddingRight: 16 }}>
+              <div style={{ width: 64, flexShrink: 0 }}>
+                {visibleSlots.map(slot => (
+                  <div key={slot} className="flex items-start justify-end pr-3" style={{ height: 50 }}>
+                    <span style={{ fontSize: 11, color: C.textSec, fontWeight: slot.endsWith(':00') ? 600 : 400, opacity: slot.endsWith(':00') ? 1 : 0.4 }}>
+                      {slot}
+                    </span>
+                  </div>
+                ))}
               </div>
 
-              {/* Línea roja */}
-              {isToday(selectedDate) && currentMinutes >= startMin && currentMinutes < endMin && (
-                <div className="absolute left-0 right-0 pointer-events-none" style={{ top: ((currentMinutes - startMin) / 30) * 50, zIndex: 30 }}>
-                  <div className="flex items-center">
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.red, boxShadow: '0 0 6px rgba(239,68,68,0.8)' }} />
-                    <div style={{ flex: 1, height: 2, background: C.red, opacity: 0.85 }} />
-                  </div>
+              <div className="flex-1 relative" style={{ background: C.surface, borderRadius: 16, overflow: 'hidden' }}>
+                {visibleSlots.map(slot => (
+                  <div key={slot}
+                    onClick={() => openModal(selectedDate, slot)}
+                    className="cursor-pointer"
+                    style={{ height: 50, borderBottom: `1px solid ${slot.endsWith(':00') ? C.surfaceAlt : 'rgba(36,50,71,0.4)'}` }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.greenBg; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                  />
+                ))}
+
+                <div className="absolute inset-0" style={{ pointerEvents: 'none' }}>
+                  {citasForDate(selectedDate).map(cita => {
+                    const citaStart = rawTimeMin(cita.hora_inicio);
+                    const citaEnd = cita.hora_fin ? rawTimeMin(cita.hora_fin) : citaStart + 30;
+                    const dur = Math.max(citaEnd - citaStart, 30);
+                    const top = ((citaStart - startMin) / 30) * 50;
+                    const h = (dur / 30) * 50;
+                    const cancel = cita.estado === 'cancelada';
+                    const name = cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente';
+                    const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
+                    const color = citaColor(cita.estado);
+                    return (
+                      <div key={cita.id} onClick={() => setSelectedCita(cita)}
+                        style={{
+                          position: 'absolute', top, height: h, left: 8, right: 8,
+                          background: cancel ? C.occupied : '#1e3a2f',
+                          borderRadius: 10, borderLeft: `4px solid ${color}`,
+                          padding: '8px 12px', opacity: cancel ? 0.5 : 1,
+                          cursor: 'pointer', pointerEvents: 'auto',
+                          display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{name}</span>
+                        {svc && <span style={{ fontSize: 11, color: C.textSec }}>{svc}</span>}
+                        <span style={{ fontSize: 11, color, fontWeight: 600 }}>
+                          {cita.hora_inicio.substring(11, 16)} – {cita.hora_fin?.substring(11, 16) || ''}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
+
+                {isToday(selectedDate) && currentMinutes >= startMin && currentMinutes < endMin && (
+                  <div className="absolute left-0 right-0 pointer-events-none" style={{ top: ((currentMinutes - startMin) / 30) * 50, zIndex: 30 }}>
+                    <div className="flex items-center">
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.red, boxShadow: '0 0 6px rgba(239,68,68,0.8)' }} />
+                      <div style={{ flex: 1, height: 2, background: C.red, opacity: 0.85 }} />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        <button onClick={() => openModal(selectedDate, '')}
-          className="fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-lg z-40"
-          style={{ background: C.green }}>
-          <Plus className="w-6 h-6 text-white" />
-        </button>
-      </>)}
+          <button onClick={() => openModal(selectedDate, '')}
+            className="fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-lg z-40"
+            style={{ background: C.green }}>
+            <Plus className="w-6 h-6 text-white" />
+          </button>
+        </>)}
 
-      {/* ══════════════════════════════════════════
-          VISTA SEMANA — CAMBIO: altura fija por slot
-      ══════════════════════════════════════════ */}
-      {view === 'week' && (
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, padding: '12px 24px 0', flex: 1, maxWidth: 1100, margin: '0 auto', width: '100%' }}>
+        {/* VISTA SEMANA */}
+        {view === 'week' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, padding: '12px 24px 0', flex: 1, maxWidth: 1100, margin: '0 auto', width: '100%' }}>
 
-            {/* Nav semana */}
-            <div className="flex items-center justify-between flex-shrink-0" style={{ marginBottom: 10 }}>
-              <button onClick={() => changeWeek(-1)} className="p-2" style={{ color: C.textSec }}><ChevronLeft className="w-5 h-5" /></button>
-              <span className="text-sm font-semibold">
-                {(() => { const d = getWeekDays(); return `${d[0].getDate()} – ${d[6].getDate()} ${d[6].toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}`; })()}
-              </span>
-              <button onClick={() => changeWeek(1)} className="p-2" style={{ color: C.textSec }}><ChevronRight className="w-5 h-5" /></button>
+              <div className="flex items-center justify-between flex-shrink-0" style={{ marginBottom: 10 }}>
+                <button onClick={() => changeWeek(-1)} className="p-2" style={{ color: C.textSec }}><ChevronLeft className="w-5 h-5" /></button>
+                <span className="text-sm font-semibold">
+                  {(() => { const d = getWeekDays(); return `${d[0].getDate()} – ${d[6].getDate()} ${d[6].toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}`; })()}
+                </span>
+                <button onClick={() => changeWeek(1)} className="p-2" style={{ color: C.textSec }}><ChevronRight className="w-5 h-5" /></button>
+              </div>
+
+              <div style={{ flex: 1, minHeight: 0, overflow: 'auto', paddingBottom: 80 }}>
+                <div style={{ display: 'flex', gap: 6, minHeight: visibleSlots.length * WEEK_SLOT_H + 44 }}>
+                  <div style={{ width: 44, flexShrink: 0, paddingTop: 44 }}>
+                    {visibleSlots.map((slot, si) => (
+                      <div key={si} style={{ height: WEEK_SLOT_H, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: 4 }}>
+                        <span style={{ fontSize: slot.endsWith(':00') ? 10 : 8, color: C.textSec, fontWeight: slot.endsWith(':00') ? 600 : 400, opacity: slot.endsWith(':00') ? 1 : 0.35, lineHeight: 1 }}>
+                          {slot}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {getWeekDays().map((day, di) => {
+                    const today = isToday(day);
+                    const working = isWorkingDay(day);
+                    const dayCitas = citasForDate(day);
+                    const activeCitas = dayCitas.filter(c => c.estado !== 'cancelada');
+
+                    return (
+                      <div key={di} style={{
+                        flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
+                        background: working ? C.surface : 'rgba(15,23,42,0.3)',
+                        borderRadius: 12,
+                        border: today ? `2px solid ${C.green}` : `1px solid rgba(148,163,184,0.1)`,
+                        overflow: 'hidden',
+                      }}>
+                        <div onClick={() => goToDay(day)} className="cursor-pointer text-center flex-shrink-0"
+                          style={{
+                            height: 44, display: 'flex', flexDirection: 'column',
+                            alignItems: 'center', justifyContent: 'center',
+                            background: today ? 'rgba(34,197,94,0.15)' : 'rgba(36,50,71,0.4)',
+                            borderBottom: `1px solid rgba(148,163,184,0.08)`,
+                          }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, color: C.textSec, letterSpacing: 0.8 }}>{weekDayNames[di]}</div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: today ? C.green : C.text }}>{day.getDate()}</div>
+                          {today && <div style={{ fontSize: 7, color: C.green, fontWeight: 700 }}>HOY</div>}
+                        </div>
+
+                        <div style={{ position: 'relative', height: visibleSlots.length * WEEK_SLOT_H }}>
+                          {visibleSlots.map((slot, si) => {
+                            const occ = slotOccupied(activeCitas, slot);
+                            return (
+                              <div key={si}
+                                onClick={() => { if (!occ) openModal(day, slot); }}
+                                style={{
+                                  height: WEEK_SLOT_H,
+                                  borderBottom: `1px solid ${slot.endsWith(':00') ? 'rgba(148,163,184,0.15)' : 'rgba(148,163,184,0.07)'}`,
+                                  cursor: occ ? 'default' : 'pointer',
+                                }}
+                                onMouseEnter={e => { if (!occ) (e.currentTarget as HTMLElement).style.background = C.greenBg; }}
+                                onMouseLeave={e => { if (!occ) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                              />
+                            );
+                          })}
+
+                          {dayCitas.map(cita => {
+                            const citaStart = rawTimeMin(cita.hora_inicio);
+                            const citaEnd = cita.hora_fin ? rawTimeMin(cita.hora_fin) : citaStart + 30;
+                            const dur = Math.max(citaEnd - citaStart, 30);
+                            const top = ((citaStart - startMin) / 30) * WEEK_SLOT_H;
+                            const h = (dur / 30) * WEEK_SLOT_H;
+                            const cancel = cita.estado === 'cancelada';
+                            const name = cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente';
+                            const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
+                            const color = citaColor(cita.estado);
+                            if (top >= visibleSlots.length * WEEK_SLOT_H || top + h <= 0) return null;
+                            return (
+                              <div key={cita.id}
+                                onClick={() => setSelectedCita(cita)}
+                                style={{
+                                  position: 'absolute', top, height: h, left: 2, right: 2,
+                                  background: cancel ? C.occupied : '#1e3a2f',
+                                  borderRadius: 6, borderLeft: `3px solid ${color}`,
+                                  padding: '2px 4px', opacity: cancel ? 0.5 : 1,
+                                  cursor: 'pointer', overflow: 'hidden', zIndex: 10, pointerEvents: 'auto',
+                                }}>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: C.text, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {name}
+                                </div>
+                                {svc && (
+                                  <div style={{ fontSize: 9, color: C.textSec, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {svc}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                          {today && currentMinutes >= startMin && currentMinutes < endMin && (
+                            <div style={{
+                              position: 'absolute',
+                              top: ((currentMinutes - startMin) / 30) * WEEK_SLOT_H,
+                              left: 0, right: 0, display: 'flex', alignItems: 'center', zIndex: 20, pointerEvents: 'none',
+                            }}>
+                              <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.red, boxShadow: '0 0 5px rgba(239,68,68,0.8)' }} />
+                              <div style={{ flex: 1, height: 2, background: C.red, opacity: 0.8 }} />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
-            {/* Contenedor scrollable de la semana */}
-            <div style={{ flex: 1, minHeight: 0, overflow: 'auto', paddingBottom: 80 }}>
-              <div style={{ display: 'flex', gap: 6, minHeight: visibleSlots.length * WEEK_SLOT_H + 44 }}>
-                {/* Columna horas */}
-                <div style={{ width: 44, flexShrink: 0, paddingTop: 44 }}>
-                  {visibleSlots.map((slot, si) => (
-                    <div key={si} style={{ height: WEEK_SLOT_H, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: 4 }}>
-                      <span style={{ fontSize: slot.endsWith(':00') ? 10 : 8, color: C.textSec, fontWeight: slot.endsWith(':00') ? 600 : 400, opacity: slot.endsWith(':00') ? 1 : 0.35, lineHeight: 1 }}>
-                        {slot}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+            <button onClick={() => openModal()}
+              className="fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-lg z-40"
+              style={{ background: C.green }}>
+              <Plus className="w-6 h-6 text-white" />
+            </button>
+          </div>
+        )}
 
-                {/* 7 columnas de días */}
-                {getWeekDays().map((day, di) => {
+        {/* VISTA MES */}
+        {view === 'month' && (
+          <div className="flex-1 overflow-y-auto" style={{ padding: '20px 16px 80px' }}>
+            <div style={{ background: C.surface, borderRadius: 16, padding: 20, maxWidth: 1100, margin: '0 auto' }}>
+
+              <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
+                <button onClick={() => changeMonth(-1)} className="p-2" style={{ color: C.textSec }}><ChevronLeft className="w-5 h-5" /></button>
+                <h2 className="font-semibold capitalize" style={{ fontSize: 18 }}>{formatMonth(selectedDate)}</h2>
+                <button onClick={() => changeMonth(1)} className="p-2" style={{ color: C.textSec }}><ChevronRight className="w-5 h-5" /></button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, marginBottom: 6 }}>
+                {weekDayNames.map(d => (
+                  <div key={d} className="text-center text-xs font-medium" style={{ color: C.textSec, padding: '4px 0' }}>{d}</div>
+                ))}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+                {getMonthDays().map((day, i) => {
+                  if (!day) return <div key={`e${i}`} />;
                   const today = isToday(day);
                   const working = isWorkingDay(day);
-                  const dayCitas = citasForDate(day);
-                  const activeCitas = dayCitas.filter(c => c.estado !== 'cancelada');
+                  const free = working ? freeSlotCount(day) : -1;
+                  const av = working ? getAvailability(free) : null;
+                  const citasCount = activeCitasForDate(day).length;
 
                   return (
-                    <div key={di} style={{
-                      flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
-                      background: working ? C.surface : 'rgba(15,23,42,0.3)',
-                      borderRadius: 12,
-                      border: today ? `2px solid ${C.green}` : `1px solid rgba(148,163,184,0.1)`,
-                      overflow: 'hidden',
-                    }}>
-                      {/* Cabecera día */}
-                      <div onClick={() => goToDay(day)} className="cursor-pointer text-center flex-shrink-0"
-                        style={{
-                          height: 44, display: 'flex', flexDirection: 'column',
-                          alignItems: 'center', justifyContent: 'center',
-                          background: today ? 'rgba(34,197,94,0.15)' : 'rgba(36,50,71,0.4)',
-                          borderBottom: `1px solid rgba(148,163,184,0.08)`,
-                        }}>
-                        <div style={{ fontSize: 9, fontWeight: 700, color: C.textSec, letterSpacing: 0.8 }}>{weekDayNames[di]}</div>
-                        <div style={{ fontSize: 16, fontWeight: 700, color: today ? C.green : C.text }}>{day.getDate()}</div>
-                        {today && <div style={{ fontSize: 7, color: C.green, fontWeight: 700 }}>HOY</div>}
-                      </div>
+                    <div key={i} onClick={() => goToDay(day)} className="cursor-pointer"
+                      style={{
+                        background: C.surfaceAlt, borderRadius: 10, padding: '8px',
+                        minHeight: 72,
+                        border: today ? `2px solid ${C.green}` : '2px solid transparent',
+                        opacity: working ? 1 : 0.35,
+                        display: 'flex', flexDirection: 'column',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#2d3d54'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = C.surfaceAlt; }}
+                    >
+                      <span style={{ fontSize: 14, fontWeight: 700, color: today ? C.green : C.text }}>
+                        {day.getDate()}
+                      </span>
 
-                      {/* Área de slots + citas — AHORA con altura fija */}
-                      <div style={{ position: 'relative', height: visibleSlots.length * WEEK_SLOT_H }}>
-                        {/* Filas de slots con altura fija */}
-                        {visibleSlots.map((slot, si) => {
-                          const occ = slotOccupied(activeCitas, slot);
-                          return (
-                            <div key={si}
-                              onClick={() => { if (!occ) openModal(day, slot); }}
-                              style={{
-                                height: WEEK_SLOT_H,
-                                borderBottom: `1px solid ${slot.endsWith(':00') ? 'rgba(148,163,184,0.15)' : 'rgba(148,163,184,0.07)'}`,
-                                cursor: occ ? 'default' : 'pointer',
-                              }}
-                              onMouseEnter={e => { if (!occ) (e.currentTarget as HTMLElement).style.background = C.greenBg; }}
-                              onMouseLeave={e => { if (!occ) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                            />
-                          );
-                        })}
-
-                        {/* Bloques de citas superpuestos — posición basada en WEEK_SLOT_H */}
-                        {dayCitas.map(cita => {
-                          const citaStart = rawTimeMin(cita.hora_inicio);
-                          const citaEnd = cita.hora_fin ? rawTimeMin(cita.hora_fin) : citaStart + 30;
-                          const dur = Math.max(citaEnd - citaStart, 30);
-                          const top = ((citaStart - startMin) / 30) * WEEK_SLOT_H;
-                          const h = (dur / 30) * WEEK_SLOT_H;
-                          const cancel = cita.estado === 'cancelada';
-                          const name = cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente';
-                          const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
-                          const color = citaColor(cita.estado);
-                          if (top >= visibleSlots.length * WEEK_SLOT_H || top + h <= 0) return null;
-                          return (
-                            <div key={cita.id}
-                              onClick={() => setSelectedCita(cita)}
-                              style={{
-                                position: 'absolute',
-                                top,
-                                height: h,
-                                left: 2, right: 2,
-                                background: cancel ? C.occupied : '#1e3a2f',
-                                borderRadius: 6,
-                                borderLeft: `3px solid ${color}`,
-                                padding: '2px 4px',
-                                opacity: cancel ? 0.5 : 1,
-                                cursor: 'pointer',
-                                overflow: 'hidden',
-                                zIndex: 10,
-                                pointerEvents: 'auto',
-                              }}>
-                              <div style={{ fontSize: 10, fontWeight: 700, color: C.text, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {name}
-                              </div>
-                              {svc && (
-                                <div style={{ fontSize: 9, color: C.textSec, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {svc}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-
-                        {/* Línea roja hora actual */}
-                        {today && currentMinutes >= startMin && currentMinutes < endMin && (
-                          <div style={{
-                            position: 'absolute',
-                            top: ((currentMinutes - startMin) / 30) * WEEK_SLOT_H,
-                            left: 0, right: 0, display: 'flex', alignItems: 'center', zIndex: 20, pointerEvents: 'none',
-                          }}>
-                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.red, boxShadow: '0 0 5px rgba(239,68,68,0.8)' }} />
-                            <div style={{ flex: 1, height: 2, background: C.red, opacity: 0.8 }} />
+                      {working && av && (
+                        <div style={{ marginTop: 'auto', paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          <div style={{ height: 4, borderRadius: 2, background: 'rgba(148,163,184,0.15)', overflow: 'hidden' }}>
+                            <div style={{
+                              height: '100%',
+                              width: `${totalSlots > 0 ? ((totalSlots - free) / totalSlots) * 100 : 0}%`,
+                              borderRadius: 2, background: av.color, transition: 'width 0.3s ease',
+                            }} />
                           </div>
-                        )}
-                      </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <span style={{ width: 5, height: 5, borderRadius: '50%', background: av.color, display: 'inline-block', flexShrink: 0 }} />
+                            <span style={{ fontSize: 10, color: av.color, fontWeight: 600, lineHeight: 1 }}>{av.label}</span>
+                          </div>
+                          {citasCount > 0 && (
+                            <span style={{ fontSize: 9, color: C.textSec }}>{citasCount} cita{citasCount !== 1 ? 's' : ''}</span>
+                          )}
+                        </div>
+                      )}
+
+                      {!working && (
+                        <span style={{ fontSize: 9, color: C.textSec, marginTop: 'auto' }}>—</span>
+                      )}
                     </div>
                   );
                 })}
               </div>
             </div>
+
+            <button onClick={() => openModal()}
+              className="fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-lg z-40"
+              style={{ background: C.green }}>
+              <Plus className="w-6 h-6 text-white" />
+            </button>
           </div>
+        )}
 
-          <button onClick={() => openModal()}
-            className="fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-lg z-40"
-            style={{ background: C.green }}>
-            <Plus className="w-6 h-6 text-white" />
-          </button>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════
-          VISTA MES — CAMBIO: muestra huecos libres con color
-      ══════════════════════════════════════════ */}
-      {view === 'month' && (
-        <div className="flex-1 overflow-y-auto" style={{ padding: '20px 16px 80px' }}>
-          <div style={{ background: C.surface, borderRadius: 16, padding: 20, maxWidth: 1100, margin: '0 auto' }}>
-
-            <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
-              <button onClick={() => changeMonth(-1)} className="p-2" style={{ color: C.textSec }}><ChevronLeft className="w-5 h-5" /></button>
-              <h2 className="font-semibold capitalize" style={{ fontSize: 18 }}>{formatMonth(selectedDate)}</h2>
-              <button onClick={() => changeMonth(1)} className="p-2" style={{ color: C.textSec }}><ChevronRight className="w-5 h-5" /></button>
-            </div>
-
-            {/* Cabeceras */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, marginBottom: 6 }}>
-              {weekDayNames.map(d => (
-                <div key={d} className="text-center text-xs font-medium" style={{ color: C.textSec, padding: '4px 0' }}>{d}</div>
-              ))}
-            </div>
-
-            {/* Días */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
-              {getMonthDays().map((day, i) => {
-                if (!day) return <div key={`e${i}`} />;
-                const today = isToday(day);
-                const working = isWorkingDay(day);
-                const free = working ? freeSlotCount(day) : -1;
-                const av = working ? getAvailability(free) : null;
-                const citasCount = activeCitasForDate(day).length;
-
-                return (
-                  <div key={i} onClick={() => goToDay(day)} className="cursor-pointer"
-                    style={{
-                      background: C.surfaceAlt, borderRadius: 10, padding: '8px',
-                      minHeight: 72,
-                      border: today ? `2px solid ${C.green}` : '2px solid transparent',
-                      opacity: working ? 1 : 0.35,
-                      display: 'flex', flexDirection: 'column',
-                    }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#2d3d54'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = C.surfaceAlt; }}
-                  >
-                    {/* Número del día */}
-                    <span style={{ fontSize: 14, fontWeight: 700, color: today ? C.green : C.text }}>
-                      {day.getDate()}
-                    </span>
-
-                    {/* Indicador de huecos libres — solo días laborables */}
-                    {working && av && (
-                      <div style={{ marginTop: 'auto', paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                        {/* Barra visual de ocupación */}
-                        <div style={{
-                          height: 4, borderRadius: 2,
-                          background: 'rgba(148,163,184,0.15)',
-                          overflow: 'hidden',
-                        }}>
-                          <div style={{
-                            height: '100%',
-                            width: `${totalSlots > 0 ? ((totalSlots - free) / totalSlots) * 100 : 0}%`,
-                            borderRadius: 2,
-                            background: av.color,
-                            transition: 'width 0.3s ease',
-                          }} />
-                        </div>
-
-                        {/* Texto con icono */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: av.color, display: 'inline-block', flexShrink: 0 }} />
-                          <span style={{ fontSize: 10, color: av.color, fontWeight: 600, lineHeight: 1 }}>
-                            {av.label}
-                          </span>
-                        </div>
-
-                        {/* Cantidad de citas si hay alguna */}
-                        {citasCount > 0 && (
-                          <span style={{ fontSize: 9, color: C.textSec }}>
-                            {citasCount} cita{citasCount !== 1 ? 's' : ''}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Días no laborables */}
-                    {!working && (
-                      <span style={{ fontSize: 9, color: C.textSec, marginTop: 'auto' }}>—</span>
-                    )}
-                  </div>
-                );
-              })}
+        {/* MODAL DETALLE CITA */}
+        {selectedCita && (
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4"
+            style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setSelectedCita(null)}>
+            <div style={{ background: C.surface, borderRadius: 20, padding: 24, width: '100%', maxWidth: 400 }}
+              onClick={e => e.stopPropagation()}>
+              <h3 className="text-lg font-bold mb-4">Detalle de cita</h3>
+              <div className="space-y-2 text-sm mb-6">
+                <p><span style={{ color: C.textSec }}>Cliente: </span>{selectedCita.clientes?.nombre || selectedCita.cliente_nombre_libre || '—'}</p>
+                <p><span style={{ color: C.textSec }}>Teléfono: </span>{selectedCita.clientes?.telefono || '—'}</p>
+                <p><span style={{ color: C.textSec }}>Servicio: </span>{selectedCita.servicios?.nombre || selectedCita.servicio_nombre_libre || '—'}</p>
+                <p><span style={{ color: C.textSec }}>Inicio: </span>{selectedCita.hora_inicio?.substring(11, 16) || '—'}</p>
+                <p><span style={{ color: C.textSec }}>Fin: </span>{selectedCita.hora_fin?.substring(11, 16) || '—'}</p>
+                {selectedCita.notas && <p><span style={{ color: C.textSec }}>Notas: </span>{selectedCita.notas}</p>}
+                <p><span style={{ color: C.textSec }}>Estado: </span>
+                  <span style={{ color: citaColor(selectedCita.estado) }}>{selectedCita.estado}</span>
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setSelectedCita(null)} className="flex-1 py-2 rounded-xl text-sm"
+                  style={{ background: C.surfaceAlt }}>Cerrar</button>
+                {selectedCita.estado !== 'cancelada' && (
+                  <button onClick={() => cancelarCita(selectedCita.id)}
+                    className="flex-1 py-2 rounded-xl text-sm text-white" style={{ background: C.red }}>
+                    Cancelar cita
+                  </button>
+                )}
+              </div>
             </div>
           </div>
+        )}
 
-          <button onClick={() => openModal()}
-            className="fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-lg z-40"
-            style={{ background: C.green }}>
-            <Plus className="w-6 h-6 text-white" />
-          </button>
-        </div>
-      )}
+      </>)}
 
-      {/* MODAL DETALLE CITA (SIN CAMBIOS) */}
-      {selectedCita && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setSelectedCita(null)}>
-          <div style={{ background: C.surface, borderRadius: 20, padding: 24, width: '100%', maxWidth: 400 }}
-            onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold mb-4">Detalle de cita</h3>
-            <div className="space-y-2 text-sm mb-6">
-              <p><span style={{ color: C.textSec }}>Cliente: </span>{selectedCita.clientes?.nombre || selectedCita.cliente_nombre_libre || '—'}</p>
-              <p><span style={{ color: C.textSec }}>Teléfono: </span>{selectedCita.clientes?.telefono || '—'}</p>
-              <p><span style={{ color: C.textSec }}>Servicio: </span>{selectedCita.servicios?.nombre || selectedCita.servicio_nombre_libre || '—'}</p>
-              <p><span style={{ color: C.textSec }}>Inicio: </span>{selectedCita.hora_inicio?.substring(11, 16) || '—'}</p>
-              <p><span style={{ color: C.textSec }}>Fin: </span>{selectedCita.hora_fin?.substring(11, 16) || '—'}</p>
-              {selectedCita.notas && <p><span style={{ color: C.textSec }}>Notas: </span>{selectedCita.notas}</p>}
-              <p><span style={{ color: C.textSec }}>Estado: </span>
-                <span style={{ color: citaColor(selectedCita.estado) }}>{selectedCita.estado}</span>
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => setSelectedCita(null)} className="flex-1 py-2 rounded-xl text-sm"
-                style={{ background: C.surfaceAlt }}>Cerrar</button>
-              {selectedCita.estado !== 'cancelada' && (
-                <button onClick={() => cancelarCita(selectedCita.id)}
-                  className="flex-1 py-2 rounded-xl text-sm text-white" style={{ background: C.red }}>
-                  Cancelar cita
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <Sidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        empresaNombre={empresa?.nombre || ''}
+        isAdmin={isAdmin}
+        onNavigate={(section) => { setActiveSection(section); setSidebarOpen(false); }}
+        activeSection={activeSection}
+      />
 
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)}
-        empresaNombre={empresa?.nombre || ''} isAdmin={isAdmin}
-        onNavigate={() => setSidebarOpen(false)} activeSection="agenda" />
-
-      <NuevaCitaModal open={modalOpen} onClose={() => setModalOpen(false)}
+      <NuevaCitaModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
         onCreated={() => { setModalOpen(false); loadAllCitas(); }}
-        profesionalId={profesional?.id || ''} empresaId={empresa?.id || ''}
-        selectedDate={preselectedDate || selectedDate} preselectedTime={preselectedTime} />
+        profesionalId={profesional?.id || ''}
+        empresaId={empresa?.id || ''}
+        selectedDate={preselectedDate || selectedDate}
+        preselectedTime={preselectedTime}
+      />
     </div>
   );
 }
