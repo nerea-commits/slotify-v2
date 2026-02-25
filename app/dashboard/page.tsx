@@ -65,9 +65,6 @@ export default function Dashboard() {
   const [estadosCita, setEstadosCita] = useState<any[]>([]);
   const [miniCalMonth, setMiniCalMonth] = useState(new Date());
 
-  // ═══ RISK INDICATOR CACHE ═══
-  const [clientRiskCache, setClientRiskCache] = useState<Record<string, { show: boolean; color: string; icon: string | null }>>({});
-
   // Edit form state
   const [editServicio, setEditServicio] = useState('');
   const [editNotas, setEditNotas] = useState('');
@@ -75,6 +72,9 @@ export default function Dashboard() {
   const [editHoraFin, setEditHoraFin] = useState('');
   const [editEstado, setEditEstado] = useState('');
   const [editLoading, setEditLoading] = useState(false);
+
+  // ═══ RISK INDICATOR CACHE ═══
+  const [clientRiskCache, setClientRiskCache] = useState<Record<string, { show: boolean; color: string; icon: string | null }>>({});
 
   const empresaIdRef = useRef<string | null>(null);
   const profesionalIdRef = useRef<string | null>(null);
@@ -353,7 +353,6 @@ export default function Dashboard() {
   const weekDayNames = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
   const WEEK_SLOT_H = 28;
 
-  // ═══ RENDER CITA BLOCK (con indicador de riesgo) ═══
   function renderCitaBlock(cita: any, style: React.CSSProperties) {
     const name = cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente';
     const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
@@ -773,7 +772,6 @@ export default function Dashboard() {
                     {citaEstadoNombre(selectedCita.estado)}
                   </span>
                 </p>
-                {/* ═══ FIABILIDAD en modal detalle ═══ */}
                 {selectedCita.cliente_id && clientRiskCache[selectedCita.cliente_id]?.show && (
                   <p style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
                     <span style={{ color: C.textSec }}>Fiabilidad: </span>
