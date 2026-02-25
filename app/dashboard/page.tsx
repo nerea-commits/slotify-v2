@@ -426,11 +426,11 @@ export default function Dashboard() {
           boxShadow: `0 1px 4px ${color}22`,
         }}
       >
-        {/* Línea 1: Nombre — font-weight 700, color principal del estado */}
+        {/* Línea 1: Nombre — blanco, font-weight 700 */}
         <div style={{
           fontSize: fs,
           fontWeight: 700,
-          color: color,
+          color: '#F1F5F9',
           lineHeight: 1.3,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -446,13 +446,12 @@ export default function Dashboard() {
             </span>
           )}
         </div>
-        {/* Línea 2: Servicio - Notas — mismo color, font-weight 400 */}
+        {/* Línea 2: Servicio - Notas — blanco suave, font-weight 400 */}
         {linea2 && (
           <div style={{
             fontSize: fs - 1,
             fontWeight: 400,
-            color: color,
-            opacity: 0.75,
+            color: '#94A3B8',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
