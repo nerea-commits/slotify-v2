@@ -418,7 +418,7 @@ export default function Dashboard() {
         onClick={() => setSelectedCita(cita)}
         style={{
           ...style,
-          background: `${color}1A`,
+          background: `${color}33`,
           borderLeft: `3px solid ${color}`,
           cursor: 'pointer',
           overflow: 'hidden',
@@ -434,7 +434,7 @@ export default function Dashboard() {
         <div style={{
           fontSize: fs,
           fontWeight: 700,
-          color: '#F1F5F9',
+          color: '#FFFFFF',
           lineHeight: 1.35,
           wordBreak: 'break-word',
           display: 'flex',
@@ -451,12 +451,12 @@ export default function Dashboard() {
         {/* Servicio */}
         {!isCompact && svc && (
           <div style={{
-            fontSize: fs - 1,
-            fontWeight: 500,
-            color: '#94A3B8',
-            lineHeight: 1.3,
+            fontSize: fs,
+            fontWeight: 400,
+            color: '#FFFFFF',
+            lineHeight: 1.35,
             wordBreak: 'break-word',
-            marginTop: 1,
+            marginTop: 2,
           }}>
             {svc}
           </div>
@@ -465,12 +465,13 @@ export default function Dashboard() {
         {!isCompact && notas && (
           <div style={{
             fontSize: fs - 1,
-            fontWeight: 400,
-            color: '#64748B',
+            fontWeight: 300,
+            color: '#FFFFFF',
             lineHeight: 1.3,
             wordBreak: 'break-word',
             marginTop: 1,
             fontStyle: 'italic',
+            opacity: 0.85,
           }}>
             {notas}
           </div>
