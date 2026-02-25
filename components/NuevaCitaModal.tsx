@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { X } from 'lucide-react';
+import { X, AlertTriangle, Info, AlertCircle } from 'lucide-react';
+import { calcularFiabilidad, type FiabilidadResult } from '@/lib/fiabilidad';
 
 interface Props {
   open: boolean;
@@ -11,296 +12,290 @@ interface Props {
   profesionalId: string;
   empresaId: string;
   selectedDate: Date;
-  preselectedTime?: string;
 }
 
-function toLocalDateStr(d: Date): string {
-  const y = d.getFullYear();
-  const mo = (d.getMonth() + 1).toString().padStart(2, '0');
-  const dd = d.getDate().toString().padStart(2, '0');
-  return `${y}-${mo}-${dd}`;
-}
-
-export default function NuevaCitaModal({
-  open, onClose, onCreated, profesionalId, empresaId, selectedDate, preselectedTime,
-}: Props) {
-  const [clienteQuery, setClienteQuery] = useState('');
-  const [clientesSugeridos, setClientesSugeridos] = useState<any[]>([]);
-  const [clienteSeleccionado, setClienteSeleccionado] = useState<any>(null);
-  const [servicioQuery, setServicioQuery] = useState('');
-  const [serviciosSugeridos, setServiciosSugeridos] = useState<any[]>([]);
-  const [servicioSeleccionado, setServicioSeleccionado] = useState<any>(null);
+export default function NuevaCitaModal({ open, onClose, onCreated, profesionalId, empresaId, selectedDate }: Props) {
+  const [nombre, setNombre] = useState('');
+  const [telefono, setTelefono] = useState('');
+  const [servicio, setServicio] = useState('');
+  const [servicios, setServicios] = useState<any[]>([]);
   const [horaInicio, setHoraInicio] = useState('09:00');
-  const [horaFin, setHoraFin] = useState('09:30');
+  const [horaFin, setHoraFin] = useState('10:00');
   const [notas, setNotas] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [importe, setImporte] = useState('');
+  const [mostrarImporte, setMostrarImporte] = useState(false);
+  const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
-  const [modoNuevoCliente, setModoNuevoCliente] = useState(false);
-  const [nuevoClienteNombre, setNuevoClienteNombre] = useState('');
-  const [nuevoClienteTelefono, setNuevoClienteTelefono] = useState('');
-  const [noEnviarMensaje, setNoEnviarMensaje] = useState(false);
 
   // Estados de cita
   const [estadosCita, setEstadosCita] = useState<any[]>([]);
-  const [estadoSeleccionado, setEstadoSeleccionado] = useState<any>(null);
+  const [estadoSeleccionado, setEstadoSeleccionado] = useState('');
 
-  useEffect(() => {
-    if (!open) {
-      setClienteQuery(''); setClientesSugeridos([]); setClienteSeleccionado(null);
-      setServicioQuery(''); setServiciosSugeridos([]); setServicioSeleccionado(null);
-      setHoraInicio('09:00'); setHoraFin('09:30');
-      setNotas(''); setError('');
-      setModoNuevoCliente(false); setNuevoClienteNombre(''); setNuevoClienteTelefono('');
-      setNoEnviarMensaje(false);
-    } else if (preselectedTime) {
-      setHoraInicio(preselectedTime);
-      const [h, m] = preselectedTime.split(':').map(Number);
-      const totalMin = h * 60 + m + 30;
-      setHoraFin(`${Math.floor(totalMin / 60).toString().padStart(2, '0')}:${(totalMin % 60).toString().padStart(2, '0')}`);
-    }
-  }, [open, preselectedTime]);
+  // Cliente encontrado y fiabilidad
+  const [clienteEncontrado, setClienteEncontrado] = useState<any>(null);
+  const [fiabilidad, setFiabilidad] = useState<FiabilidadResult | null>(null);
+  const [buscandoCliente, setBuscandoCliente] = useState(false);
 
-  // Cargar estados de cita cuando se abre el modal
+  // Cargar datos al abrir
   useEffect(() => {
-    if (!open || !empresaId) return;
-    async function loadEstados() {
-      const { data } = await supabase
-        .from('estados_cita')
-        .select('*')
-        .eq('empresa_id', empresaId)
-        .eq('activo', true)
-        .order('orden');
-      if (data && data.length > 0) {
-        setEstadosCita(data);
-        // Seleccionar "Confirmada" por defecto, o el primer estado activo
-        const confirmada = data.find((e: any) =>
-          (e.nombre_personalizado || e.nombre_defecto).toLowerCase().includes('confirm')
-        );
-        setEstadoSeleccionado(confirmada || data[0]);
-      }
+    if (open && empresaId) {
+      cargarServicios();
+      cargarEstados();
+      cargarConfigImporte();
+      // Reset
+      setNombre(''); setTelefono(''); setServicio(''); setNotas(''); setImporte('');
+      setError(''); setClienteEncontrado(null); setFiabilidad(null);
     }
-    loadEstados();
   }, [open, empresaId]);
 
-  async function buscarClientes(q: string) {
-    setClienteQuery(q);
-    if (q.length < 2) { setClientesSugeridos([]); return; }
-    const eid = empresaId || localStorage.getItem('slotify_empresa_id') || '';
-    let query = supabase.from('clientes').select('*').or(`nombre.ilike.%${q}%,telefono.ilike.%${q}%`).limit(5);
-    if (eid) query = query.eq('empresa_id', eid);
-    const { data } = await query;
-    setClientesSugeridos(data || []);
+  async function cargarServicios() {
+    const { data } = await supabase.from('servicios').select('*').eq('empresa_id', empresaId).order('nombre');
+    setServicios(data || []);
   }
 
-  async function buscarServicios(q: string) {
-    setServicioQuery(q); setServicioSeleccionado(null);
-    if (q.length < 1) { setServiciosSugeridos([]); return; }
-    const eid = empresaId || localStorage.getItem('slotify_empresa_id') || '';
-    let query = supabase.from('servicios').select('*').ilike('nombre', `%${q}%`).limit(5);
-    if (eid) query = query.eq('empresa_id', eid);
-    const { data } = await query;
-    setServiciosSugeridos(data || []);
+  async function cargarEstados() {
+    const { data } = await supabase
+      .from('estados_cita').select('*')
+      .eq('empresa_id', empresaId).eq('activo', true)
+      .order('orden');
+    setEstadosCita(data || []);
+    // Default: Confirmada
+    const confirmada = data?.find(e => e.nombre_defecto === 'Confirmada' || e.nombre_personalizado?.toLowerCase() === 'confirmada');
+    if (confirmada) setEstadoSeleccionado(confirmada.nombre_personalizado || confirmada.nombre_defecto);
+    else if (data && data.length > 0) setEstadoSeleccionado(data[0].nombre_personalizado || data[0].nombre_defecto);
   }
 
-  function seleccionarServicio(s: any) {
-    setServicioSeleccionado(s); setServicioQuery(s.nombre); setServiciosSugeridos([]);
-    if (s.duracion_minutos) {
-      const [h, m] = horaInicio.split(':').map(Number);
-      const totalMin = h * 60 + m + s.duracion_minutos;
-      setHoraFin(`${Math.floor(totalMin / 60).toString().padStart(2, '0')}:${(totalMin % 60).toString().padStart(2, '0')}`);
+  async function cargarConfigImporte() {
+    const { data } = await supabase.from('empresas').select('mostrar_importe').eq('id', empresaId).single();
+    setMostrarImporte(data?.mostrar_importe || false);
+  }
+
+  // ═══ BUSCAR CLIENTE POR TELÉFONO ═══
+  // Se activa cuando el teléfono tiene ≥6 dígitos
+  useEffect(() => {
+    const digits = telefono.replace(/\D/g, '');
+    if (digits.length >= 6) {
+      buscarClientePorTelefono(digits);
+    } else {
+      setClienteEncontrado(null);
+      setFiabilidad(null);
     }
+  }, [telefono]);
+
+  async function buscarClientePorTelefono(digits: string) {
+    setBuscandoCliente(true);
+    // Buscar cliente que contenga esos dígitos
+    const { data: clientes } = await supabase
+      .from('clientes').select('*')
+      .eq('empresa_id', empresaId)
+      .ilike('telefono', `%${digits.slice(-6)}%`)
+      .limit(1);
+
+    if (clientes && clientes.length > 0) {
+      const cliente = clientes[0];
+      setClienteEncontrado(cliente);
+      // Auto-rellenar nombre si estaba vacío
+      if (!nombre.trim()) setNombre(cliente.nombre);
+
+      // Cargar historial para calcular fiabilidad
+      const { data: citas } = await supabase
+        .from('citas').select('id, estado')
+        .eq('cliente_id', cliente.id)
+        .limit(200);
+
+      if (citas) {
+        const result = calcularFiabilidad(citas);
+        setFiabilidad(result);
+      }
+    } else {
+      setClienteEncontrado(null);
+      setFiabilidad(null);
+    }
+    setBuscandoCliente(false);
   }
 
+  // ═══ GUARDAR CITA ═══
   async function guardar() {
-    setError('');
-    if (!clienteSeleccionado && !modoNuevoCliente) { setError('Selecciona o crea un cliente'); return; }
-    if (modoNuevoCliente && !nuevoClienteNombre.trim()) { setError('Escribe el nombre del cliente'); return; }
-    if (modoNuevoCliente && !nuevoClienteTelefono.trim()) { setError('El teléfono es obligatorio'); return; }
-    if (!horaInicio || !horaFin) { setError('Indica hora de inicio y fin'); return; }
+    if (!nombre.trim()) { setError('El nombre es obligatorio'); return; }
+    if (!horaInicio || !horaFin) { setError('Indica hora inicio y fin'); return; }
 
-    setLoading(true);
-    try {
-      const dateStr = toLocalDateStr(selectedDate);
-      const horaInicioFull = `${dateStr}T${horaInicio}:00`;
-      const horaFinFull = `${dateStr}T${horaFin}:00`;
+    setGuardando(true); setError('');
 
-      let realEmpresaId = empresaId || localStorage.getItem('slotify_empresa_id') || '';
-      if (!realEmpresaId) {
-        const { data: emp } = await supabase.from('empresas').select('id').limit(1).single();
-        if (emp) realEmpresaId = emp.id;
-      }
-      const realProfesionalId = profesionalId || localStorage.getItem('slotify_profesional_id') || '';
+    const fecha = selectedDate.toISOString().split('T')[0];
+    const hInicio = `${fecha}T${horaInicio}:00`;
+    const hFin = `${fecha}T${horaFin}:00`;
 
-      let clienteId = clienteSeleccionado?.id;
-      if (modoNuevoCliente) {
-        const ins: any = { nombre: nuevoClienteNombre, telefono: nuevoClienteTelefono };
-        if (realEmpresaId) ins.empresa_id = realEmpresaId;
-        const { data: nc, error: ec } = await supabase.from('clientes').insert(ins).select().single();
-        if (ec) throw ec;
-        clienteId = nc.id;
-      }
-
-      // Usar el nombre del estado seleccionado (personalizado o por defecto)
-      const estadoNombre = estadoSeleccionado
-        ? (estadoSeleccionado.nombre_personalizado || estadoSeleccionado.nombre_defecto).toLowerCase()
-        : 'confirmada';
-
-      const citaData: any = {
-        hora_inicio: horaInicioFull,
-        hora_fin: horaFinFull,
-        estado: estadoNombre,
-        notas: notas || null,
-        enviar_notificacion: !noEnviarMensaje,
-      };
-      if (realEmpresaId) citaData.empresa_id = realEmpresaId;
-      if (realProfesionalId) citaData.profesional_id = realProfesionalId;
-      if (clienteId) citaData.cliente_id = clienteId;
-
-      if (servicioSeleccionado?.id) {
-        citaData.servicio_id = servicioSeleccionado.id;
-        citaData.servicio_nombre_libre = servicioSeleccionado.nombre;
-      } else if (servicioQuery.trim()) {
-        citaData.servicio_id = null;
-        citaData.servicio_nombre_libre = servicioQuery.trim();
-      }
-
-      const { error: errCita } = await supabase.from('citas').insert(citaData);
-      if (errCita) throw errCita;
-      onCreated();
-    } catch (e: any) {
-      console.error('Error guardando cita:', e);
-      setError(e.message || 'Error al guardar');
-    } finally {
-      setLoading(false);
+    // Buscar o crear cliente
+    let clienteId = clienteEncontrado?.id;
+    if (!clienteId) {
+      const insertData: any = { empresa_id: empresaId, nombre: nombre.trim() };
+      if (telefono.trim()) insertData.telefono = telefono.trim();
+      const { data: nuevo, error: errCl } = await supabase.from('clientes').insert(insertData).select().single();
+      if (errCl || !nuevo) { setError('Error al crear cliente'); setGuardando(false); return; }
+      clienteId = nuevo.id;
     }
+
+    // Preparar datos de cita
+    const citaData: any = {
+      empresa_id: empresaId,
+      profesional_id: profesionalId,
+      cliente_id: clienteId,
+      hora_inicio: hInicio,
+      hora_fin: hFin,
+      estado: estadoSeleccionado || 'Confirmada',
+      notas: notas.trim() || null,
+    };
+
+    // Servicio
+    const svcObj = servicios.find(s => s.id === servicio);
+    if (svcObj) {
+      citaData.servicio_id = svcObj.id;
+    } else if (servicio.trim()) {
+      citaData.servicio_nombre_libre = servicio.trim();
+    }
+
+    // Importe (solo si tiene valor)
+    if (mostrarImporte && importe.trim()) {
+      const num = parseFloat(importe.replace(',', '.'));
+      if (!isNaN(num) && num >= 0) citaData.importe = num;
+    }
+
+    const { error: errCita } = await supabase.from('citas').insert(citaData);
+    if (errCita) {
+      setError('Error al crear cita: ' + errCita.message);
+      setGuardando(false); return;
+    }
+
+    setGuardando(false);
+    onCreated();
+    onClose();
   }
 
   if (!open) return null;
 
+  const estadoActual = estadosCita.find(e =>
+    (e.nombre_personalizado || e.nombre_defecto) === estadoSeleccionado
+  );
+
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-5 border-b border-gray-800">
-          <div>
-            <h2 className="text-lg font-bold">Nueva cita</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {selectedDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
-              {preselectedTime ? ` · ${preselectedTime}` : ''}
-            </p>
-          </div>
-          <button onClick={onClose} className="p-1 hover:bg-gray-800 rounded-lg"><X className="w-5 h-5" /></button>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={onClose}>
+      <div style={{ background: '#111827', borderRadius: '20px 20px 0 0', padding: 24, width: '100%', maxWidth: 500, maxHeight: '90vh', overflow: 'auto', paddingBottom: 32 }} onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <h3 style={{ fontSize: 18, fontWeight: 700, color: '#F1F5F9' }}>Nueva cita</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}>
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        <div className="p-5 space-y-4">
-          {/* Cliente */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Teléfono (primero, para trigger de búsqueda) */}
           <div>
-            <label className="text-sm text-gray-400 mb-1 block">Cliente</label>
-            {!modoNuevoCliente ? (
-              <>
-                <input
-                  className="w-full bg-gray-800 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Buscar por nombre o teléfono..."
-                  value={clienteSeleccionado ? clienteSeleccionado.nombre : clienteQuery}
-                  onChange={e => { setClienteSeleccionado(null); buscarClientes(e.target.value); }}
-                />
-                {clientesSugeridos.length > 0 && (
-                  <div className="mt-1 bg-gray-800 rounded-xl overflow-hidden border border-gray-700">
-                    {clientesSugeridos.map(c => (
-                      <button key={c.id} className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-700 border-b border-gray-700 last:border-0"
-                        onClick={() => { setClienteSeleccionado(c); setClienteQuery(c.nombre); setClientesSugeridos([]); }}>
-                        <span className="font-medium">{c.nombre}</span>
-                        {c.telefono && <span className="text-gray-400 ml-2">· {c.telefono}</span>}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <button className="text-xs text-green-400 mt-2 hover:underline" onClick={() => setModoNuevoCliente(true)}>
-                  + Crear cliente nuevo
-                </button>
-              </>
-            ) : (
-              <div className="space-y-2">
-                <input className="w-full bg-gray-800 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Nombre del cliente" value={nuevoClienteNombre}
-                  onChange={e => setNuevoClienteNombre(e.target.value)} />
-                <input className="w-full bg-gray-800 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Teléfono *" value={nuevoClienteTelefono}
-                  onChange={e => setNuevoClienteTelefono(e.target.value)} />
-                <button className="text-xs text-gray-400 hover:underline" onClick={() => setModoNuevoCliente(false)}>
-                  ← Buscar cliente existente
-                </button>
-              </div>
+            <label style={{ fontSize: 12, color: '#94A3B8', fontWeight: 600, display: 'block', marginBottom: 6 }}>TELÉFONO</label>
+            <input type="tel" placeholder="600 000 000" value={telefono}
+              onChange={e => setTelefono(e.target.value)}
+              style={{ width: '100%', padding: '12px 14px', background: '#1A2332', border: '1px solid rgba(148,163,184,0.06)', borderRadius: 12, color: '#F1F5F9', fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
+            {buscandoCliente && <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>Buscando cliente...</p>}
+            {clienteEncontrado && !buscandoCliente && (
+              <p style={{ fontSize: 11, color: '#22C55E', marginTop: 4 }}>
+                ✓ Cliente existente: {clienteEncontrado.nombre}
+              </p>
             )}
+          </div>
+
+          {/* ═══ ALERTA DE FIABILIDAD ═══ */}
+          {fiabilidad && fiabilidad.alertLevel !== 'none' && fiabilidad.alertMessage && (
+            <div style={{
+              padding: '10px 14px',
+              borderRadius: 10,
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              background: fiabilidad.alertLevel === 'danger' ? 'rgba(239,68,68,0.08)'
+                : fiabilidad.alertLevel === 'warn' ? 'rgba(245,158,11,0.08)'
+                : 'rgba(59,130,246,0.06)',
+              border: `1px solid ${
+                fiabilidad.alertLevel === 'danger' ? 'rgba(239,68,68,0.2)'
+                : fiabilidad.alertLevel === 'warn' ? 'rgba(245,158,11,0.2)'
+                : 'rgba(59,130,246,0.12)'
+              }`,
+            }}>
+              {fiabilidad.alertLevel === 'danger' && <AlertCircle className="w-4 h-4" style={{ color: '#EF4444', flexShrink: 0, marginTop: 1 }} />}
+              {fiabilidad.alertLevel === 'warn' && <AlertTriangle className="w-4 h-4" style={{ color: '#F59E0B', flexShrink: 0, marginTop: 1 }} />}
+              {fiabilidad.alertLevel === 'info' && <Info className="w-4 h-4" style={{ color: '#3B82F6', flexShrink: 0, marginTop: 1 }} />}
+              <div>
+                <p style={{
+                  fontSize: 12, fontWeight: 600, lineHeight: 1.4,
+                  color: fiabilidad.alertLevel === 'danger' ? '#EF4444'
+                    : fiabilidad.alertLevel === 'warn' ? '#F59E0B' : '#94A3B8',
+                }}>
+                  {fiabilidad.alertMessage}
+                </p>
+                <p style={{ fontSize: 11, color: '#4B5563', marginTop: 2 }}>
+                  Fiabilidad: {fiabilidad.score}% · {fiabilidad.completadas} completadas de {fiabilidad.totalCitas}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Nombre */}
+          <div>
+            <label style={{ fontSize: 12, color: '#94A3B8', fontWeight: 600, display: 'block', marginBottom: 6 }}>NOMBRE *</label>
+            <input type="text" placeholder="Nombre del cliente" value={nombre}
+              onChange={e => setNombre(e.target.value)}
+              style={{ width: '100%', padding: '12px 14px', background: '#1A2332', border: '1px solid rgba(148,163,184,0.06)', borderRadius: 12, color: '#F1F5F9', fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
           </div>
 
           {/* Servicio */}
           <div>
-            <label className="text-sm text-gray-400 mb-1 block">Servicio</label>
-            <input
-              className="w-full bg-gray-800 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="Escribe o busca un servicio..."
-              value={servicioQuery}
-              onChange={e => buscarServicios(e.target.value)}
-            />
-            {serviciosSugeridos.length > 0 && (
-              <div className="mt-1 bg-gray-800 rounded-xl overflow-hidden border border-gray-700">
-                {serviciosSugeridos.map(s => (
-                  <button key={s.id} className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-700 border-b border-gray-700 last:border-0"
-                    onClick={() => seleccionarServicio(s)}>
-                    <span className="font-medium">{s.nombre}</span>
-                    {s.duracion_minutos && <span className="text-gray-400"> · {s.duracion_minutos}min</span>}
-                    {s.precio && <span className="text-gray-400"> · {s.precio}€</span>}
-                  </button>
-                ))}
-              </div>
+            <label style={{ fontSize: 12, color: '#94A3B8', fontWeight: 600, display: 'block', marginBottom: 6 }}>SERVICIO</label>
+            {servicios.length > 0 ? (
+              <select value={servicio} onChange={e => setServicio(e.target.value)}
+                style={{ width: '100%', padding: '12px 14px', background: '#1A2332', border: '1px solid rgba(148,163,184,0.06)', borderRadius: 12, color: '#F1F5F9', fontSize: 15, outline: 'none', boxSizing: 'border-box', appearance: 'none' }}>
+                <option value="">Seleccionar servicio</option>
+                {servicios.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+              </select>
+            ) : (
+              <input type="text" placeholder="Ej: Corte de pelo" value={servicio}
+                onChange={e => setServicio(e.target.value)}
+                style={{ width: '100%', padding: '12px 14px', background: '#1A2332', border: '1px solid rgba(148,163,184,0.06)', borderRadius: 12, color: '#F1F5F9', fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
             )}
           </div>
 
-          {/* Horas */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm text-gray-400 mb-1 block">Hora inicio</label>
-              <input type="time" className="w-full bg-gray-800 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-green-500"
-                value={horaInicio} onChange={e => setHoraInicio(e.target.value)} />
+          {/* Horario */}
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 12, color: '#94A3B8', fontWeight: 600, display: 'block', marginBottom: 6 }}>INICIO</label>
+              <input type="time" value={horaInicio} onChange={e => setHoraInicio(e.target.value)}
+                style={{ width: '100%', padding: '12px 14px', background: '#1A2332', border: '1px solid rgba(148,163,184,0.06)', borderRadius: 12, color: '#F1F5F9', fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
             </div>
-            <div>
-              <label className="text-sm text-gray-400 mb-1 block">Hora fin</label>
-              <input type="time" className="w-full bg-gray-800 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-green-500"
-                value={horaFin} onChange={e => setHoraFin(e.target.value)} />
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 12, color: '#94A3B8', fontWeight: 600, display: 'block', marginBottom: 6 }}>FIN</label>
+              <input type="time" value={horaFin} onChange={e => setHoraFin(e.target.value)}
+                style={{ width: '100%', padding: '12px 14px', background: '#1A2332', border: '1px solid rgba(148,163,184,0.06)', borderRadius: 12, color: '#F1F5F9', fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
             </div>
           </div>
 
           {/* Estado */}
           {estadosCita.length > 0 && (
             <div>
-              <label className="text-sm text-gray-400 mb-2 block">Estado</label>
-              <div className="flex flex-wrap gap-2">
-                {estadosCita.map(estado => {
-                  const nombre = estado.nombre_personalizado || estado.nombre_defecto;
-                  const selected = estadoSeleccionado?.id === estado.id;
+              <label style={{ fontSize: 12, color: '#94A3B8', fontWeight: 600, display: 'block', marginBottom: 8 }}>ESTADO</label>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {estadosCita.map(e => {
+                  const nombre = e.nombre_personalizado || e.nombre_defecto;
+                  const selected = estadoSeleccionado === nombre;
                   return (
-                    <button
-                      key={estado.id}
-                      onClick={() => setEstadoSeleccionado(estado)}
+                    <button key={e.id} onClick={() => setEstadoSeleccionado(nombre)}
                       style={{
-                        background: selected ? estado.color + '33' : 'rgba(255,255,255,0.05)',
-                        border: `1.5px solid ${selected ? estado.color : 'rgba(255,255,255,0.1)'}`,
-                        color: selected ? estado.color : '#94A3B8',
-                        borderRadius: 20,
-                        padding: '5px 12px',
-                        fontSize: 12,
-                        fontWeight: selected ? 700 : 400,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      <span style={{
-                        width: 7, height: 7, borderRadius: '50%',
-                        background: estado.color, display: 'inline-block', flexShrink: 0,
-                      }} />
+                        padding: '6px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                        fontSize: 12, fontWeight: 600,
+                        background: selected ? e.color + '22' : '#1A2332',
+                        color: selected ? e.color : '#94A3B8',
+                        outline: selected ? `2px solid ${e.color}` : 'none',
+                      }}>
+                      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: e.color, marginRight: 6 }} />
                       {nombre}
                     </button>
                   );
@@ -309,25 +304,34 @@ export default function NuevaCitaModal({
             </div>
           )}
 
+          {/* Importe (opcional, solo si activado) */}
+          {mostrarImporte && (
+            <div>
+              <label style={{ fontSize: 12, color: '#94A3B8', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+                IMPORTE ESTIMADO <span style={{ fontWeight: 400, color: '#4B5563' }}>(opcional)</span>
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input type="text" inputMode="decimal" placeholder="0.00" value={importe}
+                  onChange={e => setImporte(e.target.value)}
+                  style={{ width: '100%', padding: '12px 14px', paddingRight: 36, background: '#1A2332', border: '1px solid rgba(148,163,184,0.06)', borderRadius: 12, color: '#F1F5F9', fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
+                <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: '#4B5563', fontSize: 14, fontWeight: 600 }}>€</span>
+              </div>
+            </div>
+          )}
+
           {/* Notas */}
           <div>
-            <label className="text-sm text-gray-400 mb-1 block">Observaciones (opcional)</label>
-            <textarea className="w-full bg-gray-800 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-green-500 resize-none"
-              rows={2} placeholder="Alergias, preferencias, notas..."
-              value={notas} onChange={e => setNotas(e.target.value)} />
+            <label style={{ fontSize: 12, color: '#94A3B8', fontWeight: 600, display: 'block', marginBottom: 6 }}>NOTAS</label>
+            <textarea placeholder="Observaciones..." value={notas} onChange={e => setNotas(e.target.value)}
+              rows={2} style={{ width: '100%', padding: '12px 14px', background: '#1A2332', border: '1px solid rgba(148,163,184,0.06)', borderRadius: 12, color: '#F1F5F9', fontSize: 15, outline: 'none', resize: 'none', boxSizing: 'border-box' }} />
           </div>
 
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" checked={noEnviarMensaje} onChange={e => setNoEnviarMensaje(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-green-500 focus:ring-green-500" />
-            <span className="text-sm text-gray-400">No enviar recordatorio por WhatsApp</span>
-          </label>
+          {error && <p style={{ color: '#EF4444', fontSize: 13 }}>{error}</p>}
 
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-
-          <button onClick={guardar} disabled={loading}
-            className="w-full py-3 bg-green-500 hover:bg-green-400 disabled:opacity-50 rounded-xl font-semibold text-sm transition-colors">
-            {loading ? 'Guardando...' : 'Crear cita'}
+          {/* Guardar */}
+          <button onClick={guardar} disabled={guardando}
+            style={{ width: '100%', padding: '14px', borderRadius: 14, border: 'none', background: '#22C55E', color: '#fff', cursor: guardando ? 'not-allowed' : 'pointer', fontSize: 15, fontWeight: 700, opacity: guardando ? 0.7 : 1 }}>
+            {guardando ? 'Guardando...' : 'Crear cita'}
           </button>
         </div>
       </div>
