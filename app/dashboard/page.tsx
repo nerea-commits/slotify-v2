@@ -72,8 +72,9 @@ export default function Dashboard() {
   const [editHoraFin, setEditHoraFin] = useState('');
   const [editEstado, setEditEstado] = useState('');
   const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState('');
 
-  // ═══ RISK INDICATOR CACHE ═══
+  // Risk indicator cache
   const [clientRiskCache, setClientRiskCache] = useState<Record<string, { show: boolean; color: string; icon: string | null }>>({});
 
   const empresaIdRef = useRef<string | null>(null);
@@ -125,7 +126,6 @@ export default function Dashboard() {
   useEffect(() => { loadAllCitas(); }, [selectedDate, view]);
   useEffect(() => { if (profesional) { profesionalIdRef.current = profesional.id; loadAllCitas(); } }, [profesional]);
 
-  // ═══ LOAD CLIENT RISKS ═══
   function loadClientRisks(citas: any[]) {
     const citasPorCliente: Record<string, any[]> = {};
     citas.forEach(c => {
@@ -207,7 +207,7 @@ export default function Dashboard() {
     return diasLaborables.includes(isoDay);
   }
 
-  // Canceladas NO aparecen en las vistas operativas
+  // Canceladas NO aparecen en vistas operativas
   function citasForDate(d: Date): any[] {
     const ds = toDS(d);
     return allCitas.filter(c =>
@@ -309,13 +309,59 @@ export default function Dashboard() {
     setEditHoraInicio(cita.hora_inicio?.substring(11, 16) || '');
     setEditHoraFin(cita.hora_fin?.substring(11, 16) || '');
     setEditEstado(cita.estado || '');
+    setEditError('');
+  }
+
+  // ═══ VALIDAR SOLAPAMIENTO (para edición) ═══
+  async function validarSolapamientoEdicion(dateStr: string, inicio: string, fin: string, excludeId: string): Promise<string | null> {
+    const eid = empresaIdRef.current || localStorage.getItem('slotify_empresa_id');
+    const pid = profesionalIdRef.current || localStorage.getItem('slotify_profesional_id');
+    if (!eid || !pid) return null;
+
+    const hInicioISO = `${dateStr}T${inicio}:00`;
+    const hFinISO = `${dateStr}T${fin}:00`;
+
+    const { data, error } = await supabase
+      .from('citas')
+      .select('id, hora_inicio, hora_fin, estado, clientes(nombre)')
+      .eq('empresa_id', eid)
+      .eq('profesional_id', pid)
+      .neq('estado', 'cancelada')
+      .neq('estado', 'Cancelada')
+      .neq('id', excludeId)
+      // Solapamiento: start < newEnd AND end > newStart
+      .lt('hora_inicio', hFinISO)
+      .gt('hora_fin', hInicioISO);
+
+    if (error) { console.error('Error validando solapamiento edición:', error); return null; }
+    if (data && data.length > 0) {
+      const conflicto = data[0];
+      const clienteConflicto = conflicto.clientes?.nombre || 'otro cliente';
+      const horaConflicto = conflicto.hora_inicio?.substring(11, 16) || '';
+      return `Conflicto de horario: ya hay una cita con ${clienteConflicto} a las ${horaConflicto}. Elige otro horario.`;
+    }
+    return null;
   }
 
   async function guardarEdicion() {
     if (!editingCita) return;
+    if (editHoraFin <= editHoraInicio) {
+      setEditError('La hora de fin debe ser posterior a la de inicio');
+      return;
+    }
     setEditLoading(true);
+    setEditError('');
     try {
       const dateStr = rawDate(editingCita.hora_inicio);
+
+      // Validar solapamiento (excluyendo la cita actual)
+      const conflicto = await validarSolapamientoEdicion(dateStr, editHoraInicio, editHoraFin, editingCita.id);
+      if (conflicto) {
+        setEditError(conflicto);
+        setEditLoading(false);
+        return;
+      }
+
       const updates: any = {
         hora_inicio: `${dateStr}T${editHoraInicio}:00`,
         hora_fin: `${dateStr}T${editHoraFin}:00`,
@@ -328,6 +374,7 @@ export default function Dashboard() {
       loadAllCitas();
     } catch (e) {
       console.error(e);
+      setEditError('Error al guardar. Inténtalo de nuevo.');
     } finally {
       setEditLoading(false);
     }
@@ -353,6 +400,8 @@ export default function Dashboard() {
   const weekDayNames = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
   const WEEK_SLOT_H = 28;
 
+  // ═══ RENDER BLOQUE DE CITA ═══
+  // Línea 2 usa el mismo color base que línea 1, diferenciado por font-weight
   function renderCitaBlock(cita: any, style: React.CSSProperties) {
     const name = cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente';
     const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
@@ -361,16 +410,35 @@ export default function Dashboard() {
     const color = citaColor(cita.estado);
     const fs = (style.fontSize as number) || 10;
     const risk = cita.cliente_id ? clientRiskCache[cita.cliente_id] : null;
+
     return (
-      <div key={cita.id} onClick={() => setSelectedCita(cita)}
+      <div
+        key={cita.id}
+        onClick={() => setSelectedCita(cita)}
         style={{
           ...style,
-          background: `${color}22`,
+          background: `${color}1A`,
           borderLeft: `3px solid ${color}`,
-          cursor: 'pointer', overflow: 'hidden', zIndex: 10,
-          pointerEvents: 'auto', boxShadow: `0 1px 4px ${color}33`,
+          cursor: 'pointer',
+          overflow: 'hidden',
+          zIndex: 10,
+          pointerEvents: 'auto',
+          boxShadow: `0 1px 4px ${color}22`,
+        }}
+      >
+        {/* Línea 1: Nombre — font-weight 700, color principal del estado */}
+        <div style={{
+          fontSize: fs,
+          fontWeight: 700,
+          color: color,
+          lineHeight: 1.3,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 3,
         }}>
-        <div style={{ fontSize: fs, fontWeight: 700, color: C.text, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3 }}>
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
           {risk?.show && (
             <span style={{ fontSize: Math.max(fs - 2, 8), lineHeight: 1, flexShrink: 0, opacity: 0.85 }}>
@@ -378,8 +446,17 @@ export default function Dashboard() {
             </span>
           )}
         </div>
+        {/* Línea 2: Servicio - Notas — mismo color, font-weight 400 */}
         {linea2 && (
-          <div style={{ fontSize: fs - 1, color: `${color}cc`, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{
+            fontSize: fs - 1,
+            fontWeight: 400,
+            color: color,
+            opacity: 0.75,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
             {linea2}
           </div>
         )}
@@ -875,6 +952,13 @@ export default function Dashboard() {
                     placeholder="Observaciones, preferencias..." />
                 </div>
 
+                {/* Error de edición */}
+                {editError && (
+                  <div style={{ padding: '10px 14px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 10 }}>
+                    <p style={{ color: C.red, fontSize: 13, lineHeight: 1.4 }}>⚠ {editError}</p>
+                  </div>
+                )}
+
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button onClick={() => cancelarCita(editingCita.id)}
                     style={{ flex: 1, padding: '10px 0', borderRadius: 12, background: `${C.red}22`, border: `1px solid ${C.red}55`, color: C.red, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
@@ -882,7 +966,7 @@ export default function Dashboard() {
                   </button>
                   <button onClick={guardarEdicion} disabled={editLoading}
                     style={{ flex: 2, padding: '10px 0', borderRadius: 12, background: C.green, border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: editLoading ? 0.6 : 1 }}>
-                    {editLoading ? 'Guardando...' : 'Guardar cambios'}
+                    {editLoading ? 'Comprobando...' : 'Guardar cambios'}
                   </button>
                 </div>
               </div>
