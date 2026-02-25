@@ -40,6 +40,10 @@ export default function NuevaCitaModal({
   const [nuevoClienteTelefono, setNuevoClienteTelefono] = useState('');
   const [noEnviarMensaje, setNoEnviarMensaje] = useState(false);
 
+  // Estados de cita
+  const [estadosCita, setEstadosCita] = useState<any[]>([]);
+  const [estadoSeleccionado, setEstadoSeleccionado] = useState<any>(null);
+
   useEffect(() => {
     if (!open) {
       setClienteQuery(''); setClientesSugeridos([]); setClienteSeleccionado(null);
@@ -55,6 +59,28 @@ export default function NuevaCitaModal({
       setHoraFin(`${Math.floor(totalMin / 60).toString().padStart(2, '0')}:${(totalMin % 60).toString().padStart(2, '0')}`);
     }
   }, [open, preselectedTime]);
+
+  // Cargar estados de cita cuando se abre el modal
+  useEffect(() => {
+    if (!open || !empresaId) return;
+    async function loadEstados() {
+      const { data } = await supabase
+        .from('estados_cita')
+        .select('*')
+        .eq('empresa_id', empresaId)
+        .eq('activo', true)
+        .order('orden');
+      if (data && data.length > 0) {
+        setEstadosCita(data);
+        // Seleccionar "Confirmada" por defecto, o el primer estado activo
+        const confirmada = data.find((e: any) =>
+          (e.nombre_personalizado || e.nombre_defecto).toLowerCase().includes('confirm')
+        );
+        setEstadoSeleccionado(confirmada || data[0]);
+      }
+    }
+    loadEstados();
+  }, [open, empresaId]);
 
   async function buscarClientes(q: string) {
     setClienteQuery(q);
@@ -114,10 +140,15 @@ export default function NuevaCitaModal({
         clienteId = nc.id;
       }
 
+      // Usar el nombre del estado seleccionado (personalizado o por defecto)
+      const estadoNombre = estadoSeleccionado
+        ? (estadoSeleccionado.nombre_personalizado || estadoSeleccionado.nombre_defecto).toLowerCase()
+        : 'confirmada';
+
       const citaData: any = {
         hora_inicio: horaInicioFull,
         hora_fin: horaFinFull,
-        estado: 'confirmada',
+        estado: estadoNombre,
         notas: notas || null,
         enviar_notificacion: !noEnviarMensaje,
       };
@@ -238,6 +269,45 @@ export default function NuevaCitaModal({
                 value={horaFin} onChange={e => setHoraFin(e.target.value)} />
             </div>
           </div>
+
+          {/* Estado */}
+          {estadosCita.length > 0 && (
+            <div>
+              <label className="text-sm text-gray-400 mb-2 block">Estado</label>
+              <div className="flex flex-wrap gap-2">
+                {estadosCita.map(estado => {
+                  const nombre = estado.nombre_personalizado || estado.nombre_defecto;
+                  const selected = estadoSeleccionado?.id === estado.id;
+                  return (
+                    <button
+                      key={estado.id}
+                      onClick={() => setEstadoSeleccionado(estado)}
+                      style={{
+                        background: selected ? estado.color + '33' : 'rgba(255,255,255,0.05)',
+                        border: `1.5px solid ${selected ? estado.color : 'rgba(255,255,255,0.1)'}`,
+                        color: selected ? estado.color : '#94A3B8',
+                        borderRadius: 20,
+                        padding: '5px 12px',
+                        fontSize: 12,
+                        fontWeight: selected ? 700 : 400,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <span style={{
+                        width: 7, height: 7, borderRadius: '50%',
+                        background: estado.color, display: 'inline-block', flexShrink: 0,
+                      }} />
+                      {nombre}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Notas */}
           <div>
