@@ -336,7 +336,7 @@ export default function Dashboard() {
     if (error) { console.error('Error validando solapamiento edición:', error); return null; }
     if (data && data.length > 0) {
       const conflicto = data[0];
-      const clienteConflicto = conflicto.clientes?.nombre || 'otro cliente';
+      const _cl = conflicto.clientes; const clienteConflicto = (Array.isArray(_cl) ? _cl[0]?.nombre : (_cl as any)?.nombre) || 'otro cliente';
       const horaConflicto = conflicto.hora_inicio?.substring(11, 16) || '';
       return `Conflicto de horario: ya hay una cita con ${clienteConflicto} a las ${horaConflicto}. Elige otro horario.`;
     }
