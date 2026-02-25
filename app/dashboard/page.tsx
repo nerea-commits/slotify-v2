@@ -60,6 +60,7 @@ export default function Dashboard() {
   const [preselectedDate, setPreselectedDate] = useState<Date | null>(null);
   const [currentMinutes, setCurrentMinutes] = useState(-1);
   const [activeSection, setActiveSection] = useState<string>('agenda');
+  const [estadosCita, setEstadosCita] = useState<any[]>([]);
 
   const empresaIdRef = useRef<string | null>(null);
   const profesionalIdRef = useRef<string | null>(null);
@@ -86,6 +87,14 @@ export default function Dashboard() {
       if (eid) {
         supabase.from('empresas').select('*').eq('id', eid).single()
           .then(({ data }) => { if (data) setEmpresa(data); });
+
+        // Cargar estados de cita de la empresa
+        supabase.from('estados_cita')
+          .select('*')
+          .eq('empresa_id', eid)
+          .eq('activo', true)
+          .order('orden')
+          .then(({ data }) => { if (data) setEstadosCita(data); });
       }
       if (pid) {
         supabase.from('profesionales').select('*').eq('id', pid).single()
@@ -188,13 +197,17 @@ export default function Dashboard() {
   }
 
   function activeCitasForDate(d: Date): any[] {
-    return citasForDate(d).filter(c => c.estado !== 'cancelada');
+    return citasForDate(d).filter(c => {
+      const estadoNombre = (c.estado || '').toLowerCase();
+      return estadoNombre !== 'cancelada';
+    });
   }
 
   function slotOccupied(citas: any[], slot: string): boolean {
     const slotM = timeToMinutes(slot);
     return citas.some(c => {
-      if (c.estado === 'cancelada') return false;
+      const estadoNombre = (c.estado || '').toLowerCase();
+      if (estadoNombre === 'cancelada') return false;
       const sm = rawTimeMin(c.hora_inicio);
       const em = c.hora_fin ? rawTimeMin(c.hora_fin) : sm + 30;
       return slotM >= sm && slotM < em;
@@ -213,6 +226,38 @@ export default function Dashboard() {
     if (ratio > 0.7) return { label: `${freeCount} libres`, color: C.green };
     if (ratio > 0.4) return { label: `${freeCount} libres`, color: C.yellow };
     return { label: `${freeCount} libres`, color: C.orange };
+  }
+
+  // Devuelve el color real del estado buscando en estadosCita
+  function citaColor(estado: string): string {
+    if (!estado) return C.green;
+    const estadoNombre = estado.toLowerCase();
+    // Buscar en los estados cargados de la empresa
+    const found = estadosCita.find(e => {
+      const nombre = (e.nombre_personalizado || e.nombre_defecto || '').toLowerCase();
+      return nombre === estadoNombre || nombre.includes(estadoNombre) || estadoNombre.includes(nombre.split(' ')[0]);
+    });
+    if (found) return found.color;
+    // Fallback por nombre conocido
+    if (estadoNombre === 'cancelada') return C.textSec;
+    if (estadoNombre === 'pendiente') return C.yellow;
+    if (estadoNombre === 'no-show' || estadoNombre === 'no_show') return C.orange;
+    if (estadoNombre === 'lista de espera') return '#8B5CF6';
+    if (estadoNombre === 'en proceso') return '#3B82F6';
+    if (estadoNombre === 'completada') return C.textSec;
+    return C.green;
+  }
+
+  // Nombre visible del estado (con primera letra mayúscula)
+  function citaEstadoNombre(estado: string): string {
+    if (!estado) return 'Confirmada';
+    const estadoNombre = estado.toLowerCase();
+    const found = estadosCita.find(e => {
+      const nombre = (e.nombre_personalizado || e.nombre_defecto || '').toLowerCase();
+      return nombre === estadoNombre || nombre.includes(estadoNombre) || estadoNombre.includes(nombre.split(' ')[0]);
+    });
+    if (found) return found.nombre_personalizado || found.nombre_defecto;
+    return estado.charAt(0).toUpperCase() + estado.slice(1);
   }
 
   function isToday(d: Date) { return d.toDateString() === new Date().toDateString(); }
@@ -253,12 +298,6 @@ export default function Dashboard() {
     setPreselectedDate(date ? new Date(date) : null);
     setPreselectedTime(time || '');
     setModalOpen(true);
-  }
-
-  function citaColor(estado: string) {
-    if (estado === 'cancelada') return C.textSec;
-    if (estado === 'pendiente') return C.yellow;
-    return C.green;
   }
 
   const weekDayNames = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
@@ -372,7 +411,7 @@ export default function Dashboard() {
                     const dur = Math.max(citaEnd - citaStart, 30);
                     const top = ((citaStart - startMin) / 30) * 50;
                     const h = (dur / 30) * 50;
-                    const cancel = cita.estado === 'cancelada';
+                    const cancel = (cita.estado || '').toLowerCase() === 'cancelada';
                     const name = cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente';
                     const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
                     const color = citaColor(cita.estado);
@@ -445,7 +484,7 @@ export default function Dashboard() {
                     const today = isToday(day);
                     const working = isWorkingDay(day);
                     const dayCitas = citasForDate(day);
-                    const activeCitas = dayCitas.filter(c => c.estado !== 'cancelada');
+                    const activeCitas = dayCitas.filter(c => (c.estado || '').toLowerCase() !== 'cancelada');
 
                     return (
                       <div key={di} style={{
@@ -490,7 +529,7 @@ export default function Dashboard() {
                             const dur = Math.max(citaEnd - citaStart, 30);
                             const top = ((citaStart - startMin) / 30) * WEEK_SLOT_H;
                             const h = (dur / 30) * WEEK_SLOT_H;
-                            const cancel = cita.estado === 'cancelada';
+                            const cancel = (cita.estado || '').toLowerCase() === 'cancelada';
                             const name = cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente';
                             const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
                             const color = citaColor(cita.estado);
@@ -635,14 +674,21 @@ export default function Dashboard() {
                 <p><span style={{ color: C.textSec }}>Inicio: </span>{selectedCita.hora_inicio?.substring(11, 16) || '—'}</p>
                 <p><span style={{ color: C.textSec }}>Fin: </span>{selectedCita.hora_fin?.substring(11, 16) || '—'}</p>
                 {selectedCita.notas && <p><span style={{ color: C.textSec }}>Notas: </span>{selectedCita.notas}</p>}
-                <p><span style={{ color: C.textSec }}>Estado: </span>
-                  <span style={{ color: citaColor(selectedCita.estado) }}>{selectedCita.estado}</span>
+                <p>
+                  <span style={{ color: C.textSec }}>Estado: </span>
+                  <span style={{
+                    color: citaColor(selectedCita.estado),
+                    background: citaColor(selectedCita.estado) + '22',
+                    padding: '2px 8px', borderRadius: 10, fontSize: 12, fontWeight: 600,
+                  }}>
+                    {citaEstadoNombre(selectedCita.estado)}
+                  </span>
                 </p>
               </div>
               <div className="flex gap-3">
                 <button onClick={() => setSelectedCita(null)} className="flex-1 py-2 rounded-xl text-sm"
                   style={{ background: C.surfaceAlt }}>Cerrar</button>
-                {selectedCita.estado !== 'cancelada' && (
+                {(selectedCita.estado || '').toLowerCase() !== 'cancelada' && (
                   <button onClick={() => cancelarCita(selectedCita.id)}
                     className="flex-1 py-2 rounded-xl text-sm text-white" style={{ background: C.red }}>
                     Cancelar cita
