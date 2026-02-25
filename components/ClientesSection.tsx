@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Search, Plus, X, Phone, Mail, ChevronRight, ArrowLeft, Trash2, Edit2, Check, Calendar, MessageCircle } from 'lucide-react';
+import { Search, Plus, X, Phone, Mail, ChevronRight, ArrowLeft, Trash2, Edit2, Check, Calendar, MessageCircle, TrendingUp, DollarSign } from 'lucide-react';
+import { calcularFiabilidad, type FiabilidadResult } from '@/lib/fiabilidad';
 
 const C = {
   bg: '#0B0F1A', panel: '#111827', panelAlt: '#1A2332',
@@ -16,23 +17,21 @@ const C = {
 interface Cliente { id: string; nombre: string; telefono?: string; email?: string; notas?: string; created_at?: string; }
 interface FormCliente { nombre: string; telefono: string; email: string; notas: string; }
 
-/* ═══ SCORE RING ═══ */
-function ScoreRing({ score, size = 150 }: { score: number; size?: number }) {
+/* ═══ FIABILIDAD RING ═══ */
+function FiabilidadRing({ fiab, size = 150 }: { fiab: FiabilidadResult; size?: number }) {
   const s = 10, r = (size - s) / 2, circ = 2 * Math.PI * r;
-  const off = circ - (score / 100) * circ;
-  const col = score >= 70 ? C.accent : score >= 40 ? C.amber : C.red;
-  const lab = score >= 70 ? 'FIEL' : score >= 40 ? 'EN RIESGO' : 'INACTIVO';
+  const off = circ - (fiab.score / 100) * circ;
   return (
     <div style={{ position: 'relative', width: size, height: size }}>
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
         <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(148,163,184,0.08)" strokeWidth={s} />
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={col} strokeWidth={s}
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={fiab.color} strokeWidth={s}
           strokeDasharray={circ} strokeDashoffset={off} strokeLinecap="round"
           style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1)' }} />
       </svg>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ fontSize: 38, fontWeight: 800, color: col, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{score}</span>
-        <span style={{ fontSize: 9, color: C.textMid, fontWeight: 700, letterSpacing: 1.5, marginTop: 3 }}>{lab}</span>
+        <span style={{ fontSize: 36, fontWeight: 800, color: fiab.color, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{fiab.score}%</span>
+        <span style={{ fontSize: 9, color: C.textMid, fontWeight: 700, letterSpacing: 1.5, marginTop: 3, textTransform: 'uppercase' }}>{fiab.label}</span>
       </div>
     </div>
   );
@@ -49,7 +48,7 @@ function ActivityChart({ citas }: { citas: any[] }) {
       const count = citas.filter(c => {
         if (!c.hora_inicio) return false;
         const cd = new Date(c.hora_inicio);
-        return cd.getFullYear() === y && cd.getMonth() === m && c.estado !== 'cancelada';
+        return cd.getFullYear() === y && cd.getMonth() === m && c.estado !== 'cancelada' && c.estado !== 'Cancelada';
       }).length;
       r.push({ label: d.toLocaleDateString('es-ES', { month: 'short' }).replace('.','').toUpperCase(), count, cur: i === 0 });
     }
@@ -90,12 +89,14 @@ function ActivityChart({ citas }: { citas: any[] }) {
 
 /* ═══ TIMELINE DOT ═══ */
 function TDot({ cita, isLast }: { cita: any; isLast: boolean }) {
-  const col = cita.estado === 'cancelada' ? C.textDim : (cita.estado === 'no-show' || cita.estado === 'no_show') ? C.red : C.accent;
+  const estado = (cita.estado || '').toLowerCase();
+  const col = estado === 'cancelada' ? C.textDim : (estado === 'no-show' || estado === 'no_show') ? C.red : C.accent;
   const f = new Date(cita.hora_inicio), now = new Date();
   const diff = Math.floor((now.getTime() - f.getTime()) / 86400000);
   const ds = diff === 0 ? 'Hoy' : diff === 1 ? 'Ayer' : diff < 7 ? `${diff}d` : diff < 30 ? `${Math.floor(diff/7)}sem` : f.toLocaleDateString('es-ES',{day:'numeric',month:'short'});
   const sv = cita.servicios?.nombre || cita.servicio_nombre_libre || 'Servicio';
   const hr = cita.hora_inicio?.substring(11, 16);
+  const imp = cita.importe;
   return (
     <div style={{ display: 'flex', gap: 8, minHeight: 30 }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 8, flexShrink: 0 }}>
@@ -105,8 +106,9 @@ function TDot({ cita, isLast }: { cita: any; isLast: boolean }) {
       <div style={{ flex: 1, paddingBottom: isLast ? 0 : 4, display: 'flex', alignItems: 'baseline', gap: 5, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 11, fontWeight: 600, color: C.text }}>{sv}</span>
         <span style={{ fontSize: 10, color: C.textDim }}>{hr} · {ds}</span>
-        {cita.estado === 'cancelada' && <span style={{ fontSize: 9, color: C.textDim, fontWeight: 600 }}>CANCEL.</span>}
-        {(cita.estado === 'no-show' || cita.estado === 'no_show') && <span style={{ fontSize: 9, color: C.red, fontWeight: 600 }}>NO-SHOW</span>}
+        {imp != null && imp > 0 && <span style={{ fontSize: 10, color: C.accent, fontWeight: 600 }}>{imp}€</span>}
+        {estado === 'cancelada' && <span style={{ fontSize: 9, color: C.textDim, fontWeight: 600 }}>CANCEL.</span>}
+        {(estado === 'no-show' || estado === 'no_show') && <span style={{ fontSize: 9, color: C.red, fontWeight: 600 }}>NO-SHOW</span>}
       </div>
     </div>
   );
@@ -153,16 +155,22 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [historialCitas, setHistorialCitas] = useState<any[]>([]);
   const [loadingCitas, setLoadingCitas] = useState(false);
+  const [mostrarImporte, setMostrarImporte] = useState(false);
   const [form, setForm] = useState<FormCliente>({ nombre:'',telefono:'',email:'',notas:'' });
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
 
+  /* ═══ FIABILIDAD (from shared lib) ═══ */
+  const fiabilidad = useMemo(() => calcularFiabilidad(historialCitas), [historialCitas]);
+
+  /* ═══ ANALYTICS (extended with rentabilidad) ═══ */
   const analytics = useMemo(() => {
     if (historialCitas.length === 0) return null;
     const now = new Date();
-    const ok = historialCitas.filter(c => c.estado !== 'cancelada' && c.estado !== 'no-show' && c.estado !== 'no_show');
-    const canc = historialCitas.filter(c => c.estado === 'cancelada');
-    const ns = historialCitas.filter(c => c.estado === 'no-show' || c.estado === 'no_show');
+    const estado = (c: any) => (c.estado || '').toLowerCase();
+    const ok = historialCitas.filter(c => estado(c) !== 'cancelada' && estado(c) !== 'no-show' && estado(c) !== 'no_show');
+    const canc = historialCitas.filter(c => estado(c) === 'cancelada');
+    const ns = historialCitas.filter(c => estado(c) === 'no-show' || estado(c) === 'no_show');
     const past = ok.filter(c => new Date(c.hora_inicio) <= now);
     const lastDate = past.length > 0 ? new Date(past[0].hora_inicio) : null;
     const daysSince = lastDate ? Math.floor((now.getTime() - lastDate.getTime()) / 86400000) : null;
@@ -174,23 +182,17 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
       freq = Math.round(td / ((ts.length-1) * 86400000));
     }
 
-    let score = 100;
-    const n = historialCitas.length;
-    if (n > 0) score -= Math.round((canc.length/n)*30);
-    if (n > 0) score -= Math.round((ns.length/n)*40);
-    if (daysSince !== null && freq !== null && freq > 0) {
-      const ov = daysSince/freq;
-      if (ov > 2) score -= 25; else if (ov > 1.5) score -= 15; else if (ov > 1.2) score -= 5;
-    } else if (daysSince !== null) {
-      if (daysSince > 120) score -= 25; else if (daysSince > 60) score -= 15; else if (daysSince > 30) score -= 5;
-    }
-    if (ok.length >= 10) score = Math.min(100, score + 5);
-    score = Math.max(0, Math.min(100, score));
-
+    // Servicio favorito
     const svc: Record<string,number> = {};
     historialCitas.forEach(c => { const nm = c.servicios?.nombre || c.servicio_nombre_libre; if (nm) svc[nm] = (svc[nm]||0)+1; });
     const top = Object.entries(svc).sort((a,b) => b[1]-a[1])[0];
 
+    // Rentabilidad
+    const citasConImporte = historialCitas.filter(c => c.importe != null && c.importe > 0);
+    const ingresoTotal = citasConImporte.reduce((s, c) => s + (parseFloat(c.importe) || 0), 0);
+    const mediaPorVisita = citasConImporte.length > 0 ? ingresoTotal / citasConImporte.length : 0;
+
+    // Insights
     const ins: string[] = [];
     if (freq !== null) {
       if (freq <= 7) ins.push('Viene ~cada semana');
@@ -205,19 +207,25 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
       else ins.push(`Última: hace ${Math.floor(daysSince/30)} meses`);
     }
     if (freq !== null && daysSince !== null && daysSince > freq * 1.5) ins.push('⚠ Más tiempo del habitual sin venir');
-    const fut = historialCitas.filter(c => new Date(c.hora_inicio) > now && c.estado !== 'cancelada');
+    const fut = historialCitas.filter(c => new Date(c.hora_inicio) > now && estado(c) !== 'cancelada');
     if (fut.length > 0) { const d = Math.floor((new Date(fut[fut.length-1].hora_inicio).getTime()-now.getTime())/86400000); ins.push(d===0?'Cita hoy':d===1?'Cita mañana':`Próxima en ${d}d`); }
     else if (ok.length > 0) ins.push('Sin próxima cita');
 
-    return { score, visits: ok.length, canc: canc.length, ns: ns.length, total: n, daysSince, freq,
-      top: top ? { name: top[0], count: top[1] } : null, ins };
+    return {
+      visits: ok.length, canc: canc.length, ns: ns.length, total: historialCitas.length,
+      daysSince, freq,
+      top: top ? { name: top[0], count: top[1] } : null, ins,
+      // Rentabilidad
+      ingresoTotal, mediaPorVisita, citasConImporte: citasConImporte.length,
+    };
   }, [historialCitas]);
 
-  useEffect(() => { if (empresaId) load(); }, [empresaId]);
+  useEffect(() => { if (empresaId) { load(); loadConfig(); } }, [empresaId]);
   useEffect(() => { if (vistaDetalle) loadCitas(vistaDetalle.id); }, [vistaDetalle]);
 
   async function load() { setLoading(true); const { data } = await supabase.from('clientes').select('*').eq('empresa_id',empresaId).order('nombre'); setClientes(data||[]); setLoading(false); }
-  async function loadCitas(id: string) { setLoadingCitas(true); const { data } = await supabase.from('citas').select('*, servicios(nombre)').eq('cliente_id',id).order('hora_inicio',{ascending:false}).limit(100); setHistorialCitas(data||[]); setLoadingCitas(false); }
+  async function loadConfig() { const { data } = await supabase.from('empresas').select('mostrar_importe').eq('id',empresaId).single(); setMostrarImporte(data?.mostrar_importe || false); }
+  async function loadCitas(id: string) { setLoadingCitas(true); const { data } = await supabase.from('citas').select('*, servicios(nombre)').eq('cliente_id',id).order('hora_inicio',{ascending:false}).limit(200); setHistorialCitas(data||[]); setLoadingCitas(false); }
 
   const filtered = clientes.filter(c => c.nombre.toLowerCase().includes(busqueda.toLowerCase()) || (c.telefono||'').includes(busqueda) || (c.email||'').toLowerCase().includes(busqueda.toLowerCase()));
 
@@ -244,10 +252,11 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
   /* ═══ DETAIL VIEW ═══ */
   if (vistaDetalle) {
     const a = analytics;
+    const f = fiabilidad;
     return (
       <div style={{ height: '100vh', background: C.bg, color: C.text, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-        {/* TOP BAR — full width, thin */}
+        {/* TOP BAR */}
         <div style={{ background: C.panel, borderBottom: `1px solid ${C.divider}`, padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <button onClick={() => { setVistaDetalle(null); setConfirmDelete(false); }}
             style={{ color: C.textMid, background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}>
@@ -264,7 +273,6 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
         {loadingCitas ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.textDim }}>Cargando...</div>
         ) : (
-          /* MAIN LAYOUT: sidebar + analytics, both stretch to fill */
           <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
             {/* ═══ LEFT SIDEBAR ═══ */}
@@ -333,31 +341,40 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
               </div>
             </div>
 
-            {/* ═══ RIGHT — ANALYTICS GRID (fills ALL remaining space) ═══ */}
+            {/* ═══ RIGHT — ANALYTICS GRID ═══ */}
             <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
               {a ? (
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: '2fr 3fr',
-                  gridTemplateRows: '1fr 1fr',
+                  gridTemplateRows: mostrarImporte && a.citasConImporte > 0 ? 'auto auto auto' : 'auto auto',
                   gap: 2,
                   width: '100%',
-                  height: '100%',
-                  minHeight: 0,
                 }}>
 
-                  {/* ── TOP LEFT: Score Ring ── */}
-                  <div style={{ background: C.panel, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20, minHeight: 0 }}>
-                    <ScoreRing score={a.score} size={150} />
-                    <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginTop: 14, textTransform: 'uppercase' }}>Salud del cliente</p>
+                  {/* ── TOP LEFT: Fiabilidad Ring ── */}
+                  <div style={{ background: C.panel, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, minHeight: 220 }}>
+                    <FiabilidadRing fiab={f} size={150} />
+                    <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginTop: 14, textTransform: 'uppercase' }}>Fiabilidad</p>
+                    {/* Alert message if applicable */}
+                    {f.alertLevel !== 'none' && f.alertMessage && (
+                      <div style={{
+                        marginTop: 12, padding: '6px 10px', borderRadius: 6, maxWidth: 200, textAlign: 'center',
+                        background: f.alertLevel === 'danger' ? C.redDim : f.alertLevel === 'warn' ? 'rgba(245,158,11,0.1)' : 'rgba(59,130,246,0.06)',
+                      }}>
+                        <p style={{ fontSize: 10, color: f.alertLevel === 'danger' ? C.red : f.alertLevel === 'warn' ? C.amber : C.textMid, lineHeight: 1.4 }}>
+                          {f.alertMessage}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/* ── TOP RIGHT: KPIs ── */}
-                  <div style={{ background: C.panel, padding: '16px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0 }}>
+                  <div style={{ background: C.panel, padding: '16px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 4, textTransform: 'uppercase' }}>Métricas</p>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', columnGap: 20 }}>
                       {[
-                        { v: a.visits, l: 'Visitas', c: C.accent },
+                        { v: a.visits, l: 'Completadas', c: C.accent },
                         { v: a.canc, l: 'Cancelaciones', c: a.canc > 0 ? C.amber : C.textDim },
                         { v: a.ns, l: 'No-shows', c: a.ns > 0 ? C.red : C.textDim },
                         { v: a.freq ? `~${a.freq}` : '—', l: 'Intervalo medio', c: C.blue, s: a.freq ? 'días' : '' },
@@ -376,13 +393,13 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
                   </div>
 
                   {/* ── BOTTOM LEFT: Chart ── */}
-                  <div style={{ background: C.panel, padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0 }}>
+                  <div style={{ background: C.panel, padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 10, textTransform: 'uppercase' }}>Actividad · 6 meses</p>
                     <ActivityChart citas={historialCitas} />
                   </div>
 
                   {/* ── BOTTOM RIGHT: Timeline ── */}
-                  <div style={{ background: C.panel, padding: '16px 20px', overflow: 'auto', minHeight: 0 }}>
+                  <div style={{ background: C.panel, padding: '16px 20px', overflow: 'auto', maxHeight: 280 }}>
                     <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 10, textTransform: 'uppercase' }}>Últimas citas</p>
                     {historialCitas.length > 0 ? (
                       <>
@@ -391,6 +408,35 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
                       </>
                     ) : <p style={{ fontSize: 11, color: C.textDim }}>Sin citas</p>}
                   </div>
+
+                  {/* ── RENTABILIDAD ROW (full width, only if importe enabled & has data) ── */}
+                  {mostrarImporte && a.citasConImporte > 0 && (
+                    <div style={{
+                      gridColumn: '1 / -1', background: C.panel, padding: '16px 24px',
+                      display: 'flex', alignItems: 'center', gap: 32,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <DollarSign className="w-4 h-4" style={{ color: C.accent }} />
+                        </div>
+                        <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>Rentabilidad</p>
+                      </div>
+                      <div style={{ display: 'flex', gap: 40, flex: 1 }}>
+                        <div>
+                          <span style={{ fontSize: 22, fontWeight: 800, color: C.accent, fontVariantNumeric: 'tabular-nums' }}>{a.ingresoTotal.toFixed(0)}€</span>
+                          <p style={{ fontSize: 10, color: C.textDim, fontWeight: 600, textTransform: 'uppercase' }}>Total generado</p>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: 22, fontWeight: 800, color: C.text, fontVariantNumeric: 'tabular-nums' }}>{a.mediaPorVisita.toFixed(0)}€</span>
+                          <p style={{ fontSize: 10, color: C.textDim, fontWeight: 600, textTransform: 'uppercase' }}>Media por visita</p>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: 22, fontWeight: 800, color: C.textMid, fontVariantNumeric: 'tabular-nums' }}>{a.citasConImporte}/{a.total}</span>
+                          <p style={{ fontSize: 10, color: C.textDim, fontWeight: 600, textTransform: 'uppercase' }}>Con importe</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div style={{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%' }}>
