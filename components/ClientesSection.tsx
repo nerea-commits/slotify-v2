@@ -142,9 +142,6 @@ function ModalCliente({ editando, form, setForm, guardando, error, onGuardar, on
   );
 }
 
-/* ═══════════════════════════════════════════════════ */
-/* MAIN */
-/* ═══════════════════════════════════════════════════ */
 export default function ClientesSection({ empresaId }: { empresaId: string }) {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -160,10 +157,8 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
 
-  /* ═══ FIABILIDAD (from shared lib) ═══ */
   const fiabilidad = useMemo(() => calcularFiabilidad(historialCitas), [historialCitas]);
 
-  /* ═══ ANALYTICS (extended with rentabilidad) ═══ */
   const analytics = useMemo(() => {
     if (historialCitas.length === 0) return null;
     const now = new Date();
@@ -182,17 +177,14 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
       freq = Math.round(td / ((ts.length-1) * 86400000));
     }
 
-    // Servicio favorito
     const svc: Record<string,number> = {};
     historialCitas.forEach(c => { const nm = c.servicios?.nombre || c.servicio_nombre_libre; if (nm) svc[nm] = (svc[nm]||0)+1; });
     const top = Object.entries(svc).sort((a,b) => b[1]-a[1])[0];
 
-    // Rentabilidad
     const citasConImporte = historialCitas.filter(c => c.importe != null && c.importe > 0);
     const ingresoTotal = citasConImporte.reduce((s, c) => s + (parseFloat(c.importe) || 0), 0);
     const mediaPorVisita = citasConImporte.length > 0 ? ingresoTotal / citasConImporte.length : 0;
 
-    // Insights
     const ins: string[] = [];
     if (freq !== null) {
       if (freq <= 7) ins.push('Viene ~cada semana');
@@ -215,7 +207,6 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
       visits: ok.length, canc: canc.length, ns: ns.length, total: historialCitas.length,
       daysSince, freq,
       top: top ? { name: top[0], count: top[1] } : null, ins,
-      // Rentabilidad
       ingresoTotal, mediaPorVisita, citasConImporte: citasConImporte.length,
     };
   }, [historialCitas]);
@@ -249,14 +240,12 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
   async function del() { if (!vistaDetalle) return; await supabase.from('clientes').delete().eq('id',vistaDetalle.id); await load(); setVistaDetalle(null); setConfirmDelete(false); }
   function fmtDate(s?: string) { if (!s) return '—'; return new Date(s).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'}); }
 
-  /* ═══ DETAIL VIEW ═══ */
   if (vistaDetalle) {
     const a = analytics;
     const f = fiabilidad;
     return (
       <div style={{ height: '100vh', background: C.bg, color: C.text, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-        {/* TOP BAR */}
         <div style={{ background: C.panel, borderBottom: `1px solid ${C.divider}`, padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <button onClick={() => { setVistaDetalle(null); setConfirmDelete(false); }}
             style={{ color: C.textMid, background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}>
@@ -275,7 +264,6 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
         ) : (
           <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-            {/* ═══ LEFT SIDEBAR ═══ */}
             <div style={{ width: 280, flexShrink: 0, background: C.panel, borderRight: `1px solid ${C.divider}`, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
 
               <div style={{ padding: '24px 20px 16px', borderBottom: `1px solid ${C.divider}` }}>
@@ -341,7 +329,6 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
               </div>
             </div>
 
-            {/* ═══ RIGHT — ANALYTICS GRID ═══ */}
             <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
               {a ? (
                 <div style={{
@@ -351,12 +338,9 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
                   gap: 2,
                   width: '100%',
                 }}>
-
-                  {/* ── TOP LEFT: Fiabilidad Ring ── */}
                   <div style={{ background: C.panel, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, minHeight: 220 }}>
                     <FiabilidadRing fiab={f} size={150} />
                     <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginTop: 14, textTransform: 'uppercase' }}>Fiabilidad</p>
-                    {/* Alert message if applicable */}
                     {f.alertLevel !== 'none' && f.alertMessage && (
                       <div style={{
                         marginTop: 12, padding: '6px 10px', borderRadius: 6, maxWidth: 200, textAlign: 'center',
@@ -369,7 +353,6 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
                     )}
                   </div>
 
-                  {/* ── TOP RIGHT: KPIs ── */}
                   <div style={{ background: C.panel, padding: '16px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 4, textTransform: 'uppercase' }}>Métricas</p>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', columnGap: 20 }}>
@@ -392,13 +375,11 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
                     </div>
                   </div>
 
-                  {/* ── BOTTOM LEFT: Chart ── */}
                   <div style={{ background: C.panel, padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 10, textTransform: 'uppercase' }}>Actividad · 6 meses</p>
                     <ActivityChart citas={historialCitas} />
                   </div>
 
-                  {/* ── BOTTOM RIGHT: Timeline ── */}
                   <div style={{ background: C.panel, padding: '16px 20px', overflow: 'auto', maxHeight: 280 }}>
                     <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 10, textTransform: 'uppercase' }}>Últimas citas</p>
                     {historialCitas.length > 0 ? (
@@ -409,7 +390,6 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
                     ) : <p style={{ fontSize: 11, color: C.textDim }}>Sin citas</p>}
                   </div>
 
-                  {/* ── RENTABILIDAD ROW (full width, only if importe enabled & has data) ── */}
                   {mostrarImporte && a.citasConImporte > 0 && (
                     <div style={{
                       gridColumn: '1 / -1', background: C.panel, padding: '16px 24px',
@@ -455,7 +435,6 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
     );
   }
 
-  /* ═══ LIST VIEW ═══ */
   return (
     <div style={{ minHeight:'100vh',background:C.bg,color:C.text }}>
       <div style={{ background:C.panel,borderBottom:`1px solid ${C.divider}`,padding:'16px 20px' }}>
