@@ -12,9 +12,10 @@ interface Props {
   profesionalId: string;
   empresaId: string;
   selectedDate: Date;
+  preselectedTime?: string;
 }
 
-export default function NuevaCitaModal({ open, onClose, onCreated, profesionalId, empresaId, selectedDate }: Props) {
+export default function NuevaCitaModal({ open, onClose, onCreated, profesionalId, empresaId, selectedDate, preselectedTime }: Props) {
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
   const [servicio, setServicio] = useState('');
@@ -45,6 +46,15 @@ export default function NuevaCitaModal({ open, onClose, onCreated, profesionalId
       // Reset
       setNombre(''); setTelefono(''); setServicio(''); setNotas(''); setImporte('');
       setError(''); setClienteEncontrado(null); setFiabilidad(null);
+      // Preseleccionar hora si viene del calendario
+      if (preselectedTime) {
+        setHoraInicio(preselectedTime);
+        const [h, m] = preselectedTime.split(':').map(Number);
+        const totalMin = h * 60 + m + 60;
+        const hFin = String(Math.floor(totalMin / 60) % 24).padStart(2, '0');
+        const mFin = String(totalMin % 60).padStart(2, '0');
+        setHoraFin(`${hFin}:${mFin}`);
+      }
     }
   }, [open, empresaId]);
 
