@@ -191,7 +191,7 @@ export default function NuevaCitaModal({
 
     if (data && data.length > 0) {
       const conflicto = data[0];
-      const clienteConflicto = conflicto.clientes?.nombre || 'otro cliente';
+      const _cl2 = conflicto.clientes; const clienteConflicto = (Array.isArray(_cl2) ? _cl2[0]?.nombre : (_cl2 as any)?.nombre) || 'otro cliente';
       const horaConflicto = conflicto.hora_inicio?.substring(11, 16) || '';
       return `Conflicto de horario: ya hay una cita con ${clienteConflicto} a las ${horaConflicto}. Elige otro horario.`;
     }
