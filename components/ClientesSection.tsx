@@ -15,15 +15,15 @@ interface Cliente {
   id: string;
   nombre: string;
   telefono?: string;
-  correo_electronico?: string;
+  email?: string;
   notas?: string;
-  creado_en?: string;
+  created_at?: string;
 }
 
 interface FormCliente {
   nombre: string;
   telefono: string;
-  correo_electronico: string;
+  email: string;
   notas: string;
 }
 
@@ -81,8 +81,8 @@ function ModalCliente({ editando, form, setForm, guardando, error, onGuardar, on
             <input
               type="email"
               placeholder="email@ejemplo.com"
-              value={form.correo_electronico}
-              onChange={e => setForm(f => ({ ...f, correo_electronico: e.target.value }))}
+              value={form.email}
+              onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
               style={{ width: '100%', padding: '12px 14px', background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, color: C.text, fontSize: 15, outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
@@ -131,7 +131,7 @@ export default function ClientesSection({ empresaId }: ClientesSectionProps) {
   const [form, setForm] = useState<FormCliente>({
     nombre: '',
     telefono: '',
-    correo_electronico: '',
+    email: '',
     notas: '',
   });
   const [guardando, setGuardando] = useState(false);
@@ -171,11 +171,11 @@ export default function ClientesSection({ empresaId }: ClientesSectionProps) {
   const clientesFiltrados = clientes.filter(c =>
     c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
     (c.telefono || '').includes(busqueda) ||
-    (c.correo_electronico || '').toLowerCase().includes(busqueda.toLowerCase())
+    (c.email || '').toLowerCase().includes(busqueda.toLowerCase())
   );
 
   function abrirNuevoCliente() {
-    setForm({ nombre: '', telefono: '', correo_electronico: '', notas: '' });
+    setForm({ nombre: '', telefono: '', email: '', notas: '' });
     setError('');
     setEditando(false);
     setModalAbierto(true);
@@ -185,7 +185,7 @@ export default function ClientesSection({ empresaId }: ClientesSectionProps) {
     setForm({
       nombre: cliente.nombre || '',
       telefono: cliente.telefono || '',
-      correo_electronico: cliente.correo_electronico || '',
+      email: cliente.email || '',
       notas: cliente.notas || '',
     });
     setError('');
@@ -204,7 +204,7 @@ export default function ClientesSection({ empresaId }: ClientesSectionProps) {
         .update({
           nombre: form.nombre.trim(),
           telefono: form.telefono.trim() || null,
-          correo_electronico: form.correo_electronico.trim() || null,
+          email: form.email.trim() || null,
           notas: form.notas.trim() || null,
         })
         .eq('id', vistaDetalle.id);
@@ -218,7 +218,7 @@ export default function ClientesSection({ empresaId }: ClientesSectionProps) {
           empresa_id: empresaId,
           nombre: form.nombre.trim(),
           telefono: form.telefono.trim() || null,
-          correo_electronico: form.correo_electronico.trim() || null,
+          email: form.email.trim() || null,
           notas: form.notas.trim() || null,
         });
 
@@ -264,7 +264,7 @@ export default function ClientesSection({ empresaId }: ClientesSectionProps) {
           </button>
           <div style={{ flex: 1 }}>
             <h2 style={{ fontSize: 18, fontWeight: 700 }}>{vistaDetalle.nombre}</h2>
-            <p style={{ fontSize: 12, color: C.textSec }}>Cliente desde {formatFecha(vistaDetalle.creado_en)}</p>
+            <p style={{ fontSize: 12, color: C.textSec }}>Cliente desde {formatFecha(vistaDetalle.created_at)}</p>
           </div>
           <button
             onClick={() => abrirEditarCliente(vistaDetalle)}
@@ -297,13 +297,13 @@ export default function ClientesSection({ empresaId }: ClientesSectionProps) {
                 </div>
               )}
 
-              {vistaDetalle.correo_electronico ? (
-                <a href={`mailto:${vistaDetalle.correo_electronico}`} style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', color: C.text }}>
+              {vistaDetalle.email ? (
+                <a href={`mailto:${vistaDetalle.email}`} style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', color: C.text }}>
                   <div style={{ width: 36, height: 36, borderRadius: 10, background: C.greenBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Mail className="w-4 h-4" style={{ color: C.green }} />
                   </div>
                   <div>
-                    <p style={{ fontSize: 15, fontWeight: 600 }}>{vistaDetalle.correo_electronico}</p>
+                    <p style={{ fontSize: 15, fontWeight: 600 }}>{vistaDetalle.email}</p>
                     <p style={{ fontSize: 11, color: C.textSec }}>Email</p>
                   </div>
                 </a>
@@ -454,7 +454,7 @@ export default function ClientesSection({ empresaId }: ClientesSectionProps) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{cliente.nombre}</p>
                     <p style={{ fontSize: 12, color: C.textSec, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {cliente.telefono || cliente.correo_electronico || 'Sin contacto'}
+                      {cliente.telefono || cliente.email || 'Sin contacto'}
                     </p>
                   </div>
                   <ChevronRight className="w-4 h-4" style={{ color: C.textSec, flexShrink: 0 }} />
