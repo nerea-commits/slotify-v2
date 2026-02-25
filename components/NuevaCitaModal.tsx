@@ -170,7 +170,7 @@ export default function NuevaCitaModal({
 
     let query = supabase
       .from('citas')
-      .select('id, hora_inicio, hora_fin, estado, clientes(nombre), servicio_nombre_libre, servicios(nombre)')
+      .select('id, hora_inicio, hora_fin, estado')
       .eq('empresa_id', empresaId)
       .eq('profesional_id', profesionalId)
       .neq('estado', 'cancelada')
@@ -191,7 +191,7 @@ export default function NuevaCitaModal({
 
     if (data && data.length > 0) {
       const conflicto = data[0];
-      const _cl2 = conflicto.clientes; const clienteConflicto = (Array.isArray(_cl2) ? _cl2[0]?.nombre : (_cl2 as any)?.nombre) || 'otro cliente';
+      const clienteConflicto = 'otro cliente';
       const horaConflicto = conflicto.hora_inicio?.substring(11, 16) || '';
       return `Conflicto de horario: ya hay una cita con ${clienteConflicto} a las ${horaConflicto}. Elige otro horario.`;
     }
