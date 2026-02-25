@@ -398,7 +398,7 @@ export default function Dashboard() {
   }
 
   const weekDayNames = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
-  const WEEK_SLOT_H = 36;
+  const WEEK_SLOT_H = 42;
 
   // ═══ RENDER BLOQUE DE CITA ═══
   function renderCitaBlock(cita: any, style: React.CSSProperties) {
@@ -410,7 +410,7 @@ export default function Dashboard() {
     const risk = cita.cliente_id ? clientRiskCache[cita.cliente_id] : null;
     // Calcular altura disponible para decidir si mostrar notas por separado
     const h = (style.height as number) || 0;
-    const isCompact = h < 32; // bloques muy pequeños: solo nombre
+    const isCompact = h < 28; // bloques muy pequeños: solo nombre
 
     return (
       <div
@@ -424,7 +424,7 @@ export default function Dashboard() {
           overflow: 'hidden',
           zIndex: 10,
           pointerEvents: 'auto',
-          boxShadow: `0 1px 4px ${color}22`,
+          boxShadow: `0 1px 4px ${color}33`,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'flex-start',
@@ -574,10 +574,10 @@ export default function Dashboard() {
                     const top = ((citaStart - startMin) / 30) * 50;
                     const h = (dur / 30) * 50;
                     return renderCitaBlock(cita, {
-                      position: 'absolute', top, height: h, left: 8, right: 8,
-                      borderRadius: 10, padding: '8px 12px',
-                      display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2,
-                      fontSize: 13,
+                      position: 'absolute', top, height: h, minHeight: h, left: 8, right: 8,
+                      borderRadius: 10, padding: '10px 14px',
+                      display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', gap: 3,
+                      fontSize: 14,
                     });
                   })}
                 </div>
@@ -751,8 +751,8 @@ export default function Dashboard() {
                             const h = (dur / 30) * WEEK_SLOT_H;
                             if (top >= visibleSlots.length * WEEK_SLOT_H || top + h <= 0) return null;
                             return renderCitaBlock(cita, {
-                              position: 'absolute', top, height: h, left: 2, right: 2,
-                              borderRadius: 5, padding: '4px 6px', fontSize: 12,
+                              position: 'absolute', top, height: h, minHeight: h, left: 2, right: 2,
+                              borderRadius: 5, padding: '5px 7px', fontSize: 12,
                             });
                           })}
 
