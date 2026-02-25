@@ -414,23 +414,22 @@ export default function Dashboard() {
                     const cancel = (cita.estado || '').toLowerCase() === 'cancelada';
                     const name = cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente';
                     const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
+                    const notas = cita.notas || '';
+                    const linea2 = svc && notas ? `${svc} - ${notas}` : svc || notas;
                     const color = citaColor(cita.estado);
                     return (
                       <div key={cita.id} onClick={() => setSelectedCita(cita)}
                         style={{
                           position: 'absolute', top, height: h, left: 8, right: 8,
-                          background: cancel ? C.occupied : '#1e3a2f',
+                          background: cancel ? C.occupied : `${color}22`,
                           borderRadius: 10, borderLeft: `4px solid ${color}`,
                           padding: '8px 12px', opacity: cancel ? 0.5 : 1,
                           cursor: 'pointer', pointerEvents: 'auto',
                           display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2,
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                          boxShadow: `0 2px 8px ${color}33`,
                         }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{name}</span>
-                        {svc && <span style={{ fontSize: 11, color: C.textSec }}>{svc}</span>}
-                        <span style={{ fontSize: 11, color, fontWeight: 600 }}>
-                          {cita.hora_inicio.substring(11, 16)} – {cita.hora_fin?.substring(11, 16) || ''}
-                        </span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+                        {linea2 && <span style={{ fontSize: 11, color: `${color}cc`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{linea2}</span>}
                       </div>
                     );
                   })}
@@ -532,6 +531,8 @@ export default function Dashboard() {
                             const cancel = (cita.estado || '').toLowerCase() === 'cancelada';
                             const name = cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente';
                             const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
+                            const notas = cita.notas || '';
+                            const linea2 = svc && notas ? `${svc} - ${notas}` : svc || notas;
                             const color = citaColor(cita.estado);
                             if (top >= visibleSlots.length * WEEK_SLOT_H || top + h <= 0) return null;
                             return (
@@ -539,17 +540,18 @@ export default function Dashboard() {
                                 onClick={() => setSelectedCita(cita)}
                                 style={{
                                   position: 'absolute', top, height: h, left: 2, right: 2,
-                                  background: cancel ? C.occupied : '#1e3a2f',
+                                  background: cancel ? C.occupied : `${color}22`,
                                   borderRadius: 6, borderLeft: `3px solid ${color}`,
                                   padding: '2px 4px', opacity: cancel ? 0.5 : 1,
                                   cursor: 'pointer', overflow: 'hidden', zIndex: 10, pointerEvents: 'auto',
+                                  boxShadow: `0 1px 4px ${color}33`,
                                 }}>
                                 <div style={{ fontSize: 10, fontWeight: 700, color: C.text, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                   {name}
                                 </div>
-                                {svc && (
-                                  <div style={{ fontSize: 9, color: C.textSec, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {svc}
+                                {linea2 && (
+                                  <div style={{ fontSize: 9, color: `${color}cc`, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {linea2}
                                   </div>
                                 )}
                               </div>
