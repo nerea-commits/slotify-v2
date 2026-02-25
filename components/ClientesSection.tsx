@@ -41,12 +41,12 @@ function FiabilidadRing({ fiab, size = 150 }: { fiab: FiabilidadResult; size?: n
 function DonutEstados({ completadas, canceladas, noShows }: { completadas: number; canceladas: number; noShows: number }) {
   const total = completadas + canceladas + noShows;
   if (total === 0) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 120, color: C.textDim, fontSize: 11 }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 160, color: C.textDim, fontSize: 11 }}>
       Sin datos
     </div>
   );
 
-  const size = 120, stroke = 14, r = (size - stroke) / 2, circ = 2 * Math.PI * r;
+  const size = 160, stroke = 18, r = (size - stroke) / 2, circ = 2 * Math.PI * r;
   const segments = [
     { value: completadas, color: C.accent, label: 'Completadas' },
     { value: canceladas, color: C.amber, label: 'Canceladas' },
@@ -57,15 +57,14 @@ function DonutEstados({ completadas, canceladas, noShows }: { completadas: numbe
   const arcs = segments.map(seg => {
     const pct = seg.value / total;
     const dash = pct * circ;
-    const gap = circ - dash;
-    const arc = { ...seg, pct, dash, gap, offset };
-    offset += dash + 2; // 2px gap between segments
+    const arc = { ...seg, pct, dash, offset };
+    offset += dash + 3;
     return arc;
   });
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-      {/* Donut SVG */}
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, width: '100%' }}>
+      {/* Donut SVG centrado */}
       <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
         <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
           <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(148,163,184,0.06)" strokeWidth={stroke} />
@@ -80,19 +79,19 @@ function DonutEstados({ completadas, canceladas, noShows }: { completadas: numbe
           ))}
         </svg>
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <span style={{ fontSize: 22, fontWeight: 800, color: C.text, lineHeight: 1 }}>{total}</span>
-          <span style={{ fontSize: 8, color: C.textDim, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' }}>total</span>
+          <span style={{ fontSize: 30, fontWeight: 800, color: C.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{total}</span>
+          <span style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', marginTop: 3 }}>citas</span>
         </div>
       </div>
 
-      {/* Leyenda */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
+      {/* Leyenda horizontal debajo */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%', maxWidth: 200 }}>
         {segments.map((seg, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <div style={{ width: 8, height: 8, borderRadius: 2, background: seg.color, flexShrink: 0 }} />
-            <span style={{ fontSize: 11, color: C.textMid, flex: 1 }}>{seg.label}</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: seg.color, fontVariantNumeric: 'tabular-nums' }}>{seg.value}</span>
-            <span style={{ fontSize: 10, color: C.textDim, minWidth: 32, textAlign: 'right' }}>
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 3, background: seg.color, flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: C.textMid, flex: 1 }}>{seg.label}</span>
+            <span style={{ fontSize: 14, fontWeight: 800, color: seg.color, fontVariantNumeric: 'tabular-nums' }}>{seg.value}</span>
+            <span style={{ fontSize: 10, color: C.textDim, minWidth: 30, textAlign: 'right' }}>
               {Math.round((seg.value / total) * 100)}%
             </span>
           </div>
@@ -121,7 +120,7 @@ function ActivityChart({ citas }: { citas: any[] }) {
   }, [citas]);
 
   const max = Math.max(...data.map(d => d.count), 1);
-  const W = 280, H = 100, pL = 20, pR = 6, pT = 8, pB = 20;
+  const W = 300, H = 90, pL = 22, pR = 8, pT = 14, pB = 22;
   const cW = W - pL - pR, cH = H - pT - pB;
   const bW = cW / data.length, bI = bW * 0.52;
   const ticks: number[] = [];
@@ -429,16 +428,16 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
             <div style={{ flex: 1, overflow: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 2 }}>
               {a ? (<>
 
-                {/* FILA 1: Fiabilidad + Donut + Métricas */}
-                <div style={{ display: 'grid', gridTemplateColumns: '180px 200px 1fr', gap: 2 }}>
+                {/* FILA 1: Fiabilidad + Donut (protagonista) + Métricas */}
+                <div style={{ display: 'grid', gridTemplateColumns: '170px 260px 1fr', gap: 2 }}>
 
                   {/* Anillo fiabilidad */}
-                  <div style={{ background: C.panel, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px 16px', gap: 8 }}>
-                    <FiabilidadRing fiab={f} size={130} />
+                  <div style={{ background: C.panel, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px 14px', gap: 8 }}>
+                    <FiabilidadRing fiab={f} size={120} />
                     <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>Fiabilidad</p>
                     {f.alertLevel !== 'none' && f.alertMessage && (
                       <div style={{
-                        padding: '5px 8px', borderRadius: 6, textAlign: 'center', maxWidth: 160,
+                        padding: '5px 8px', borderRadius: 6, textAlign: 'center', maxWidth: 150,
                         background: f.alertLevel === 'danger' ? C.redDim : f.alertLevel === 'warn' ? 'rgba(245,158,11,0.1)' : 'rgba(59,130,246,0.06)',
                       }}>
                         <p style={{ fontSize: 9, color: f.alertLevel === 'danger' ? C.red : f.alertLevel === 'warn' ? C.amber : C.textMid, lineHeight: 1.4 }}>
@@ -448,12 +447,10 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
                     )}
                   </div>
 
-                  {/* Donut estados */}
-                  <div style={{ background: C.panel, padding: '16px 14px', display: 'flex', flexDirection: 'column' }}>
-                    <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 12, textTransform: 'uppercase' }}>Distribución</p>
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-                      <DonutEstados completadas={a.visits} canceladas={a.canc} noShows={a.ns} />
-                    </div>
+                  {/* Donut estados — protagonista */}
+                  <div style={{ background: C.panel, padding: '16px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 14, textTransform: 'uppercase', alignSelf: 'flex-start' }}>Distribución</p>
+                    <DonutEstados completadas={a.visits} canceladas={a.canc} noShows={a.ns} />
                   </div>
 
                   {/* Métricas clicables */}
@@ -499,9 +496,9 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
                 {/* FILA 2: Actividad + Historial filtrado */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, flex: 1 }}>
 
-                  {/* Gráfico actividad */}
-                  <div style={{ background: C.panel, padding: '14px 16px' }}>
-                    <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 10, textTransform: 'uppercase' }}>Actividad · 6 meses</p>
+                  {/* Gráfico actividad — compacto */}
+                  <div style={{ background: C.panel, padding: '12px 14px' }}>
+                    <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>Actividad · 6 meses</p>
                     <ActivityChart citas={historialCitas} />
                   </div>
 
