@@ -410,7 +410,7 @@ export default function Dashboard() {
     const risk = cita.cliente_id ? clientRiskCache[cita.cliente_id] : null;
     // Calcular altura disponible para decidir si mostrar notas por separado
     const h = (style.height as number) || 0;
-    const isCompact = h < 40; // bloques muy pequeños: solo nombre
+    const isCompact = h < 32; // bloques muy pequeños: solo nombre
 
     return (
       <div
@@ -751,7 +751,7 @@ export default function Dashboard() {
                             if (top >= visibleSlots.length * WEEK_SLOT_H || top + h <= 0) return null;
                             return renderCitaBlock(cita, {
                               position: 'absolute', top, height: h, left: 2, right: 2,
-                              borderRadius: 5, padding: '2px 4px', fontSize: 10,
+                              borderRadius: 5, padding: '4px 6px', fontSize: 12,
                             });
                           })}
 
