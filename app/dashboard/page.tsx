@@ -398,18 +398,19 @@ export default function Dashboard() {
   }
 
   const weekDayNames = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
-  const WEEK_SLOT_H = 28;
+  const WEEK_SLOT_H = 36;
 
   // ═══ RENDER BLOQUE DE CITA ═══
-  // Línea 2 usa el mismo color base que línea 1, diferenciado por font-weight
   function renderCitaBlock(cita: any, style: React.CSSProperties) {
     const name = cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente';
     const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
     const notas = cita.notas || '';
-    const linea2 = svc && notas ? `${svc} - ${notas}` : svc || notas;
     const color = citaColor(cita.estado);
     const fs = (style.fontSize as number) || 10;
     const risk = cita.cliente_id ? clientRiskCache[cita.cliente_id] : null;
+    // Calcular altura disponible para decidir si mostrar notas por separado
+    const h = (style.height as number) || 0;
+    const isCompact = h < 40; // bloques muy pequeños: solo nombre
 
     return (
       <div
@@ -424,39 +425,54 @@ export default function Dashboard() {
           zIndex: 10,
           pointerEvents: 'auto',
           boxShadow: `0 1px 4px ${color}22`,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-start',
         }}
       >
-        {/* Línea 1: Nombre — blanco, font-weight 700 */}
+        {/* Nombre + indicador riesgo */}
         <div style={{
           fontSize: fs,
           fontWeight: 700,
           color: '#F1F5F9',
-          lineHeight: 1.3,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
+          lineHeight: 1.35,
+          wordBreak: 'break-word',
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           gap: 3,
         }}>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+          <span>{name}</span>
           {risk?.show && (
-            <span style={{ fontSize: Math.max(fs - 2, 8), lineHeight: 1, flexShrink: 0, opacity: 0.85 }}>
+            <span style={{ fontSize: Math.max(fs - 2, 8), lineHeight: 1, flexShrink: 0, marginTop: 1 }}>
               {risk.icon}
             </span>
           )}
         </div>
-        {/* Línea 2: Servicio - Notas — blanco suave, font-weight 400 */}
-        {linea2 && (
+        {/* Servicio */}
+        {!isCompact && svc && (
+          <div style={{
+            fontSize: fs - 1,
+            fontWeight: 500,
+            color: '#94A3B8',
+            lineHeight: 1.3,
+            wordBreak: 'break-word',
+            marginTop: 1,
+          }}>
+            {svc}
+          </div>
+        )}
+        {/* Notas */}
+        {!isCompact && notas && (
           <div style={{
             fontSize: fs - 1,
             fontWeight: 400,
-            color: '#94A3B8',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
+            color: '#64748B',
+            lineHeight: 1.3,
+            wordBreak: 'break-word',
+            marginTop: 1,
+            fontStyle: 'italic',
           }}>
-            {linea2}
+            {notas}
           </div>
         )}
       </div>
