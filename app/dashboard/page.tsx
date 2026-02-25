@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Plus, X, Edit2 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import NuevaCitaModal from '@/components/NuevaCitaModal';
 import ClientesSection from '@/components/ClientesSection';
+import { calcularFiabilidad, getRiskIndicator } from '@/lib/fiabilidad';
 
 const ALL_SLOTS = Array.from({ length: 48 }, (_, i) => {
   const h = Math.floor(i / 2).toString().padStart(2, '0');
@@ -64,6 +65,9 @@ export default function Dashboard() {
   const [estadosCita, setEstadosCita] = useState<any[]>([]);
   const [miniCalMonth, setMiniCalMonth] = useState(new Date());
 
+  // ═══ RISK INDICATOR CACHE ═══
+  const [clientRiskCache, setClientRiskCache] = useState<Record<string, { show: boolean; color: string; icon: string | null }>>({});
+
   // Edit form state
   const [editServicio, setEditServicio] = useState('');
   const [editNotas, setEditNotas] = useState('');
@@ -121,6 +125,24 @@ export default function Dashboard() {
   useEffect(() => { loadAllCitas(); }, [selectedDate, view]);
   useEffect(() => { if (profesional) { profesionalIdRef.current = profesional.id; loadAllCitas(); } }, [profesional]);
 
+  // ═══ LOAD CLIENT RISKS ═══
+  function loadClientRisks(citas: any[]) {
+    const citasPorCliente: Record<string, any[]> = {};
+    citas.forEach(c => {
+      if (c.cliente_id) {
+        if (!citasPorCliente[c.cliente_id]) citasPorCliente[c.cliente_id] = [];
+        citasPorCliente[c.cliente_id].push(c);
+      }
+    });
+    const riskMap: Record<string, { show: boolean; color: string; icon: string | null }> = {};
+    Object.entries(citasPorCliente).forEach(([clienteId, clienteCitas]) => {
+      const fiab = calcularFiabilidad(clienteCitas);
+      const risk = getRiskIndicator(fiab);
+      riskMap[clienteId] = risk;
+    });
+    setClientRiskCache(riskMap);
+  }
+
   async function loadAllCitas() {
     const eid = empresaIdRef.current || localStorage.getItem('slotify_empresa_id');
     if (!eid) return;
@@ -137,7 +159,9 @@ export default function Dashboard() {
     if (!admin && pid) q = q.eq('profesional_id', pid);
     const { data, error } = await q.order('hora_inicio');
     if (error) console.error('loadAllCitas error:', error);
-    setAllCitas(data || []);
+    const citas = data || [];
+    setAllCitas(citas);
+    loadClientRisks(citas);
   }
 
   const scheduleStart = empresa?.horario_inicio || '09:00';
@@ -329,6 +353,7 @@ export default function Dashboard() {
   const weekDayNames = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
   const WEEK_SLOT_H = 28;
 
+  // ═══ RENDER CITA BLOCK (con indicador de riesgo) ═══
   function renderCitaBlock(cita: any, style: React.CSSProperties) {
     const name = cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente';
     const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
@@ -336,6 +361,7 @@ export default function Dashboard() {
     const linea2 = svc && notas ? `${svc} - ${notas}` : svc || notas;
     const color = citaColor(cita.estado);
     const fs = (style.fontSize as number) || 10;
+    const risk = cita.cliente_id ? clientRiskCache[cita.cliente_id] : null;
     return (
       <div key={cita.id} onClick={() => setSelectedCita(cita)}
         style={{
@@ -345,8 +371,13 @@ export default function Dashboard() {
           cursor: 'pointer', overflow: 'hidden', zIndex: 10,
           pointerEvents: 'auto', boxShadow: `0 1px 4px ${color}33`,
         }}>
-        <div style={{ fontSize: fs, fontWeight: 700, color: C.text, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {name}
+        <div style={{ fontSize: fs, fontWeight: 700, color: C.text, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3 }}>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+          {risk?.show && (
+            <span style={{ fontSize: Math.max(fs - 2, 8), lineHeight: 1, flexShrink: 0, opacity: 0.85 }}>
+              {risk.icon}
+            </span>
+          )}
         </div>
         {linea2 && (
           <div style={{ fontSize: fs - 1, color: `${color}cc`, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -742,6 +773,19 @@ export default function Dashboard() {
                     {citaEstadoNombre(selectedCita.estado)}
                   </span>
                 </p>
+                {/* ═══ FIABILIDAD en modal detalle ═══ */}
+                {selectedCita.cliente_id && clientRiskCache[selectedCita.cliente_id]?.show && (
+                  <p style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                    <span style={{ color: C.textSec }}>Fiabilidad: </span>
+                    <span style={{
+                      fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 10,
+                      color: clientRiskCache[selectedCita.cliente_id].color,
+                      background: clientRiskCache[selectedCita.cliente_id].color + '18',
+                    }}>
+                      {clientRiskCache[selectedCita.cliente_id].icon} Cliente con riesgo
+                    </span>
+                  </p>
+                )}
               </div>
               <div className="flex gap-3">
                 <button onClick={() => openEdit(selectedCita)}
