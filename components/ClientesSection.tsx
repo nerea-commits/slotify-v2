@@ -515,7 +515,7 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
                       </p>
                       {filtroActivo !== 'todos' && (
                         <button onClick={() => setFiltroActivo('todos')}
-                          style={{ fontSize: 9, color: C.textDim, background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', borderRadius: 4, background: C.panelAlt } as any}>
+                          style={{ fontSize: 9, color: C.textDim, background: C.panelAlt, border: 'none', cursor: 'pointer', padding: '2px 6px', borderRadius: 4 }}>
                           Ver todas
                         </button>
                       )}
