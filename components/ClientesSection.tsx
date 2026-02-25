@@ -38,7 +38,7 @@ function ScoreRing({ score, size = 150 }: { score: number; size?: number }) {
   );
 }
 
-/* ═══ BAR CHART — compact ═══ */
+/* ═══ BAR CHART ═══ */
 function ActivityChart({ citas }: { citas: any[] }) {
   const data = useMemo(() => {
     const now = new Date();
@@ -241,14 +241,14 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
   async function del() { if (!vistaDetalle) return; await supabase.from('clientes').delete().eq('id',vistaDetalle.id); await load(); setVistaDetalle(null); setConfirmDelete(false); }
   function fmtDate(s?: string) { if (!s) return '—'; return new Date(s).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'}); }
 
-  /* ═══ DETAIL VIEW — BI DASHBOARD ═══ */
+  /* ═══ DETAIL VIEW ═══ */
   if (vistaDetalle) {
     const a = analytics;
     return (
-      <div style={{ minHeight: '100vh', background: C.bg, color: C.text }}>
+      <div style={{ height: '100vh', background: C.bg, color: C.text, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-        {/* TOP BAR */}
-        <div style={{ background: C.panel, borderBottom: `1px solid ${C.divider}`, padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* TOP BAR — full width, thin */}
+        <div style={{ background: C.panel, borderBottom: `1px solid ${C.divider}`, padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <button onClick={() => { setVistaDetalle(null); setConfirmDelete(false); }}
             style={{ color: C.textMid, background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}>
             <ArrowLeft className="w-5 h-5" />
@@ -262,14 +262,14 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
         </div>
 
         {loadingCitas ? (
-          <div style={{ padding: 60, textAlign: 'center', color: C.textDim }}>Cargando...</div>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.textDim }}>Cargando...</div>
         ) : (
-          <div style={{ display: 'flex', minHeight: 'calc(100vh - 42px)' }}>
+          /* MAIN LAYOUT: sidebar + analytics, both stretch to fill */
+          <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-            {/* ═══ LEFT — Client context ═══ */}
-            <div style={{ width: '28%', minWidth: 260, maxWidth: 340, background: C.panel, borderRight: `1px solid ${C.divider}`, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
+            {/* ═══ LEFT SIDEBAR ═══ */}
+            <div style={{ width: 280, flexShrink: 0, background: C.panel, borderRight: `1px solid ${C.divider}`, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
 
-              {/* Identity */}
               <div style={{ padding: '24px 20px 16px', borderBottom: `1px solid ${C.divider}` }}>
                 <div style={{ width: 48, height: 48, borderRadius: 8, background: C.accentDim, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: C.accent, marginBottom: 12 }}>
                   {vistaDetalle.nombre[0].toUpperCase()}
@@ -279,7 +279,6 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
                 {a?.top && <p style={{ fontSize: 11, color: C.textDim, marginTop: 3 }}>Favorito: <span style={{ color: C.purple, fontWeight: 700 }}>{a.top.name}</span> ({a.top.count}x)</p>}
               </div>
 
-              {/* Contact */}
               <div style={{ padding: '14px 20px', borderBottom: `1px solid ${C.divider}` }}>
                 <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 10 }}>CONTACTO</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -293,7 +292,6 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
                 {vistaDetalle.notas && <p style={{ fontSize:11,color:C.textMid,marginTop:10,lineHeight:1.5,borderTop:`1px solid ${C.divider}`,paddingTop:8 }}>{vistaDetalle.notas}</p>}
               </div>
 
-              {/* Insights */}
               {a && a.ins.length > 0 && (
                 <div style={{ padding: '14px 20px', borderBottom: `1px solid ${C.divider}` }}>
                   <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 8 }}>INSIGHTS</p>
@@ -303,7 +301,6 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
                 </div>
               )}
 
-              {/* Actions */}
               <div style={{ padding: '14px 20px', borderBottom: `1px solid ${C.divider}` }}>
                 <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 10 }}>ACCIONES</p>
                 <button onClick={() => {}}
@@ -323,7 +320,6 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
                 </div>
               </div>
 
-              {/* Delete */}
               <div style={{ marginTop: 'auto', padding: '14px 20px' }}>
                 {!confirmDelete
                   ? <button onClick={() => setConfirmDelete(true)} style={{ width:'100%',padding:'7px',borderRadius:5,border:'none',background:'transparent',color:C.textDim,cursor:'pointer',fontSize:10,display:'flex',alignItems:'center',justifyContent:'center',gap:4 }}><Trash2 className="w-3 h-3"/> Eliminar</button>
@@ -337,33 +333,40 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
               </div>
             </div>
 
-            {/* ═══ RIGHT — Analytics ═══ */}
-            <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
+            {/* ═══ RIGHT — ANALYTICS GRID (fills ALL remaining space) ═══ */}
+            <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
               {a ? (
-                /* 2×2 GRID: balanced, no inflation */
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'auto auto', gap: 16, maxWidth: 900 }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '2fr 3fr',
+                  gridTemplateRows: '1fr 1fr',
+                  gap: 2,
+                  width: '100%',
+                  height: '100%',
+                  minHeight: 0,
+                }}>
 
                   {/* ── TOP LEFT: Score Ring ── */}
-                  <div style={{ background: C.panel, padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 220 }}>
+                  <div style={{ background: C.panel, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20, minHeight: 0 }}>
                     <ScoreRing score={a.score} size={150} />
                     <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginTop: 14, textTransform: 'uppercase' }}>Salud del cliente</p>
                   </div>
 
                   {/* ── TOP RIGHT: KPIs ── */}
-                  <div style={{ background: C.panel, padding: '20px 24px' }}>
-                    <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 6, textTransform: 'uppercase' }}>Métricas</p>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 24 }}>
+                  <div style={{ background: C.panel, padding: '16px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0 }}>
+                    <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 4, textTransform: 'uppercase' }}>Métricas</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', columnGap: 20 }}>
                       {[
-                        { v: a.visits, l: 'Visitas', c: C.accent, s: '' },
-                        { v: a.canc, l: 'Cancelaciones', c: a.canc > 0 ? C.amber : C.textDim, s: '' },
-                        { v: a.ns, l: 'No-shows', c: a.ns > 0 ? C.red : C.textDim, s: '' },
+                        { v: a.visits, l: 'Visitas', c: C.accent },
+                        { v: a.canc, l: 'Cancelaciones', c: a.canc > 0 ? C.amber : C.textDim },
+                        { v: a.ns, l: 'No-shows', c: a.ns > 0 ? C.red : C.textDim },
                         { v: a.freq ? `~${a.freq}` : '—', l: 'Intervalo medio', c: C.blue, s: a.freq ? 'días' : '' },
-                        { v: a.total, l: 'Total citas', c: C.textMid, s: '' },
+                        { v: a.total, l: 'Total citas', c: C.textMid },
                         { v: a.daysSince !== null ? a.daysSince : '—', l: 'Desde última', c: a.daysSince !== null && a.daysSince > 60 ? C.red : a.daysSince !== null && a.daysSince > 30 ? C.amber : C.text, s: a.daysSince !== null ? 'días' : '' },
-                      ].map((k, i) => (
+                      ].map((k: any, i) => (
                         <div key={i} style={{ padding: '10px 0', borderBottom: `1px solid ${C.divider}` }}>
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                            <span style={{ fontSize: 22, fontWeight: 800, color: k.c, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{k.v}</span>
+                            <span style={{ fontSize: 24, fontWeight: 800, color: k.c, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{k.v}</span>
                             {k.s && <span style={{ fontSize: 10, color: C.textDim }}>{k.s}</span>}
                           </div>
                           <span style={{ fontSize: 10, color: C.textDim, fontWeight: 600, letterSpacing: 0.3, textTransform: 'uppercase' }}>{k.l}</span>
@@ -373,24 +376,24 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
                   </div>
 
                   {/* ── BOTTOM LEFT: Chart ── */}
-                  <div style={{ background: C.panel, padding: '18px 20px' }}>
+                  <div style={{ background: C.panel, padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0 }}>
                     <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 10, textTransform: 'uppercase' }}>Actividad · 6 meses</p>
                     <ActivityChart citas={historialCitas} />
                   </div>
 
                   {/* ── BOTTOM RIGHT: Timeline ── */}
-                  <div style={{ background: C.panel, padding: '18px 20px', overflow: 'auto' }}>
+                  <div style={{ background: C.panel, padding: '16px 20px', overflow: 'auto', minHeight: 0 }}>
                     <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 10, textTransform: 'uppercase' }}>Últimas citas</p>
                     {historialCitas.length > 0 ? (
                       <>
-                        {historialCitas.slice(0, 8).map((c, i, arr) => <TDot key={c.id} cita={c} isLast={i === arr.length - 1} />)}
-                        {historialCitas.length > 8 && <p style={{ fontSize: 10, color: C.textDim, marginTop: 6 }}>+{historialCitas.length - 8} más</p>}
+                        {historialCitas.slice(0, 10).map((c, i, arr) => <TDot key={c.id} cita={c} isLast={i === arr.length - 1} />)}
+                        {historialCitas.length > 10 && <p style={{ fontSize: 10, color: C.textDim, marginTop: 6 }}>+{historialCitas.length - 10} más</p>}
                       </>
                     ) : <p style={{ fontSize: 11, color: C.textDim }}>Sin citas</p>}
                   </div>
                 </div>
               ) : (
-                <div style={{ display:'flex',alignItems:'center',justifyContent:'center',height:'50vh' }}>
+                <div style={{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%' }}>
                   <div style={{textAlign:'center'}}>
                     <p style={{fontSize:15,color:C.textMid}}>Sin datos de actividad</p>
                     <p style={{fontSize:12,color:C.textDim}}>Los análisis aparecerán con la primera cita</p>
