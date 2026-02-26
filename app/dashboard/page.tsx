@@ -233,7 +233,10 @@ export default function Dashboard() {
     const slotM = timeToMinutes(slot);
     return citas.some(c => {
       // Solo citas que realmente bloquean el hueco
-      if (c.blocks_time === false) return false;
+      // blocks_time=false OR null with liberating estado → free slot
+      const est = (c.estado||"").toLowerCase();
+      const freeEstado = est === "cancelada" || est === "no-show" || est === "no_show" || est === "completada";
+      if (c.blocks_time === false || (c.blocks_time == null && freeEstado)) return false;
       const sm = rawTimeMin(c.hora_inicio);
       const em = c.hora_fin ? rawTimeMin(c.hora_fin) : sm + 30;
       return slotM >= sm && slotM < em;
@@ -242,7 +245,11 @@ export default function Dashboard() {
 
   function freeSlotCount(d: Date): number {
     // Solo citas con blocks_time=true ocupan hueco para el conteo de disponibilidad
-    const citas = activeCitasForDate(d).filter(c => c.blocks_time !== false);
+    const citas = activeCitasForDate(d).filter(c => {
+      const est = (c.estado||"").toLowerCase();
+      const freeEstado = est === "cancelada" || est === "no-show" || est === "no_show" || est === "completada";
+      return c.blocks_time === true || (c.blocks_time == null && !freeEstado);
+    });
     return visibleSlots.filter(s => !slotOccupied(citas, s)).length;
   }
 
