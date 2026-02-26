@@ -461,48 +461,101 @@ export default function Dashboard() {
             <button onClick={() => changeDay(1)} className="p-2 rounded-full"><ChevronRight className="w-4 h-4" /></button>
           </div>
 
-          <div className="flex-1 overflow-y-auto" style={{ paddingTop: 24, paddingBottom: 80 }}>
-            <div className="relative flex" style={{ minHeight: visibleSlots.length * 50, paddingLeft: 16, paddingRight: 16 }}>
-              <div style={{ width: 64, flexShrink: 0 }}>
-                {visibleSlots.map(slot => (
-                  <div key={slot} className="flex items-start justify-end pr-3" style={{ height: 50 }}>
-                    <span style={{ fontSize: 11, color: C.textSec, fontWeight: slot.endsWith(':00') ? 600 : 400, opacity: slot.endsWith(':00') ? 1 : 0.4 }}>
-                      {slot}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <div className="flex-1 relative" style={{ background: C.surface, borderRadius: 16, overflow: 'hidden' }}>
-                {visibleSlots.map(slot => (
-                  <div key={slot} onClick={() => openModal(selectedDate, slot)} className="cursor-pointer"
-                    style={{ height: 50, borderBottom: `1px solid ${slot.endsWith(':00') ? C.surfaceAlt : 'rgba(36,50,71,0.4)'}` }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.greenBg; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                  />
-                ))}
-                <div className="absolute inset-0" style={{ pointerEvents: 'none' }}>
-                  {citasForDate(selectedDate).map(cita => {
-                    const citaStart = rawTimeMin(cita.hora_inicio);
-                    const citaEnd = cita.hora_fin ? rawTimeMin(cita.hora_fin) : citaStart + 30;
-                    const dur = Math.max(citaEnd - citaStart, 30);
-                    const top = ((citaStart - startMin) / 30) * 50;
-                    const h = (dur / 30) * 50;
-                    return renderCitaBlock(cita, {
-                      position: 'absolute', top, height: h, left: 8, right: 8,
-                      borderRadius: 10, padding: '10px 14px',
-                      fontSize: 14,
-                    });
-                  })}
-                </div>
-                {isToday(selectedDate) && currentMinutes >= startMin && currentMinutes < endMin && (
-                  <div className="absolute left-0 right-0 pointer-events-none" style={{ top: ((currentMinutes - startMin) / 30) * 50, zIndex: 30 }}>
-                    <div className="flex items-center">
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.red, boxShadow: '0 0 6px rgba(239,68,68,0.8)' }} />
-                      <div style={{ flex: 1, height: 2, background: C.red, opacity: 0.85 }} />
+          <div className="flex-1 overflow-y-auto" style={{ paddingTop: 8, paddingBottom: 80 }}>
+            <div style={{ paddingLeft: 16, paddingRight: 16 }}>
+              {(() => {
+                const dayCitas = citasForDate(selectedDate);
+                // Build a map: slotIndex -> cita (first slot of the cita)
+                const citaAtSlot: Record<number, any> = {};
+                const citaSpans: Record<number, number> = {};
+                const coveredSlots = new Set<number>();
+                dayCitas.forEach(cita => {
+                  const citaStart = rawTimeMin(cita.hora_inicio);
+                  const citaEnd = cita.hora_fin ? rawTimeMin(cita.hora_fin) : citaStart + 30;
+                  const dur = Math.max(citaEnd - citaStart, 30);
+                  const slotIdx = visibleSlots.findIndex(s => timeToMinutes(s) === citaStart);
+                  if (slotIdx === -1) return;
+                  const spanSlots = Math.ceil(dur / 30);
+                  citaAtSlot[slotIdx] = cita;
+                  citaSpans[slotIdx] = spanSlots;
+                  for (let i = slotIdx; i < slotIdx + spanSlots; i++) coveredSlots.add(i);
+                });
+                // Current time slot index
+                const nowSlotIdx = isToday(selectedDate)
+                  ? visibleSlots.findIndex(s => {
+                      const m = timeToMinutes(s);
+                      return currentMinutes >= m && currentMinutes < m + 30;
+                    })
+                  : -1;
+                return visibleSlots.map((slot, si) => {
+                  // Skip slots covered by a multi-slot cita (not the first slot)
+                  if (coveredSlots.has(si) && !citaAtSlot[si]) return null;
+                  const cita = citaAtSlot[si];
+                  const isHour = slot.endsWith(':00');
+                  const MIN_H = 50;
+                  return (
+                    <div key={slot} style={{ display: 'flex', minHeight: MIN_H }}>
+                      {/* Time label */}
+                      <div style={{ width: 64, flexShrink: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: 12, paddingTop: 4 }}>
+                        <span style={{ fontSize: 11, color: C.textSec, fontWeight: isHour ? 600 : 400, opacity: isHour ? 1 : 0.4 }}>
+                          {slot}
+                        </span>
+                      </div>
+                      {/* Slot content */}
+                      <div style={{ flex: 1, borderBottom: `1px solid ${isHour ? C.surfaceAlt : 'rgba(36,50,71,0.4)'}`, minHeight: MIN_H, position: 'relative' }}>
+                        {cita ? (
+                          <div
+                            onClick={() => setSelectedCita(cita)}
+                            style={{
+                              background: `${citaColor(cita.estado)}33`,
+                              borderLeft: `3px solid ${citaColor(cita.estado)}`,
+                              borderRadius: 10,
+                              padding: '10px 14px',
+                              margin: '3px 8px',
+                              cursor: 'pointer',
+                              boxShadow: `0 1px 4px ${citaColor(cita.estado)}33`,
+                              boxSizing: 'border-box' as const,
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+                              <span style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.4, wordBreak: 'break-word' as const, flex: 1 }}>
+                                {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
+                                {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && (
+                                  <span style={{ marginLeft: 4, fontSize: 11 }}>{clientRiskCache[cita.cliente_id].icon}</span>
+                                )}
+                              </span>
+                            </div>
+                            {(() => {
+                              const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
+                              const notas = cita.notas || '';
+                              const linea2 = svc && notas ? `${svc} — ${notas}` : svc || notas;
+                              return linea2 ? (
+                                <div style={{ fontSize: 13, fontWeight: 400, color: '#FFFFFF', opacity: 0.85, lineHeight: 1.4, wordBreak: 'break-word' as const, marginTop: 3 }}>
+                                  {linea2}
+                                </div>
+                              ) : null;
+                            })()}
+                          </div>
+                        ) : (
+                          <div
+                            onClick={() => openModal(selectedDate, slot)}
+                            style={{ position: 'absolute', inset: 0, cursor: 'pointer' }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.greenBg; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                          />
+                        )}
+                        {/* Current time indicator */}
+                        {nowSlotIdx === si && (
+                          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', pointerEvents: 'none', zIndex: 20 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.red, boxShadow: '0 0 6px rgba(239,68,68,0.8)', flexShrink: 0 }} />
+                            <div style={{ flex: 1, height: 2, background: C.red, opacity: 0.85 }} />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  );
+                });
+              })()}
             </div>
           </div>
           <button onClick={() => openModal(selectedDate, '')}
