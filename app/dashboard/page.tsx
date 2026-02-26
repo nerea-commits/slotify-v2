@@ -656,86 +656,139 @@ export default function Dashboard() {
               </div>
 
               <div style={{ flex: 1, minHeight: 0, overflow: 'auto', paddingBottom: 80 }}>
-                <div style={{ display: 'flex', gap: 3, minHeight: visibleSlots.length * WEEK_SLOT_H + 44 }}>
-                  <div style={{ width: 38, flexShrink: 0, paddingTop: 44 }}>
-                    {visibleSlots.map((slot, si) => (
-                      <div key={si} style={{ height: WEEK_SLOT_H, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: 4 }}>
-                        <span style={{ fontSize: slot.endsWith(':00') ? 10 : 8, color: C.textSec, fontWeight: slot.endsWith(':00') ? 600 : 400, opacity: slot.endsWith(':00') ? 1 : 0.35, lineHeight: 1 }}>
-                          {slot}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {getWeekDays().map((day, di) => {
-                    const today = isToday(day);
-                    const working = isWorkingDay(day);
+                {(() => {
+                  const weekDays = getWeekDays();
+                  // Build cita maps per day: slotIdx -> cita, covered slots
+                  const dayCitaMaps = weekDays.map(day => {
                     const dayCitas = citasForDate(day);
+                    const citaAtSlot: Record<number, any> = {};
+                    const coveredSlots = new Set<number>();
+                    dayCitas.forEach(cita => {
+                      const citaStart = rawTimeMin(cita.hora_inicio);
+                      const citaEnd = cita.hora_fin ? rawTimeMin(cita.hora_fin) : citaStart + 30;
+                      const dur = Math.max(citaEnd - citaStart, 30);
+                      const slotIdx = visibleSlots.findIndex(s => timeToMinutes(s) === citaStart);
+                      if (slotIdx === -1) return;
+                      const spanSlots = Math.ceil(dur / 30);
+                      citaAtSlot[slotIdx] = cita;
+                      for (let i = slotIdx; i < slotIdx + spanSlots; i++) coveredSlots.add(i);
+                    });
+                    return { citaAtSlot, coveredSlots, dayCitas };
+                  });
 
-                    return (
-                      <div key={di} style={{
-                        flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
-                        background: working ? C.surface : 'rgba(15,23,42,0.3)',
-                        borderRadius: 10,
-                        border: today ? `2px solid ${C.green}` : `1px solid rgba(148,163,184,0.1)`,
-                        overflow: 'hidden',
-                      }}>
-                        <div onClick={() => goToDay(day)} className="cursor-pointer text-center flex-shrink-0"
-                          style={{
-                            height: 44, display: 'flex', flexDirection: 'column',
-                            alignItems: 'center', justifyContent: 'center',
-                            background: today ? 'rgba(34,197,94,0.15)' : 'rgba(36,50,71,0.4)',
-                            borderBottom: `1px solid rgba(148,163,184,0.08)`,
-                          }}>
-                          <div style={{ fontSize: 9, fontWeight: 700, color: C.textSec, letterSpacing: 0.8 }}>{weekDayNames[di]}</div>
-                          <div style={{ fontSize: 15, fontWeight: 700, color: today ? C.green : C.text }}>{day.getDate()}</div>
-                          {today && <div style={{ fontSize: 7, color: C.green, fontWeight: 700 }}>HOY</div>}
-                        </div>
-
-                        <div style={{ position: 'relative', height: visibleSlots.length * WEEK_SLOT_H }}>
-                          {visibleSlots.map((slot, si) => {
-                            const occ = slotOccupied(dayCitas, slot);
-                            return (
-                              <div key={si}
-                                onClick={() => { if (!occ) openModal(day, slot); }}
-                                style={{
-                                  height: WEEK_SLOT_H,
-                                  borderBottom: `1px solid ${slot.endsWith(':00') ? 'rgba(148,163,184,0.15)' : 'rgba(148,163,184,0.07)'}`,
-                                  cursor: occ ? 'default' : 'pointer',
-                                }}
-                                onMouseEnter={e => { if (!occ) (e.currentTarget as HTMLElement).style.background = C.greenBg; }}
-                                onMouseLeave={e => { if (!occ) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                              />
-                            );
-                          })}
-
-                          {dayCitas.map(cita => {
-                            const citaStart = rawTimeMin(cita.hora_inicio);
-                            const citaEnd = cita.hora_fin ? rawTimeMin(cita.hora_fin) : citaStart + 30;
-                            const dur = Math.max(citaEnd - citaStart, 30);
-                            const top = ((citaStart - startMin) / 30) * WEEK_SLOT_H;
-                            const h = (dur / 30) * WEEK_SLOT_H;
-                            if (top >= visibleSlots.length * WEEK_SLOT_H || top + h <= 0) return null;
-                            return renderCitaBlock(cita, {
-                              position: 'absolute', top, height: h, left: 2, right: 2,
-                              borderRadius: 5, padding: '5px 7px', fontSize: 11,
-                            });
-                          })}
-
-                          {today && currentMinutes >= startMin && currentMinutes < endMin && (
-                            <div style={{
-                              position: 'absolute', top: ((currentMinutes - startMin) / 30) * WEEK_SLOT_H,
-                              left: 0, right: 0, display: 'flex', alignItems: 'center', zIndex: 20, pointerEvents: 'none',
-                            }}>
-                              <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.red, boxShadow: '0 0 5px rgba(239,68,68,0.8)' }} />
-                              <div style={{ flex: 1, height: 2, background: C.red, opacity: 0.8 }} />
-                            </div>
-                          )}
-                        </div>
+                  return (
+                    <div style={{ display: 'flex', gap: 3 }}>
+                      {/* Time labels column */}
+                      <div style={{ width: 38, flexShrink: 0, paddingTop: 44 }}>
+                        {visibleSlots.map((slot, si) => (
+                          <div key={si} style={{ height: WEEK_SLOT_H, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: 4 }}>
+                            <span style={{ fontSize: slot.endsWith(':00') ? 10 : 8, color: C.textSec, fontWeight: slot.endsWith(':00') ? 600 : 400, opacity: slot.endsWith(':00') ? 1 : 0.35, lineHeight: 1 }}>
+                              {slot}
+                            </span>
+                          </div>
+                        ))}
                       </div>
-                    );
-                  })}
-                </div>
+
+                      {/* Day columns */}
+                      {weekDays.map((day, di) => {
+                        const today = isToday(day);
+                        const working = isWorkingDay(day);
+                        const { citaAtSlot, coveredSlots } = dayCitaMaps[di];
+
+                        return (
+                          <div key={di} style={{
+                            flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
+                            background: working ? C.surface : 'rgba(15,23,42,0.3)',
+                            borderRadius: 10,
+                            border: today ? `2px solid ${C.green}` : `1px solid rgba(148,163,184,0.1)`,
+                            overflow: 'hidden',
+                          }}>
+                            {/* Day header */}
+                            <div onClick={() => goToDay(day)} className="cursor-pointer text-center flex-shrink-0"
+                              style={{
+                                height: 44, display: 'flex', flexDirection: 'column',
+                                alignItems: 'center', justifyContent: 'center',
+                                background: today ? 'rgba(34,197,94,0.15)' : 'rgba(36,50,71,0.4)',
+                                borderBottom: `1px solid rgba(148,163,184,0.08)`,
+                              }}>
+                              <div style={{ fontSize: 9, fontWeight: 700, color: C.textSec, letterSpacing: 0.8 }}>{weekDayNames[di]}</div>
+                              <div style={{ fontSize: 15, fontWeight: 700, color: today ? C.green : C.text }}>{day.getDate()}</div>
+                              {today && <div style={{ fontSize: 7, color: C.green, fontWeight: 700 }}>HOY</div>}
+                            </div>
+
+                            {/* Slots */}
+                            {visibleSlots.map((slot, si) => {
+                              // Skip slots covered by a multi-slot cita (not the first)
+                              if (coveredSlots.has(si) && !citaAtSlot[si]) return null;
+                              const cita = citaAtSlot[si];
+                              const isHour = slot.endsWith(':00');
+                              const isNowSlot = today && (() => {
+                                const m = timeToMinutes(slot);
+                                return currentMinutes >= m && currentMinutes < m + 30;
+                              })();
+
+                              return (
+                                <div key={si} style={{
+                                  minHeight: WEEK_SLOT_H,
+                                  borderBottom: `1px solid ${isHour ? 'rgba(148,163,184,0.15)' : 'rgba(148,163,184,0.07)'}`,
+                                  position: 'relative',
+                                }}>
+                                  {cita ? (
+                                    <div
+                                      onClick={() => setSelectedCita(cita)}
+                                      style={{
+                                        background: `${citaColor(cita.estado)}33`,
+                                        borderLeft: `3px solid ${citaColor(cita.estado)}`,
+                                        borderRadius: 4,
+                                        padding: '4px 6px',
+                                        margin: '2px',
+                                        cursor: 'pointer',
+                                        boxShadow: `0 1px 3px ${citaColor(cita.estado)}33`,
+                                        boxSizing: 'border-box' as const,
+                                      }}
+                                    >
+                                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                                        <span style={{ fontSize: 11, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, wordBreak: 'break-word' as const, flex: 1 }}>
+                                          {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
+                                          {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && (
+                                            <span style={{ marginLeft: 3, fontSize: 9 }}>{clientRiskCache[cita.cliente_id].icon}</span>
+                                          )}
+                                        </span>
+                                      </div>
+                                      {(() => {
+                                        const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
+                                        const notas = cita.notas || '';
+                                        const linea2 = svc && notas ? `${svc} — ${notas}` : svc || notas;
+                                        return linea2 ? (
+                                          <div style={{ fontSize: 10, fontWeight: 400, color: '#FFFFFF', opacity: 0.85, lineHeight: 1.3, wordBreak: 'break-word' as const, marginTop: 2 }}>
+                                            {linea2}
+                                          </div>
+                                        ) : null;
+                                      })()}
+                                    </div>
+                                  ) : (
+                                    <div
+                                      onClick={() => openModal(day, slot)}
+                                      style={{ position: 'absolute', inset: 0, cursor: 'pointer' }}
+                                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.greenBg; }}
+                                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                                    />
+                                  )}
+                                  {isNowSlot && (
+                                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', pointerEvents: 'none', zIndex: 20 }}>
+                                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.red, boxShadow: '0 0 5px rgba(239,68,68,0.8)', flexShrink: 0 }} />
+                                      <div style={{ flex: 1, height: 2, background: C.red, opacity: 0.8 }} />
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
