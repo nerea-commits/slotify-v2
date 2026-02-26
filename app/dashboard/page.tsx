@@ -460,14 +460,13 @@ export default function Dashboard() {
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'flex-start',
-            gap: 3,
           }}>
             <div style={{ fontSize: fs, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.35, wordBreak: 'break-word', display: 'flex', alignItems: 'flex-start', gap: 4 }}>
               <span>{name}</span>
               {risk?.show && <span style={{ fontSize: Math.max(fs - 2, 8), lineHeight: 1, flexShrink: 0, marginTop: 1 }}>{risk.icon}</span>}
             </div>
             {!isCompact && linea2 && (
-              <div style={{ fontSize: fs, fontWeight: 400, color: '#FFFFFF', lineHeight: 1.35, wordBreak: 'break-word', opacity: 0.9 }}>
+              <div style={{ fontSize: fs, fontWeight: 400, color: '#FFFFFF', lineHeight: 1.35, wordBreak: 'break-word', opacity: 0.9, marginTop: 3 }}>
                 {linea2}
               </div>
             )}
@@ -481,12 +480,11 @@ export default function Dashboard() {
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'flex-start',
-            gap: 1,
             overflow: 'hidden',
           }}>
-            <div style={{ fontSize: fs, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, wordBreak: 'break-word', display: 'flex', alignItems: 'flex-start', gap: 3 }}>
-              <span>{name}</span>
-              {risk?.show && <span style={{ fontSize: Math.max(fs - 2, 8), lineHeight: 1, flexShrink: 0, marginTop: 1 }}>{risk.icon}</span>}
+            <div style={{ fontSize: fs, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 3 }}>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+              {risk?.show && <span style={{ fontSize: Math.max(fs - 2, 8), flexShrink: 0 }}>{risk.icon}</span>}
             </div>
             {!isCompact && linea2 && (
               <div style={{
@@ -495,11 +493,12 @@ export default function Dashboard() {
                 color: '#FFFFFF',
                 opacity: 0.85,
                 lineHeight: 1.3,
-                wordBreak: 'break-word',
+                marginTop: 1,
                 overflow: 'hidden',
                 display: '-webkit-box',
-                WebkitLineClamp: 2,
+                WebkitLineClamp: 3,
                 WebkitBoxOrient: 'vertical' as any,
+                wordBreak: 'break-word',
               }}>
                 {linea2}
               </div>
