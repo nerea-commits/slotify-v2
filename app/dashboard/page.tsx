@@ -368,13 +368,17 @@ export default function Dashboard() {
           background: `${color}33`,
           borderLeft: `3px solid ${color}`,
           cursor: 'pointer',
+          overflow: 'hidden',
           zIndex: 10,
           pointerEvents: 'auto',
           boxShadow: `0 1px 4px ${color}33`,
           boxSizing: 'border-box' as const,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-start',
         }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
-          <span style={{ fontSize: fs, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.35, wordBreak: 'break-word' as const, flex: 1 }}>{name}</span>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 3, flexShrink: 0 }}>
+          <span style={{ fontSize: fs, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.35, wordBreak: 'break-word' as const, flex: 1, minWidth: 0 }}>{name}</span>
           {risk?.show && (
             <span style={{ fontSize: Math.max(fs - 2, 8), lineHeight: 1, flexShrink: 0, marginTop: 1 }}>
               {risk.icon}
@@ -382,7 +386,7 @@ export default function Dashboard() {
           )}
         </div>
         {linea2 && (
-          <div style={{ fontSize: fs - 1, fontWeight: 400, color: '#FFFFFF', opacity: 0.85, lineHeight: 1.35, wordBreak: 'break-word' as const, marginTop: 2 }}>
+          <div style={{ fontSize: fs - 1, fontWeight: 400, color: '#FFFFFF', opacity: 0.85, lineHeight: 1.35, wordBreak: 'break-word' as const, marginTop: 2, minWidth: 0, overflow: 'hidden' }}>
             {linea2}
           </div>
         )}
@@ -484,7 +488,7 @@ export default function Dashboard() {
                     const top = ((citaStart - startMin) / 30) * 50;
                     const h = (dur / 30) * 50;
                     return renderCitaBlock(cita, {
-                      position: 'absolute', top, minHeight: h, left: 8, right: 8,
+                      position: 'absolute', top, height: h, left: 8, right: 8,
                       borderRadius: 10, padding: '10px 14px',
                       fontSize: 14,
                     });
@@ -660,8 +664,8 @@ export default function Dashboard() {
                             const h = (dur / 30) * WEEK_SLOT_H;
                             if (top >= visibleSlots.length * WEEK_SLOT_H || top + h <= 0) return null;
                             return renderCitaBlock(cita, {
-                              position: 'absolute', top, minHeight: h, left: 2, right: 2,
-                              borderRadius: 5, padding: '6px 8px', fontSize: 11,
+                              position: 'absolute', top, height: h, left: 2, right: 2,
+                              borderRadius: 5, padding: '5px 7px', fontSize: 11,
                             });
                           })}
 
