@@ -739,8 +739,9 @@ export default function Dashboard() {
 
                       const cita = citaAtSlot[si];
 
-                      // Skip cells covered by a multi-slot cita (cita uses gridRow span)
+                      // Skip cells covered by a multi-slot cita — the start cell uses gridRow span
                       if (coveredSlots.has(si) && !cita) return;
+
                       const spanSlots = cita
                         ? Math.ceil(Math.max(
                             (cita.hora_fin ? rawTimeMin(cita.hora_fin) : rawTimeMin(cita.hora_inicio) + 30) - rawTimeMin(cita.hora_inicio),
@@ -753,21 +754,10 @@ export default function Dashboard() {
                         return currentMinutes >= m && currentMinutes < m + 30;
                       })();
 
-                      const isContinuation = coveredSlots.has(si) && !cita;
-                      const coveringCita = isContinuation
-                        ? dayCitaMaps[di].dayCitas?.find((c: any) => {
-                            const cs = rawTimeMin(c.hora_inicio);
-                            const ce = c.hora_fin ? rawTimeMin(c.hora_fin) : cs + 30;
-                            const slotM = timeToMinutes(slot);
-                            return slotM > cs && slotM < ce;
-                          })
-                        : null;
-                      const contColor = coveringCita ? citaColor(coveringCita.estado) : null;
-
                       cells.push(
                             <div key={`cell-${si}-${di}`} style={{
                               gridColumn: di + 2,
-                              gridRow: cita && spanSlots > 1 ? `${rowIdx} / span ${spanSlots}` : rowIdx,
+                              gridRow: spanSlots > 1 ? `${rowIdx} / span ${spanSlots}` : `${rowIdx}`,
                               background: working ? C.surface : 'rgba(15,23,42,0.25)',
                               borderBottom: `1px solid ${isHour ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.06)'}`,
                               borderLeft: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`,
@@ -775,7 +765,8 @@ export default function Dashboard() {
                               borderRadius: si === visibleSlots.length - 1 ? '0 0 10px 10px' : 0,
                               position: 'relative',
                               display: 'flex',
-                              alignItems: cita && spanSlots > 1 ? 'center' : 'flex-start',
+                              flexDirection: 'column',
+                              justifyContent: cita ? 'center' : 'flex-start',
                             }}>
                               {cita && (
                                 <div
