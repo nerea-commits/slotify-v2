@@ -737,8 +737,8 @@ export default function Dashboard() {
                       const working = isWorkingDay(day);
                       const { citaAtSlot, coveredSlots } = dayCitaMaps[di];
 
-                      // Intermediate slots of a multi-slot cita render as empty (visual continuity)
-                      // The cita block only appears at its start slot
+                      // Skip cells covered by a multi-slot cita (cita uses gridRow span)
+                      if (coveredSlots.has(si) && !cita) return;
 
                       const cita = citaAtSlot[si];
                       const spanSlots = cita
@@ -767,19 +767,15 @@ export default function Dashboard() {
                       cells.push(
                             <div key={`cell-${si}-${di}`} style={{
                               gridColumn: di + 2,
-                              gridRow: rowIdx,
-                              background: isContinuation && contColor
-                                ? `${contColor}22`
-                                : working ? C.surface : 'rgba(15,23,42,0.25)',
-                              borderBottom: isContinuation && contColor
-                                ? `1px solid ${contColor}33`
-                                : `1px solid ${isHour ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.06)'}`,
-                              borderLeft: isContinuation && contColor
-                                ? `3px solid ${contColor}55`
-                                : `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`,
+                              gridRow: cita && spanSlots > 1 ? `${rowIdx} / span ${spanSlots}` : rowIdx,
+                              background: working ? C.surface : 'rgba(15,23,42,0.25)',
+                              borderBottom: `1px solid ${isHour ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.06)'}`,
+                              borderLeft: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`,
                               borderRight: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`,
                               borderRadius: si === visibleSlots.length - 1 ? '0 0 10px 10px' : 0,
                               position: 'relative',
+                              display: 'flex',
+                              alignItems: cita && spanSlots > 1 ? 'center' : 'flex-start',
                             }}>
                               {cita && (
                                 <div
@@ -794,7 +790,7 @@ export default function Dashboard() {
                                     boxShadow: `0 1px 3px ${citaColor(cita.estado)}33`,
                                   }}
                                 >
-                                  <span style={{ fontSize: 11, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.35, wordBreak: 'break-word' as const, display: 'block' }}>
+                                  <span style={{ fontSize: 12, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.35, wordBreak: 'break-word' as const, display: 'block' }}>
                                     {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
                                     {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && (
                                       <span style={{ marginLeft: 3, fontSize: 9 }}>{clientRiskCache[cita.cliente_id].icon}</span>
@@ -805,7 +801,7 @@ export default function Dashboard() {
                                     const notas = cita.notas || '';
                                     const linea2 = svc && notas ? `${svc} — ${notas}` : svc || notas;
                                     return linea2 ? (
-                                      <span style={{ fontSize: 10, fontWeight: 400, color: '#FFFFFF', opacity: 0.85, lineHeight: 1.35, wordBreak: 'break-word' as const, display: 'block', marginTop: 2 }}>
+                                      <span style={{ fontSize: 11, fontWeight: 400, color: '#FFFFFF', opacity: 0.85, lineHeight: 1.35, wordBreak: 'break-word' as const, display: 'block', marginTop: 2 }}>
                                         {linea2}
                                       </span>
                                     ) : null;
