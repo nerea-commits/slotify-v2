@@ -823,7 +823,7 @@ export default function Dashboard() {
                       display: 'grid',
                       gridTemplateColumns: `42px repeat(7, 1fr)`,
                       gridTemplateRows: `44px`,
-                      gridAutoRows: `minmax(${WEEK_SLOT_H}px, auto)`,
+                      gridAutoRows: `${WEEK_SLOT_H}px`,
                       gap: '0 4px',
                     }}>
                       {cells}
