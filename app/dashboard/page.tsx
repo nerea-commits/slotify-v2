@@ -697,7 +697,6 @@ export default function Dashboard() {
                           height: 44, display: 'flex', flexDirection: 'column',
                           alignItems: 'center', justifyContent: 'center',
                           background: today ? 'rgba(34,197,94,0.2)' : C.surfaceAlt,
-                          borderBottom: `1px solid rgba(148,163,184,0.08)`,
                           borderRadius: '10px 10px 0 0',
                           border: today ? `1px solid ${C.green}55` : `1px solid rgba(148,163,184,0.12)`,
                           borderBottom: `1px solid rgba(148,163,184,0.08)`,
