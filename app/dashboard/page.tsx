@@ -799,7 +799,7 @@ export default function Dashboard() {
                                   })()}
                                 </div>
                               )}
-                              {!cita && !isContinuation && (
+                              {!cita && (
                                 <div
                                   onClick={() => openModal(day, slot)}
                                   style={{ position: 'absolute', inset: 0, cursor: 'pointer' }}
