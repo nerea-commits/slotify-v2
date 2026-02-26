@@ -465,8 +465,8 @@ export default function Dashboard() {
             </span>
           )}
         </div>
-        {/* Servicio */}
-        {!isCompact && svc && (
+        {/* Servicio — Notas en la misma línea, con wrap */}
+        {!isCompact && (svc || notas) && (
           <div style={{
             fontSize: fs,
             fontWeight: 400,
@@ -474,23 +474,9 @@ export default function Dashboard() {
             lineHeight: 1.35,
             wordBreak: 'break-word',
             marginTop: 2,
+            opacity: 0.9,
           }}>
-            {svc}
-          </div>
-        )}
-        {/* Notas */}
-        {!isCompact && notas && (
-          <div style={{
-            fontSize: fs - 1,
-            fontWeight: 300,
-            color: '#FFFFFF',
-            lineHeight: 1.3,
-            wordBreak: 'break-word',
-            marginTop: 1,
-            fontStyle: 'italic',
-            opacity: 0.85,
-          }}>
-            {notas}
+            {svc && notas ? `${svc} — ${notas}` : svc || notas}
           </div>
         )}
       </div>
@@ -593,7 +579,6 @@ export default function Dashboard() {
                     return renderCitaBlock(cita, {
                       position: 'absolute', top, height: h, minHeight: h, left: 8, right: 8,
                       borderRadius: 10, padding: '10px 14px',
-                      display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', gap: 3,
                       fontSize: 14,
                     });
                   })}
