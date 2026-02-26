@@ -677,19 +677,8 @@ export default function Dashboard() {
                   });
 
                   return (
-                    <div style={{ display: 'flex', gap: 3 }}>
-                      {/* Time labels column */}
-                      <div style={{ width: 38, flexShrink: 0, paddingTop: 44 }}>
-                        {visibleSlots.map((slot, si) => (
-                          <div key={si} style={{ height: WEEK_SLOT_H, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: 4 }}>
-                            <span style={{ fontSize: slot.endsWith(':00') ? 10 : 8, color: C.textSec, fontWeight: slot.endsWith(':00') ? 600 : 400, opacity: slot.endsWith(':00') ? 1 : 0.35, lineHeight: 1 }}>
-                              {slot}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Day columns */}
+                    <div style={{ display: 'flex', gap: 3, paddingLeft: 42 }}>
+                      {/* Day columns — time labels live inside each row */}
                       {weekDays.map((day, di) => {
                         const today = isToday(day);
                         const working = isWorkingDay(day);
@@ -732,7 +721,17 @@ export default function Dashboard() {
                                   minHeight: WEEK_SLOT_H,
                                   borderBottom: `1px solid ${isHour ? 'rgba(148,163,184,0.15)' : 'rgba(148,163,184,0.07)'}`,
                                   position: 'relative',
+                                  display: 'flex',
                                 }}>
+                                  {/* Time label — only in first column */}
+                                  {di === 0 && (
+                                    <div style={{ width: 38, flexShrink: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: 4, paddingTop: 3, position: 'absolute', left: -41, top: 0 }}>
+                                      <span style={{ fontSize: isHour ? 10 : 8, color: C.textSec, fontWeight: isHour ? 600 : 400, opacity: isHour ? 1 : 0.35, lineHeight: 1 }}>
+                                        {slot}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div style={{ flex: 1, minWidth: 0 }}>
                                   {cita ? (
                                     <div
                                       onClick={() => setSelectedCita(cita)}
@@ -780,6 +779,7 @@ export default function Dashboard() {
                                       <div style={{ flex: 1, height: 2, background: C.red, opacity: 0.8 }} />
                                     </div>
                                   )}
+                                  </div>
                                 </div>
                               );
                             })}
