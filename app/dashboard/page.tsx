@@ -425,16 +425,21 @@ export default function Dashboard() {
     const color = citaColor(cita.estado);
     const fs = (style.fontSize as number) || 10;
     const risk = cita.cliente_id ? clientRiskCache[cita.cliente_id] : null;
-    // Calcular altura disponible para decidir si mostrar notas por separado
     const h = (style.height as number) || 0;
-    const isCompact = h < 28; // bloques muy pequeños: solo nombre
+    const isCompact = h < 28;
+    const isDay = (style as any).isDay === true;
+
+    // Extraer isDay del style para no pasarlo al DOM
+    const { isDay: _isDay, ...cleanStyle } = style as any;
+
+    const linea2 = svc && notas ? `${svc} — ${notas}` : svc || notas;
 
     return (
       <div
         key={cita.id}
         onClick={() => setSelectedCita(cita)}
         style={{
-          ...style,
+          ...cleanStyle,
           background: `${color}33`,
           borderLeft: `3px solid ${color}`,
           cursor: 'pointer',
@@ -442,41 +447,63 @@ export default function Dashboard() {
           zIndex: 10,
           pointerEvents: 'auto',
           boxShadow: `0 1px 4px ${color}33`,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'flex-start',
+          // Sin padding aquí — lo gestiona el div interior
+          padding: 0,
         }}
       >
-        {/* Nombre + indicador riesgo */}
-        <div style={{
-          fontSize: fs,
-          fontWeight: 700,
-          color: '#FFFFFF',
-          lineHeight: 1.35,
-          wordBreak: 'break-word',
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 3,
-        }}>
-          <span>{name}</span>
-          {risk?.show && (
-            <span style={{ fontSize: Math.max(fs - 2, 8), lineHeight: 1, flexShrink: 0, marginTop: 1 }}>
-              {risk.icon}
-            </span>
-          )}
-        </div>
-        {/* Servicio — Notas en la misma línea, con wrap */}
-        {!isCompact && (svc || notas) && (
+        {/* ── VISTA DÍA: padding propio, texto que respira ── */}
+        {isDay ? (
           <div style={{
-            fontSize: fs,
-            fontWeight: 400,
-            color: '#FFFFFF',
-            lineHeight: 1.35,
-            wordBreak: 'break-word',
-            marginTop: 2,
-            opacity: 0.9,
+            padding: '10px 14px',
+            height: '100%',
+            boxSizing: 'border-box',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-start',
+            gap: 3,
           }}>
-            {svc && notas ? `${svc} — ${notas}` : svc || notas}
+            <div style={{ fontSize: fs, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.35, wordBreak: 'break-word', display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+              <span>{name}</span>
+              {risk?.show && <span style={{ fontSize: Math.max(fs - 2, 8), lineHeight: 1, flexShrink: 0, marginTop: 1 }}>{risk.icon}</span>}
+            </div>
+            {!isCompact && linea2 && (
+              <div style={{ fontSize: fs, fontWeight: 400, color: '#FFFFFF', lineHeight: 1.35, wordBreak: 'break-word', opacity: 0.9 }}>
+                {linea2}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* ── VISTA SEMANA: padding compacto, max 3 líneas ── */
+          <div style={{
+            padding: '4px 6px',
+            height: '100%',
+            boxSizing: 'border-box',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-start',
+            gap: 1,
+            overflow: 'hidden',
+          }}>
+            <div style={{ fontSize: fs, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, wordBreak: 'break-word', display: 'flex', alignItems: 'flex-start', gap: 3 }}>
+              <span>{name}</span>
+              {risk?.show && <span style={{ fontSize: Math.max(fs - 2, 8), lineHeight: 1, flexShrink: 0, marginTop: 1 }}>{risk.icon}</span>}
+            </div>
+            {!isCompact && linea2 && (
+              <div style={{
+                fontSize: fs - 1,
+                fontWeight: 400,
+                color: '#FFFFFF',
+                opacity: 0.85,
+                lineHeight: 1.3,
+                wordBreak: 'break-word',
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical' as any,
+              }}>
+                {linea2}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -578,9 +605,10 @@ export default function Dashboard() {
                     const h = (dur / 30) * 50;
                     return renderCitaBlock(cita, {
                       position: 'absolute', top, height: h, minHeight: h, left: 8, right: 8,
-                      borderRadius: 10, padding: '10px 14px',
+                      borderRadius: 10,
                       fontSize: 14,
-                    });
+                      isDay: true,
+                    } as any);
                   })}
                 </div>
                 {isToday(selectedDate) && currentMinutes >= startMin && currentMinutes < endMin && (
