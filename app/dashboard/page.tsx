@@ -737,10 +737,10 @@ export default function Dashboard() {
                       const working = isWorkingDay(day);
                       const { citaAtSlot, coveredSlots } = dayCitaMaps[di];
 
+                      const cita = citaAtSlot[si];
+
                       // Skip cells covered by a multi-slot cita (cita uses gridRow span)
                       if (coveredSlots.has(si) && !cita) return;
-
-                      const cita = citaAtSlot[si];
                       const spanSlots = cita
                         ? Math.ceil(Math.max(
                             (cita.hora_fin ? rawTimeMin(cita.hora_fin) : rawTimeMin(cita.hora_inicio) + 30) - rawTimeMin(cita.hora_inicio),
