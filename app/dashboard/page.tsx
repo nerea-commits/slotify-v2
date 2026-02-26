@@ -45,6 +45,14 @@ const C = {
   text: '#F1F5F9', textSec: '#94A3B8',
 };
 
+
+// ═══ HELPER: ¿Este estado ocupa hueco horario? ═══
+function blocksTime(estado: string): boolean {
+  const e = (estado || '').toLowerCase().trim();
+  if (e === 'cancelada' || e === 'no-show' || e === 'no_show' || e === 'completada') return false;
+  return true;
+}
+
 type ViewMode = 'day' | 'week' | 'month';
 
 export default function Dashboard() {
@@ -224,6 +232,8 @@ export default function Dashboard() {
   function slotOccupied(citas: any[], slot: string): boolean {
     const slotM = timeToMinutes(slot);
     return citas.some(c => {
+      // Solo citas que realmente bloquean el hueco
+      if (c.blocks_time === false) return false;
       const sm = rawTimeMin(c.hora_inicio);
       const em = c.hora_fin ? rawTimeMin(c.hora_fin) : sm + 30;
       return slotM >= sm && slotM < em;
@@ -231,7 +241,8 @@ export default function Dashboard() {
   }
 
   function freeSlotCount(d: Date): number {
-    const citas = activeCitasForDate(d);
+    // Solo citas con blocks_time=true ocupan hueco para el conteo de disponibilidad
+    const citas = activeCitasForDate(d).filter(c => c.blocks_time !== false);
     return visibleSlots.filter(s => !slotOccupied(citas, s)).length;
   }
 
@@ -326,10 +337,8 @@ export default function Dashboard() {
       .select('id, hora_inicio, hora_fin, estado')
       .eq('empresa_id', eid)
       .eq('profesional_id', pid)
-      .neq('estado', 'cancelada')
-      .neq('estado', 'Cancelada')
+      .eq('blocks_time', true)          // ← solo citas que realmente bloquean
       .neq('id', excludeId)
-      // Solapamiento: start < newEnd AND end > newStart
       .lt('hora_inicio', hFinISO)
       .gt('hora_fin', hInicioISO);
 
@@ -368,6 +377,7 @@ export default function Dashboard() {
         notas: editNotas || null,
         estado: editEstado,
         servicio_nombre_libre: editServicio || null,
+        blocks_time: blocksTime(editEstado),   // ← actualiza junto al estado
       };
       await supabase.from('citas').update(updates).eq('id', editingCita.id);
       setEditingCita(null);
@@ -381,7 +391,7 @@ export default function Dashboard() {
   }
 
   async function cancelarCita(id: string) {
-    await supabase.from('citas').update({ estado: 'cancelada' }).eq('id', id);
+    await supabase.from('citas').update({ estado: 'cancelada', blocks_time: false }).eq('id', id);
     setSelectedCita(null);
     setEditingCita(null);
     loadAllCitas();
