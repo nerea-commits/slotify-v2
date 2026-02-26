@@ -45,13 +45,6 @@ const C = {
   text: '#F1F5F9', textSec: '#94A3B8',
 };
 
-// ═══ HELPER: ¿Este estado ocupa hueco horario? ═══
-function blocksTime(estado: string): boolean {
-  const e = (estado || '').toLowerCase().trim();
-  if (e === 'cancelada' || e === 'no-show' || e === 'no_show' || e === 'completada') return false;
-  return true;
-}
-
 type ViewMode = 'day' | 'week' | 'month';
 
 export default function Dashboard() {
@@ -79,8 +72,8 @@ export default function Dashboard() {
   const [editHoraFin, setEditHoraFin] = useState('');
   const [editEstado, setEditEstado] = useState('');
   const [editLoading, setEditLoading] = useState(false);
-  const [editError, setEditError] = useState('');
 
+  // ═══ RISK INDICATOR CACHE ═══
   const [clientRiskCache, setClientRiskCache] = useState<Record<string, { show: boolean; color: string; icon: string | null }>>({});
 
   const empresaIdRef = useRef<string | null>(null);
@@ -132,6 +125,7 @@ export default function Dashboard() {
   useEffect(() => { loadAllCitas(); }, [selectedDate, view]);
   useEffect(() => { if (profesional) { profesionalIdRef.current = profesional.id; loadAllCitas(); } }, [profesional]);
 
+  // ═══ LOAD CLIENT RISKS ═══
   function loadClientRisks(citas: any[]) {
     const citasPorCliente: Record<string, any[]> = {};
     citas.forEach(c => {
@@ -213,6 +207,7 @@ export default function Dashboard() {
     return diasLaborables.includes(isoDay);
   }
 
+  // Canceladas NO aparecen en las vistas operativas
   function citasForDate(d: Date): any[] {
     const ds = toDS(d);
     return allCitas.filter(c =>
@@ -229,9 +224,6 @@ export default function Dashboard() {
   function slotOccupied(citas: any[], slot: string): boolean {
     const slotM = timeToMinutes(slot);
     return citas.some(c => {
-      const est = (c.estado || '').toLowerCase();
-      const freeEstado = est === 'cancelada' || est === 'no-show' || est === 'no_show' || est === 'completada';
-      if (c.blocks_time === false || (c.blocks_time == null && freeEstado)) return false;
       const sm = rawTimeMin(c.hora_inicio);
       const em = c.hora_fin ? rawTimeMin(c.hora_fin) : sm + 30;
       return slotM >= sm && slotM < em;
@@ -239,11 +231,7 @@ export default function Dashboard() {
   }
 
   function freeSlotCount(d: Date): number {
-    const citas = activeCitasForDate(d).filter(c => {
-      const est = (c.estado || '').toLowerCase();
-      const freeEstado = est === 'cancelada' || est === 'no-show' || est === 'no_show' || est === 'completada';
-      return c.blocks_time === true || (c.blocks_time == null && !freeEstado);
-    });
+    const citas = activeCitasForDate(d);
     return visibleSlots.filter(s => !slotOccupied(citas, s)).length;
   }
 
@@ -321,66 +309,32 @@ export default function Dashboard() {
     setEditHoraInicio(cita.hora_inicio?.substring(11, 16) || '');
     setEditHoraFin(cita.hora_fin?.substring(11, 16) || '');
     setEditEstado(cita.estado || '');
-    setEditError('');
-  }
-
-  async function validarSolapamientoEdicion(dateStr: string, inicio: string, fin: string, excludeId: string): Promise<string | null> {
-    const eid = empresaIdRef.current || localStorage.getItem('slotify_empresa_id');
-    const pid = profesionalIdRef.current || localStorage.getItem('slotify_profesional_id');
-    if (!eid || !pid) return null;
-    const hInicioISO = `${dateStr}T${inicio}:00`;
-    const hFinISO = `${dateStr}T${fin}:00`;
-    const { data, error } = await supabase
-      .from('citas')
-      .select('id, hora_inicio, hora_fin, estado')
-      .eq('empresa_id', eid)
-      .eq('profesional_id', pid)
-      .eq('blocks_time', true)
-      .neq('id', excludeId)
-      .lt('hora_inicio', hFinISO)
-      .gt('hora_fin', hInicioISO);
-    if (error) { console.error('Error validando solapamiento edición:', error); return null; }
-    if (data && data.length > 0) {
-      const conflicto = data[0];
-      const horaConflicto = conflicto.hora_inicio?.substring(11, 16) || '';
-      return `Conflicto de horario: ya hay una cita a las ${horaConflicto}. Elige otro horario.`;
-    }
-    return null;
   }
 
   async function guardarEdicion() {
     if (!editingCita) return;
-    if (editHoraFin <= editHoraInicio) {
-      setEditError('La hora de fin debe ser posterior a la de inicio');
-      return;
-    }
     setEditLoading(true);
-    setEditError('');
     try {
       const dateStr = rawDate(editingCita.hora_inicio);
-      const conflicto = await validarSolapamientoEdicion(dateStr, editHoraInicio, editHoraFin, editingCita.id);
-      if (conflicto) { setEditError(conflicto); setEditLoading(false); return; }
       const updates: any = {
         hora_inicio: `${dateStr}T${editHoraInicio}:00`,
         hora_fin: `${dateStr}T${editHoraFin}:00`,
         notas: editNotas || null,
         estado: editEstado,
         servicio_nombre_libre: editServicio || null,
-        blocks_time: blocksTime(editEstado),
       };
       await supabase.from('citas').update(updates).eq('id', editingCita.id);
       setEditingCita(null);
       loadAllCitas();
     } catch (e) {
       console.error(e);
-      setEditError('Error al guardar. Inténtalo de nuevo.');
     } finally {
       setEditLoading(false);
     }
   }
 
   async function cancelarCita(id: string) {
-    await supabase.from('citas').update({ estado: 'cancelada', blocks_time: false }).eq('id', id);
+    await supabase.from('citas').update({ estado: 'cancelada' }).eq('id', id);
     setSelectedCita(null);
     setEditingCita(null);
     loadAllCitas();
@@ -398,6 +352,47 @@ export default function Dashboard() {
 
   const weekDayNames = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
   const WEEK_SLOT_H = 44;
+
+  function renderCitaBlock(cita: any, style: React.CSSProperties) {
+    const name = cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente';
+    const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
+    const notas = cita.notas || '';
+    const linea2 = svc && notas ? `${svc} — ${notas}` : svc || notas;
+    const color = citaColor(cita.estado);
+    const fs = (style.fontSize as number) || 11;
+    const risk = cita.cliente_id ? clientRiskCache[cita.cliente_id] : null;
+    return (
+      <div key={cita.id} onClick={() => setSelectedCita(cita)}
+        style={{
+          ...style,
+          background: `${color}33`,
+          borderLeft: `3px solid ${color}`,
+          cursor: 'pointer',
+          overflow: 'hidden',
+          zIndex: 10,
+          pointerEvents: 'auto',
+          boxShadow: `0 1px 4px ${color}33`,
+          boxSizing: 'border-box' as const,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-start',
+        }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 3, flexShrink: 0 }}>
+          <span style={{ fontSize: fs, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.35, wordBreak: 'break-word' as const, flex: 1, minWidth: 0 }}>{name}</span>
+          {risk?.show && (
+            <span style={{ fontSize: Math.max(fs - 2, 8), lineHeight: 1, flexShrink: 0, marginTop: 1 }}>
+              {risk.icon}
+            </span>
+          )}
+        </div>
+        {linea2 && (
+          <div style={{ fontSize: fs - 1, fontWeight: 400, color: '#FFFFFF', opacity: 0.85, lineHeight: 1.35, wordBreak: 'break-word' as const, marginTop: 2, minWidth: 0, overflow: 'hidden' }}>
+            {linea2}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: C.bg, color: C.text }}>
@@ -470,7 +465,9 @@ export default function Dashboard() {
             <div style={{ paddingLeft: 16, paddingRight: 16 }}>
               {(() => {
                 const dayCitas = citasForDate(selectedDate);
+                // Build a map: slotIndex -> cita (first slot of the cita)
                 const citaAtSlot: Record<number, any> = {};
+                const citaSpans: Record<number, number> = {};
                 const coveredSlots = new Set<number>();
                 dayCitas.forEach(cita => {
                   const citaStart = rawTimeMin(cita.hora_inicio);
@@ -480,8 +477,10 @@ export default function Dashboard() {
                   if (slotIdx === -1) return;
                   const spanSlots = Math.ceil(dur / 30);
                   citaAtSlot[slotIdx] = cita;
+                  citaSpans[slotIdx] = spanSlots;
                   for (let i = slotIdx; i < slotIdx + spanSlots; i++) coveredSlots.add(i);
                 });
+                // Current time slot index
                 const nowSlotIdx = isToday(selectedDate)
                   ? visibleSlots.findIndex(s => {
                       const m = timeToMinutes(s);
@@ -489,17 +488,20 @@ export default function Dashboard() {
                     })
                   : -1;
                 return visibleSlots.map((slot, si) => {
+                  // Skip slots covered by a multi-slot cita (not the first slot)
                   if (coveredSlots.has(si) && !citaAtSlot[si]) return null;
                   const cita = citaAtSlot[si];
                   const isHour = slot.endsWith(':00');
                   const MIN_H = 50;
                   return (
                     <div key={slot} style={{ display: 'flex', minHeight: MIN_H }}>
+                      {/* Time label */}
                       <div style={{ width: 64, flexShrink: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: 12, paddingTop: 4 }}>
                         <span style={{ fontSize: 11, color: C.textSec, fontWeight: isHour ? 600 : 400, opacity: isHour ? 1 : 0.4 }}>
                           {slot}
                         </span>
                       </div>
+                      {/* Slot content */}
                       <div style={{ flex: 1, borderBottom: `1px solid ${isHour ? C.surfaceAlt : 'rgba(36,50,71,0.4)'}`, minHeight: MIN_H, position: 'relative' }}>
                         {cita ? (
                           <div
@@ -542,6 +544,7 @@ export default function Dashboard() {
                             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                           />
                         )}
+                        {/* Current time indicator */}
                         {nowSlotIdx === si && (
                           <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', pointerEvents: 'none', zIndex: 20 }}>
                             <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.red, boxShadow: '0 0 6px rgba(239,68,68,0.8)', flexShrink: 0 }} />
@@ -588,11 +591,13 @@ export default function Dashboard() {
                   <ChevronRight className="w-3 h-3" />
                 </button>
               </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 4 }}>
                 {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(d => (
                   <div key={d} style={{ textAlign: 'center', fontSize: 9, color: C.textSec, fontWeight: 700, padding: '1px 0' }}>{d}</div>
                 ))}
               </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1 }}>
                 {getMonthDays(miniCalMonth).map((day, i) => {
                   if (!day) return <div key={`e${i}`} style={{ height: 22 }} />;
@@ -627,6 +632,7 @@ export default function Dashboard() {
                   );
                 })}
               </div>
+
               <button
                 onClick={() => { const t = new Date(); setSelectedDate(t); setMiniCalMonth(t); }}
                 style={{
@@ -652,6 +658,8 @@ export default function Dashboard() {
               <div style={{ flex: 1, minHeight: 0, overflow: 'auto', paddingBottom: 80 }}>
                 {(() => {
                   const weekDays = getWeekDays();
+                  const nCols = 8; // time col + 7 days
+                  const nRows = 1 + visibleSlots.length; // header + slots
 
                   // Build cita maps per day
                   const dayCitaMaps = weekDays.map(day => {
@@ -672,11 +680,13 @@ export default function Dashboard() {
                   });
 
                   const cells: React.ReactNode[] = [];
-                  const lastSlotIdx = visibleSlots.length - 1;
 
                   // ── ROW 0: headers ──
-                  cells.push(<div key="th-time" style={{ gridColumn: 1, gridRow: 1, minHeight: 44 }} />);
-
+                  // Time col header (empty)
+                  cells.push(
+                    <div key="th-time" style={{ gridColumn: 1, gridRow: 1, minHeight: 44 }} />
+                  );
+                  // Day headers
                   weekDays.forEach((day, di) => {
                     const today = isToday(day);
                     cells.push(
@@ -684,16 +694,13 @@ export default function Dashboard() {
                         onClick={() => goToDay(day)}
                         style={{
                           gridColumn: di + 2, gridRow: 1,
-                          height: 44,
-                          display: 'flex', flexDirection: 'column',
+                          height: 44, display: 'flex', flexDirection: 'column',
                           alignItems: 'center', justifyContent: 'center',
-                          // ── CARD: header top rounded ──
-                          background: today ? 'rgba(34,197,94,0.18)' : C.surfaceAlt,
-                          borderTop: today ? `2px solid ${C.green}` : `1px solid rgba(148,163,184,0.12)`,
-                          borderLeft: today ? `2px solid ${C.green}` : `1px solid rgba(148,163,184,0.12)`,
-                          borderRight: today ? `2px solid ${C.green}` : `1px solid rgba(148,163,184,0.12)`,
+                          background: today ? 'rgba(34,197,94,0.2)' : C.surfaceAlt,
                           borderBottom: `1px solid rgba(148,163,184,0.08)`,
                           borderRadius: '10px 10px 0 0',
+                          border: today ? `1px solid ${C.green}55` : `1px solid rgba(148,163,184,0.12)`,
+                          borderBottom: `1px solid rgba(148,163,184,0.08)`,
                           cursor: 'pointer',
                         }}>
                         <div style={{ fontSize: 9, fontWeight: 700, color: C.textSec, letterSpacing: 0.8 }}>{weekDayNames[di]}</div>
@@ -703,19 +710,19 @@ export default function Dashboard() {
                     );
                   });
 
-                  // ── ROWS: slots ──
+                  // ── ROWS 1..N: slots ──
                   visibleSlots.forEach((slot, si) => {
-                    const rowIdx = si + 2;
+                    const rowIdx = si + 2; // 1-based, row 1 = header
                     const isHour = slot.endsWith(':00');
-                    const isLastSlot = si === lastSlotIdx;
 
                     // Time label cell
                     cells.push(
                       <div key={`time-${si}`} style={{
                         gridColumn: 1, gridRow: rowIdx,
                         display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end',
-                        paddingRight: 6, paddingTop: 4,
-                        minHeight: WEEK_SLOT_H,
+                        paddingRight: 6, paddingTop: 6,
+                        borderBottom: `1px solid ${isHour ? C.surfaceAlt : 'rgba(36,50,71,0.25)'}`,
+                        background: C.bg,
                       }}>
                         <span style={{ fontSize: isHour ? 10 : 9, color: C.textSec, fontWeight: isHour ? 600 : 400, opacity: isHour ? 1 : 0.5, lineHeight: 1, whiteSpace: 'nowrap' }}>
                           {slot}
@@ -729,7 +736,8 @@ export default function Dashboard() {
                       const working = isWorkingDay(day);
                       const { citaAtSlot, coveredSlots } = dayCitaMaps[di];
 
-                      if (coveredSlots.has(si) && !citaAtSlot[si]) return;
+                      // Intermediate slots of a multi-slot cita render as empty (visual continuity)
+                      // The cita block only appears at its start slot
 
                       const cita = citaAtSlot[si];
                       const spanSlots = cita
@@ -745,66 +753,85 @@ export default function Dashboard() {
                       })();
 
                       cells.push(
-                        <div key={`cell-${si}-${di}`} style={{
-                          gridColumn: di + 2,
-                          gridRow: cita ? `${rowIdx} / span ${spanSlots}` : rowIdx,
-                          // ── CARD: body cells ──
-                          background: working ? C.surface : 'rgba(15,23,42,0.3)',
-                          borderLeft: today ? `2px solid ${C.green}` : `1px solid rgba(148,163,184,0.12)`,
-                          borderRight: today ? `2px solid ${C.green}` : `1px solid rgba(148,163,184,0.12)`,
-                          borderBottom: isLastSlot
-                            ? (today ? `2px solid ${C.green}` : `1px solid rgba(148,163,184,0.12)`)
-                            : `1px solid ${isHour ? 'rgba(148,163,184,0.15)' : 'rgba(148,163,184,0.07)'}`,
-                          borderRadius: isLastSlot ? '0 0 10px 10px' : 0,
-                          position: 'relative',
-                          minHeight: WEEK_SLOT_H,
-                        }}>
-                          {cita && (
-                            <div
-                              onClick={() => setSelectedCita(cita)}
-                              style={{
-                                background: `${citaColor(cita.estado)}33`,
-                                borderLeft: `3px solid ${citaColor(cita.estado)}`,
-                                borderRadius: 4,
-                                padding: '5px 7px',
-                                margin: '2px',
-                                cursor: 'pointer',
-                                boxShadow: `0 1px 3px ${citaColor(cita.estado)}33`,
-                              }}
-                            >
-                              <span style={{ fontSize: 11, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.35, wordBreak: 'break-word' as const, display: 'block' }}>
-                                {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
-                                {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && (
-                                  <span style={{ marginLeft: 3, fontSize: 9 }}>{clientRiskCache[cita.cliente_id].icon}</span>
-                                )}
-                              </span>
-                              {(() => {
-                                const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
-                                const notas = cita.notas || '';
-                                const linea2 = svc && notas ? `${svc} — ${notas}` : svc || notas;
-                                return linea2 ? (
-                                  <span style={{ fontSize: 10, fontWeight: 400, color: '#FFFFFF', opacity: 0.85, lineHeight: 1.35, wordBreak: 'break-word' as const, display: 'block', marginTop: 2 }}>
-                                    {linea2}
+                        {/* Determine if this slot is a continuation of a cita */}
+                        {(() => {
+                          const isContinuation = coveredSlots.has(si) && !cita;
+                          // Find the cita that covers this slot (for continuation styling)
+                          const coveringCita = isContinuation
+                            ? dayCitaMaps[di].dayCitas?.find((c: any) => {
+                                const cs = rawTimeMin(c.hora_inicio);
+                                const ce = c.hora_fin ? rawTimeMin(c.hora_fin) : cs + 30;
+                                const slotM = timeToMinutes(slot);
+                                return slotM > cs && slotM < ce;
+                              })
+                            : null;
+                          const contColor = coveringCita ? citaColor(coveringCita.estado) : null;
+
+                          return (
+                            <div key={`cell-${si}-${di}`} style={{
+                              gridColumn: di + 2,
+                              gridRow: rowIdx,
+                              background: isContinuation && contColor
+                                ? `${contColor}22`
+                                : working ? C.surface : 'rgba(15,23,42,0.25)',
+                              borderBottom: isContinuation && contColor
+                                ? `1px solid ${contColor}33`
+                                : `1px solid ${isHour ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.06)'}`,
+                              borderLeft: isContinuation && contColor
+                                ? `3px solid ${contColor}55`
+                                : `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`,
+                              borderRight: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`,
+                              borderRadius: si === visibleSlots.length - 1 ? '0 0 10px 10px' : 0,
+                              position: 'relative',
+                            }}>
+                              {cita && (
+                                <div
+                                  onClick={() => setSelectedCita(cita)}
+                                  style={{
+                                    background: `${citaColor(cita.estado)}33`,
+                                    borderLeft: `3px solid ${citaColor(cita.estado)}`,
+                                    borderRadius: 4,
+                                    padding: '5px 7px',
+                                    margin: '2px',
+                                    cursor: 'pointer',
+                                    boxShadow: `0 1px 3px ${citaColor(cita.estado)}33`,
+                                  }}
+                                >
+                                  <span style={{ fontSize: 11, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.35, wordBreak: 'break-word' as const, display: 'block' }}>
+                                    {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
+                                    {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && (
+                                      <span style={{ marginLeft: 3, fontSize: 9 }}>{clientRiskCache[cita.cliente_id].icon}</span>
+                                    )}
                                   </span>
-                                ) : null;
-                              })()}
+                                  {(() => {
+                                    const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
+                                    const notas = cita.notas || '';
+                                    const linea2 = svc && notas ? `${svc} — ${notas}` : svc || notas;
+                                    return linea2 ? (
+                                      <span style={{ fontSize: 10, fontWeight: 400, color: '#FFFFFF', opacity: 0.85, lineHeight: 1.35, wordBreak: 'break-word' as const, display: 'block', marginTop: 2 }}>
+                                        {linea2}
+                                      </span>
+                                    ) : null;
+                                  })()}
+                                </div>
+                              )}
+                              {!cita && !isContinuation && (
+                                <div
+                                  onClick={() => openModal(day, slot)}
+                                  style={{ position: 'absolute', inset: 0, cursor: 'pointer' }}
+                                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.greenBg; }}
+                                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                                />
+                              )}
+                              {isNowSlot && (
+                                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', pointerEvents: 'none', zIndex: 20 }}>
+                                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.red, boxShadow: '0 0 5px rgba(239,68,68,0.8)', flexShrink: 0 }} />
+                                  <div style={{ flex: 1, height: 2, background: C.red, opacity: 0.8 }} />
+                                </div>
+                              )}
                             </div>
-                          )}
-                          {!cita && (
-                            <div
-                              onClick={() => openModal(day, slot)}
-                              style={{ position: 'absolute', inset: 0, cursor: 'pointer' }}
-                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.greenBg; }}
-                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                            />
-                          )}
-                          {isNowSlot && (
-                            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', pointerEvents: 'none', zIndex: 20 }}>
-                              <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.red, boxShadow: '0 0 5px rgba(239,68,68,0.8)', flexShrink: 0 }} />
-                              <div style={{ flex: 1, height: 2, background: C.red, opacity: 0.8 }} />
-                            </div>
-                          )}
-                        </div>
+                          );
+                        })()}
                       );
                     });
                   });
@@ -813,8 +840,9 @@ export default function Dashboard() {
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: `42px repeat(7, 1fr)`,
-                      gridTemplateRows: `44px repeat(${visibleSlots.length}, auto)`,
-                      columnGap: 4,  // ← gap entre tarjetas de día
+                      gridTemplateRows: `44px`,
+                      gridAutoRows: `minmax(${WEEK_SLOT_H}px, auto)`,
+                      gap: '0 4px',
                     }}>
                       {cells}
                     </div>
@@ -962,6 +990,7 @@ export default function Dashboard() {
                   <X className="w-5 h-5" />
                 </button>
               </div>
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
                   <label style={{ fontSize: 12, color: C.textSec, display: 'block', marginBottom: 6 }}>Servicio</label>
@@ -969,6 +998,7 @@ export default function Dashboard() {
                     style={{ width: '100%', background: C.surfaceAlt, border: 'none', borderRadius: 12, padding: '10px 14px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
                     placeholder="Nombre del servicio" />
                 </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label style={{ fontSize: 12, color: C.textSec, display: 'block', marginBottom: 6 }}>Hora inicio</label>
@@ -981,6 +1011,7 @@ export default function Dashboard() {
                       style={{ width: '100%', background: C.surfaceAlt, border: 'none', borderRadius: 12, padding: '10px 14px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
                   </div>
                 </div>
+
                 {estadosCita.length > 0 && (
                   <div>
                     <label style={{ fontSize: 12, color: C.textSec, display: 'block', marginBottom: 8 }}>Estado</label>
@@ -1007,17 +1038,14 @@ export default function Dashboard() {
                     </div>
                   </div>
                 )}
+
                 <div>
                   <label style={{ fontSize: 12, color: C.textSec, display: 'block', marginBottom: 6 }}>Notas</label>
                   <textarea value={editNotas} onChange={e => setEditNotas(e.target.value)} rows={3}
                     style={{ width: '100%', background: C.surfaceAlt, border: 'none', borderRadius: 12, padding: '10px 14px', color: C.text, fontSize: 14, outline: 'none', resize: 'none', boxSizing: 'border-box' }}
                     placeholder="Observaciones, preferencias..." />
                 </div>
-                {editError && (
-                  <div style={{ padding: '10px 14px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 10 }}>
-                    <p style={{ color: C.red, fontSize: 13, lineHeight: 1.4 }}>⚠ {editError}</p>
-                  </div>
-                )}
+
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button onClick={() => cancelarCita(editingCita.id)}
                     style={{ flex: 1, padding: '10px 0', borderRadius: 12, background: `${C.red}22`, border: `1px solid ${C.red}55`, color: C.red, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
@@ -1025,7 +1053,7 @@ export default function Dashboard() {
                   </button>
                   <button onClick={guardarEdicion} disabled={editLoading}
                     style={{ flex: 2, padding: '10px 0', borderRadius: 12, background: C.green, border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: editLoading ? 0.6 : 1 }}>
-                    {editLoading ? 'Comprobando...' : 'Guardar cambios'}
+                    {editLoading ? 'Guardando...' : 'Guardar cambios'}
                   </button>
                 </div>
               </div>
