@@ -20,6 +20,13 @@ function normalizeTel(t: string): string {
   return t.replace(/\D/g, '');
 }
 
+// ═══ HELPER: ¿Este estado ocupa hueco? ═══
+function blocksTime(estado: string): boolean {
+  const e = (estado || '').toLowerCase().trim();
+  if (e === 'cancelada' || e === 'no-show' || e === 'no_show' || e === 'completada') return false;
+  return true; // confirmada, pendiente, en proceso, lista de espera, desconocido → bloquea
+}
+
 export default function NuevaCitaModal({
   open, onClose, onCreated, profesionalId, empresaId, selectedDate, preselectedTime
 }: Props) {
@@ -63,7 +70,6 @@ export default function NuevaCitaModal({
       setClienteEncontrado(null);
       setFiabilidad(null);
 
-      // Preseleccionar hora si viene del calendario
       if (preselectedTime) {
         setHoraInicio(preselectedTime);
         const [h, m] = preselectedTime.split(':').map(Number);
@@ -121,14 +127,12 @@ export default function NuevaCitaModal({
   async function buscarClientePorTelefono(digits: string) {
     setBuscandoCliente(true);
     try {
-      // Obtener todos los clientes de la empresa y filtrar por dígitos normalizados
       const { data: clientes } = await supabase
         .from('clientes')
         .select('*')
         .eq('empresa_id', empresaId);
 
       if (clientes && clientes.length > 0) {
-        // Buscar coincidencia exacta de dígitos normalizados
         const found = clientes.find(c => {
           const telNorm = normalizeTel(c.telefono || '');
           return telNorm === digits || telNorm.endsWith(digits) || digits.endsWith(telNorm);
@@ -136,18 +140,14 @@ export default function NuevaCitaModal({
 
         if (found) {
           setClienteEncontrado(found);
-          // Auto-rellenar nombre solo si estaba vacío
           if (!nombre.trim()) setNombre(found.nombre);
 
-          // Cargar historial para fiabilidad
           const { data: citas } = await supabase
             .from('citas').select('id, estado')
             .eq('cliente_id', found.id)
             .limit(200);
 
-          if (citas) {
-            setFiabilidad(calcularFiabilidad(citas));
-          }
+          if (citas) setFiabilidad(calcularFiabilidad(citas));
         } else {
           setClienteEncontrado(null);
           setFiabilidad(null);
@@ -163,7 +163,7 @@ export default function NuevaCitaModal({
     }
   }
 
-  // ═══ VALIDAR SOLAPAMIENTO ═══
+  // ═══ VALIDAR SOLAPAMIENTO — filtra por blocks_time = true ═══
   async function validarSolapamiento(fecha: string, inicio: string, fin: string, excludeId?: string): Promise<string | null> {
     const hInicioISO = `${fecha}T${inicio}:00`;
     const hFinISO = `${fecha}T${fin}:00`;
@@ -173,29 +173,20 @@ export default function NuevaCitaModal({
       .select('id, hora_inicio, hora_fin, estado')
       .eq('empresa_id', empresaId)
       .eq('profesional_id', profesionalId)
-      .neq('estado', 'cancelada')
-      .neq('estado', 'Cancelada')
-      // Condición de solapamiento: start < newEnd AND end > newStart
+      .eq('blocks_time', true)          // ← solo citas que realmente bloquean
       .lt('hora_inicio', hFinISO)
       .gt('hora_fin', hInicioISO);
 
-    if (excludeId) {
-      query = query.neq('id', excludeId);
-    }
+    if (excludeId) query = query.neq('id', excludeId);
 
     const { data, error } = await query;
-    if (error) {
-      console.error('Error validando solapamiento:', error);
-      return null;
-    }
+    if (error) { console.error('Error validando solapamiento:', error); return null; }
 
     if (data && data.length > 0) {
       const conflicto = data[0];
-      const clienteConflicto = 'otro cliente';
       const horaConflicto = conflicto.hora_inicio?.substring(11, 16) || '';
-      return `Conflicto de horario: ya hay una cita con ${clienteConflicto} a las ${horaConflicto}. Elige otro horario.`;
+      return `Conflicto de horario: ya hay una cita a las ${horaConflicto}. Elige otro horario.`;
     }
-
     return null;
   }
 
@@ -210,13 +201,8 @@ export default function NuevaCitaModal({
 
     const fecha = selectedDate.toISOString().split('T')[0];
 
-    // ─── Validar solapamiento ANTES de guardar ───
     const conflicto = await validarSolapamiento(fecha, horaInicio, horaFin);
-    if (conflicto) {
-      setError(conflicto);
-      setGuardando(false);
-      return;
-    }
+    if (conflicto) { setError(conflicto); setGuardando(false); return; }
 
     const hInicio = `${fecha}T${horaInicio}:00`;
     const hFin = `${fecha}T${horaFin}:00`;
@@ -226,24 +212,25 @@ export default function NuevaCitaModal({
     if (!clienteId) {
       const telNorm = normalizeTel(telefono);
       const insertData: any = { empresa_id: empresaId, nombre: nombre.trim() };
-      if (telNorm) insertData.telefono = telefono.trim(); // guardar formato original
+      if (telNorm) insertData.telefono = telefono.trim();
       const { data: nuevo, error: errCl } = await supabase.from('clientes').insert(insertData).select().single();
       if (errCl || !nuevo) { setError('Error al crear cliente'); setGuardando(false); return; }
       clienteId = nuevo.id;
     }
 
-    // Preparar datos de cita
+    // Preparar datos de cita — blocks_time calculado desde el estado
+    const estadoFinal = estadoSeleccionado || 'Confirmada';
     const citaData: any = {
       empresa_id: empresaId,
       profesional_id: profesionalId,
       cliente_id: clienteId,
       hora_inicio: hInicio,
       hora_fin: hFin,
-      estado: estadoSeleccionado || 'Confirmada',
+      estado: estadoFinal,
+      blocks_time: blocksTime(estadoFinal),  // ← calculado automáticamente
       notas: notas.trim() || null,
     };
 
-    // Servicio
     const svcObj = servicios.find(s => s.id === servicio);
     if (svcObj) {
       citaData.servicio_id = svcObj.id;
@@ -251,18 +238,13 @@ export default function NuevaCitaModal({
       citaData.servicio_nombre_libre = servicio.trim();
     }
 
-    // Importe
     if (mostrarImporte && importe.trim()) {
       const num = parseFloat(importe.replace(',', '.'));
       if (!isNaN(num) && num >= 0) citaData.importe = num;
     }
 
     const { error: errCita } = await supabase.from('citas').insert(citaData);
-    if (errCita) {
-      setError('Error al crear cita: ' + errCita.message);
-      setGuardando(false);
-      return;
-    }
+    if (errCita) { setError('Error al crear cita: ' + errCita.message); setGuardando(false); return; }
 
     setGuardando(false);
     onCreated();
@@ -280,7 +262,6 @@ export default function NuevaCitaModal({
         style={{ background: '#111827', borderRadius: '20px 20px 0 0', padding: 24, width: '100%', maxWidth: 500, maxHeight: '92vh', overflow: 'auto', paddingBottom: 32 }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <h3 style={{ fontSize: 18, fontWeight: 700, color: '#F1F5F9' }}>Nueva cita</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}>
@@ -290,25 +271,19 @@ export default function NuevaCitaModal({
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-          {/* Teléfono — primero para activar búsqueda */}
+          {/* Teléfono */}
           <div>
             <label style={{ fontSize: 12, color: '#94A3B8', fontWeight: 600, display: 'block', marginBottom: 6 }}>TELÉFONO</label>
             <input
-              type="tel"
-              placeholder="600 000 000"
-              value={telefono}
+              type="tel" placeholder="600 000 000" value={telefono}
               onChange={e => setTelefono(e.target.value)}
               style={{ width: '100%', padding: '12px 14px', background: '#1A2332', border: `1px solid ${clienteEncontrado ? 'rgba(34,197,94,0.4)' : 'rgba(148,163,184,0.06)'}`, borderRadius: 12, color: '#F1F5F9', fontSize: 15, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s' }}
             />
-            {buscandoCliente && (
-              <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 5 }}>Buscando cliente...</p>
-            )}
+            {buscandoCliente && <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 5 }}>Buscando cliente...</p>}
             {clienteEncontrado && !buscandoCliente && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5 }}>
                 <CheckCircle style={{ width: 13, height: 13, color: '#22C55E' }} />
-                <p style={{ fontSize: 11, color: '#22C55E', fontWeight: 600 }}>
-                  Cliente existente encontrado: {clienteEncontrado.nombre}
-                </p>
+                <p style={{ fontSize: 11, color: '#22C55E', fontWeight: 600 }}>Cliente existente: {clienteEncontrado.nombre}</p>
               </div>
             )}
             {!clienteEncontrado && !buscandoCliente && normalizeTel(telefono).length >= 6 && (
@@ -316,7 +291,7 @@ export default function NuevaCitaModal({
             )}
           </div>
 
-          {/* Alerta de fiabilidad */}
+          {/* Alerta fiabilidad */}
           {fiabilidad && fiabilidad.alertLevel !== 'none' && fiabilidad.alertMessage && (
             <div style={{
               padding: '10px 14px', borderRadius: 10, display: 'flex', alignItems: 'flex-start', gap: 10,
@@ -327,10 +302,7 @@ export default function NuevaCitaModal({
               {fiabilidad.alertLevel === 'warn' && <AlertTriangle style={{ width: 15, height: 15, color: '#F59E0B', flexShrink: 0, marginTop: 1 }} />}
               {fiabilidad.alertLevel === 'info' && <Info style={{ width: 15, height: 15, color: '#3B82F6', flexShrink: 0, marginTop: 1 }} />}
               <div>
-                <p style={{
-                  fontSize: 12, fontWeight: 600, lineHeight: 1.4,
-                  color: fiabilidad.alertLevel === 'danger' ? '#EF4444' : fiabilidad.alertLevel === 'warn' ? '#F59E0B' : '#60A5FA',
-                }}>
+                <p style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.4, color: fiabilidad.alertLevel === 'danger' ? '#EF4444' : fiabilidad.alertLevel === 'warn' ? '#F59E0B' : '#60A5FA' }}>
                   {fiabilidad.alertMessage}
                 </p>
                 <p style={{ fontSize: 11, color: '#4B5563', marginTop: 3 }}>
@@ -343,11 +315,7 @@ export default function NuevaCitaModal({
           {/* Nombre */}
           <div>
             <label style={{ fontSize: 12, color: '#94A3B8', fontWeight: 600, display: 'block', marginBottom: 6 }}>NOMBRE *</label>
-            <input
-              type="text"
-              placeholder="Nombre del cliente"
-              value={nombre}
-              onChange={e => setNombre(e.target.value)}
+            <input type="text" placeholder="Nombre del cliente" value={nombre} onChange={e => setNombre(e.target.value)}
               style={{ width: '100%', padding: '12px 14px', background: '#1A2332', border: '1px solid rgba(148,163,184,0.06)', borderRadius: 12, color: '#F1F5F9', fontSize: 15, outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
@@ -356,20 +324,13 @@ export default function NuevaCitaModal({
           <div>
             <label style={{ fontSize: 12, color: '#94A3B8', fontWeight: 600, display: 'block', marginBottom: 6 }}>SERVICIO</label>
             {servicios.length > 0 ? (
-              <select
-                value={servicio}
-                onChange={e => setServicio(e.target.value)}
-                style={{ width: '100%', padding: '12px 14px', background: '#1A2332', border: '1px solid rgba(148,163,184,0.06)', borderRadius: 12, color: servicio ? '#F1F5F9' : '#4B5563', fontSize: 15, outline: 'none', boxSizing: 'border-box', appearance: 'none' }}
-              >
+              <select value={servicio} onChange={e => setServicio(e.target.value)}
+                style={{ width: '100%', padding: '12px 14px', background: '#1A2332', border: '1px solid rgba(148,163,184,0.06)', borderRadius: 12, color: servicio ? '#F1F5F9' : '#4B5563', fontSize: 15, outline: 'none', boxSizing: 'border-box', appearance: 'none' }}>
                 <option value="">Seleccionar servicio</option>
                 {servicios.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
               </select>
             ) : (
-              <input
-                type="text"
-                placeholder="Ej: Corte de pelo"
-                value={servicio}
-                onChange={e => setServicio(e.target.value)}
+              <input type="text" placeholder="Ej: Corte de pelo" value={servicio} onChange={e => setServicio(e.target.value)}
                 style={{ width: '100%', padding: '12px 14px', background: '#1A2332', border: '1px solid rgba(148,163,184,0.06)', borderRadius: 12, color: '#F1F5F9', fontSize: 15, outline: 'none', boxSizing: 'border-box' }}
               />
             )}
@@ -379,21 +340,13 @@ export default function NuevaCitaModal({
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: 12, color: '#94A3B8', fontWeight: 600, display: 'block', marginBottom: 6 }}>INICIO</label>
-              <input
-                type="time"
-                value={horaInicio}
-                onChange={e => setHoraInicio(e.target.value)}
-                style={{ width: '100%', padding: '12px 14px', background: '#1A2332', border: '1px solid rgba(148,163,184,0.06)', borderRadius: 12, color: '#F1F5F9', fontSize: 15, outline: 'none', boxSizing: 'border-box' }}
-              />
+              <input type="time" value={horaInicio} onChange={e => setHoraInicio(e.target.value)}
+                style={{ width: '100%', padding: '12px 14px', background: '#1A2332', border: '1px solid rgba(148,163,184,0.06)', borderRadius: 12, color: '#F1F5F9', fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
             </div>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: 12, color: '#94A3B8', fontWeight: 600, display: 'block', marginBottom: 6 }}>FIN</label>
-              <input
-                type="time"
-                value={horaFin}
-                onChange={e => setHoraFin(e.target.value)}
-                style={{ width: '100%', padding: '12px 14px', background: '#1A2332', border: '1px solid rgba(148,163,184,0.06)', borderRadius: 12, color: '#F1F5F9', fontSize: 15, outline: 'none', boxSizing: 'border-box' }}
-              />
+              <input type="time" value={horaFin} onChange={e => setHoraFin(e.target.value)}
+                style={{ width: '100%', padding: '12px 14px', background: '#1A2332', border: '1px solid rgba(148,163,184,0.06)', borderRadius: 12, color: '#F1F5F9', fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
             </div>
           </div>
 
@@ -407,14 +360,7 @@ export default function NuevaCitaModal({
                   const selected = estadoSeleccionado === nom;
                   return (
                     <button key={e.id} onClick={() => setEstadoSeleccionado(nom)}
-                      style={{
-                        padding: '6px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                        fontSize: 12, fontWeight: 600,
-                        background: selected ? e.color + '22' : '#1A2332',
-                        color: selected ? e.color : '#94A3B8',
-                        outline: selected ? `2px solid ${e.color}` : 'none',
-                        transition: 'all 0.15s',
-                      }}>
+                      style={{ padding: '6px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: selected ? e.color + '22' : '#1A2332', color: selected ? e.color : '#94A3B8', outline: selected ? `2px solid ${e.color}` : 'none', transition: 'all 0.15s' }}>
                       <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: e.color, marginRight: 6 }} />
                       {nom}
                     </button>
@@ -431,14 +377,8 @@ export default function NuevaCitaModal({
                 IMPORTE ESTIMADO <span style={{ fontWeight: 400, color: '#4B5563' }}>(opcional)</span>
               </label>
               <div style={{ position: 'relative' }}>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="0.00"
-                  value={importe}
-                  onChange={e => setImporte(e.target.value)}
-                  style={{ width: '100%', padding: '12px 14px', paddingRight: 36, background: '#1A2332', border: '1px solid rgba(148,163,184,0.06)', borderRadius: 12, color: '#F1F5F9', fontSize: 15, outline: 'none', boxSizing: 'border-box' }}
-                />
+                <input type="text" inputMode="decimal" placeholder="0.00" value={importe} onChange={e => setImporte(e.target.value)}
+                  style={{ width: '100%', padding: '12px 14px', paddingRight: 36, background: '#1A2332', border: '1px solid rgba(148,163,184,0.06)', borderRadius: 12, color: '#F1F5F9', fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
                 <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: '#4B5563', fontSize: 14, fontWeight: 600 }}>€</span>
               </div>
             </div>
@@ -447,13 +387,8 @@ export default function NuevaCitaModal({
           {/* Notas */}
           <div>
             <label style={{ fontSize: 12, color: '#94A3B8', fontWeight: 600, display: 'block', marginBottom: 6 }}>NOTAS</label>
-            <textarea
-              placeholder="Observaciones, preferencias..."
-              value={notas}
-              onChange={e => setNotas(e.target.value)}
-              rows={2}
-              style={{ width: '100%', padding: '12px 14px', background: '#1A2332', border: '1px solid rgba(148,163,184,0.06)', borderRadius: 12, color: '#F1F5F9', fontSize: 15, outline: 'none', resize: 'none', boxSizing: 'border-box' }}
-            />
+            <textarea placeholder="Observaciones, preferencias..." value={notas} onChange={e => setNotas(e.target.value)} rows={2}
+              style={{ width: '100%', padding: '12px 14px', background: '#1A2332', border: '1px solid rgba(148,163,184,0.06)', borderRadius: 12, color: '#F1F5F9', fontSize: 15, outline: 'none', resize: 'none', boxSizing: 'border-box' }} />
           </div>
 
           {/* Error */}
@@ -465,11 +400,8 @@ export default function NuevaCitaModal({
           )}
 
           {/* Guardar */}
-          <button
-            onClick={guardar}
-            disabled={guardando}
-            style={{ width: '100%', padding: '14px', borderRadius: 14, border: 'none', background: guardando ? '#15803D' : '#22C55E', color: '#fff', cursor: guardando ? 'not-allowed' : 'pointer', fontSize: 15, fontWeight: 700, opacity: guardando ? 0.7 : 1, transition: 'background 0.2s' }}
-          >
+          <button onClick={guardar} disabled={guardando}
+            style={{ width: '100%', padding: '14px', borderRadius: 14, border: 'none', background: guardando ? '#15803D' : '#22C55E', color: '#fff', cursor: guardando ? 'not-allowed' : 'pointer', fontSize: 15, fontWeight: 700, opacity: guardando ? 0.7 : 1, transition: 'background 0.2s' }}>
             {guardando ? 'Comprobando y guardando...' : 'Crear cita'}
           </button>
         </div>
