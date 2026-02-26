@@ -45,14 +45,6 @@ const C = {
   text: '#F1F5F9', textSec: '#94A3B8',
 };
 
-
-// ═══ HELPER: ¿Este estado ocupa hueco horario? ═══
-function blocksTime(estado: string): boolean {
-  const e = (estado || '').toLowerCase().trim();
-  if (e === 'cancelada' || e === 'no-show' || e === 'no_show' || e === 'completada') return false;
-  return true;
-}
-
 type ViewMode = 'day' | 'week' | 'month';
 
 export default function Dashboard() {
@@ -80,9 +72,8 @@ export default function Dashboard() {
   const [editHoraFin, setEditHoraFin] = useState('');
   const [editEstado, setEditEstado] = useState('');
   const [editLoading, setEditLoading] = useState(false);
-  const [editError, setEditError] = useState('');
 
-  // Risk indicator cache
+  // ═══ RISK INDICATOR CACHE ═══
   const [clientRiskCache, setClientRiskCache] = useState<Record<string, { show: boolean; color: string; icon: string | null }>>({});
 
   const empresaIdRef = useRef<string | null>(null);
@@ -134,6 +125,7 @@ export default function Dashboard() {
   useEffect(() => { loadAllCitas(); }, [selectedDate, view]);
   useEffect(() => { if (profesional) { profesionalIdRef.current = profesional.id; loadAllCitas(); } }, [profesional]);
 
+  // ═══ LOAD CLIENT RISKS ═══
   function loadClientRisks(citas: any[]) {
     const citasPorCliente: Record<string, any[]> = {};
     citas.forEach(c => {
@@ -215,7 +207,7 @@ export default function Dashboard() {
     return diasLaborables.includes(isoDay);
   }
 
-  // Canceladas NO aparecen en vistas operativas
+  // Canceladas NO aparecen en las vistas operativas
   function citasForDate(d: Date): any[] {
     const ds = toDS(d);
     return allCitas.filter(c =>
@@ -232,11 +224,6 @@ export default function Dashboard() {
   function slotOccupied(citas: any[], slot: string): boolean {
     const slotM = timeToMinutes(slot);
     return citas.some(c => {
-      // Solo citas que realmente bloquean el hueco
-      // blocks_time=false OR null with liberating estado → free slot
-      const est = (c.estado||"").toLowerCase();
-      const freeEstado = est === "cancelada" || est === "no-show" || est === "no_show" || est === "completada";
-      if (c.blocks_time === false || (c.blocks_time == null && freeEstado)) return false;
       const sm = rawTimeMin(c.hora_inicio);
       const em = c.hora_fin ? rawTimeMin(c.hora_fin) : sm + 30;
       return slotM >= sm && slotM < em;
@@ -244,12 +231,7 @@ export default function Dashboard() {
   }
 
   function freeSlotCount(d: Date): number {
-    // Solo citas con blocks_time=true ocupan hueco para el conteo de disponibilidad
-    const citas = activeCitasForDate(d).filter(c => {
-      const est = (c.estado||"").toLowerCase();
-      const freeEstado = est === "cancelada" || est === "no-show" || est === "no_show" || est === "completada";
-      return c.blocks_time === true || (c.blocks_time == null && !freeEstado);
-    });
+    const citas = activeCitasForDate(d);
     return visibleSlots.filter(s => !slotOccupied(citas, s)).length;
   }
 
@@ -327,78 +309,32 @@ export default function Dashboard() {
     setEditHoraInicio(cita.hora_inicio?.substring(11, 16) || '');
     setEditHoraFin(cita.hora_fin?.substring(11, 16) || '');
     setEditEstado(cita.estado || '');
-    setEditError('');
-  }
-
-  // ═══ VALIDAR SOLAPAMIENTO (para edición) ═══
-  async function validarSolapamientoEdicion(dateStr: string, inicio: string, fin: string, excludeId: string): Promise<string | null> {
-    const eid = empresaIdRef.current || localStorage.getItem('slotify_empresa_id');
-    const pid = profesionalIdRef.current || localStorage.getItem('slotify_profesional_id');
-    if (!eid || !pid) return null;
-
-    const hInicioISO = `${dateStr}T${inicio}:00`;
-    const hFinISO = `${dateStr}T${fin}:00`;
-
-    const { data, error } = await supabase
-      .from('citas')
-      .select('id, hora_inicio, hora_fin, estado')
-      .eq('empresa_id', eid)
-      .eq('profesional_id', pid)
-      .eq('blocks_time', true)          // ← solo citas que realmente bloquean
-      .neq('id', excludeId)
-      .lt('hora_inicio', hFinISO)
-      .gt('hora_fin', hInicioISO);
-
-    if (error) { console.error('Error validando solapamiento edición:', error); return null; }
-    if (data && data.length > 0) {
-      const conflicto = data[0];
-      const clienteConflicto = 'otro cliente';
-      const horaConflicto = conflicto.hora_inicio?.substring(11, 16) || '';
-      return `Conflicto de horario: ya hay una cita con ${clienteConflicto} a las ${horaConflicto}. Elige otro horario.`;
-    }
-    return null;
   }
 
   async function guardarEdicion() {
     if (!editingCita) return;
-    if (editHoraFin <= editHoraInicio) {
-      setEditError('La hora de fin debe ser posterior a la de inicio');
-      return;
-    }
     setEditLoading(true);
-    setEditError('');
     try {
       const dateStr = rawDate(editingCita.hora_inicio);
-
-      // Validar solapamiento (excluyendo la cita actual)
-      const conflicto = await validarSolapamientoEdicion(dateStr, editHoraInicio, editHoraFin, editingCita.id);
-      if (conflicto) {
-        setEditError(conflicto);
-        setEditLoading(false);
-        return;
-      }
-
       const updates: any = {
         hora_inicio: `${dateStr}T${editHoraInicio}:00`,
         hora_fin: `${dateStr}T${editHoraFin}:00`,
         notas: editNotas || null,
         estado: editEstado,
         servicio_nombre_libre: editServicio || null,
-        blocks_time: blocksTime(editEstado),   // ← actualiza junto al estado
       };
       await supabase.from('citas').update(updates).eq('id', editingCita.id);
       setEditingCita(null);
       loadAllCitas();
     } catch (e) {
       console.error(e);
-      setEditError('Error al guardar. Inténtalo de nuevo.');
     } finally {
       setEditLoading(false);
     }
   }
 
   async function cancelarCita(id: string) {
-    await supabase.from('citas').update({ estado: 'cancelada', blocks_time: false }).eq('id', id);
+    await supabase.from('citas').update({ estado: 'cancelada' }).eq('id', id);
     setSelectedCita(null);
     setEditingCita(null);
     loadAllCitas();
@@ -415,67 +351,39 @@ export default function Dashboard() {
   }
 
   const weekDayNames = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
-  const WEEK_SLOT_H = 42;
+  const WEEK_SLOT_H = 44;
 
-  // ═══ RENDER BLOQUE DE CITA ═══
   function renderCitaBlock(cita: any, style: React.CSSProperties) {
     const name = cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente';
     const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
     const notas = cita.notas || '';
-    const color = citaColor(cita.estado);
-    const fs = (style.fontSize as number) || 10;
-    const risk = cita.cliente_id ? clientRiskCache[cita.cliente_id] : null;
-    const h = (style.height as number) || 0;
-    const isCompact = h < 28;
-    const isDay = (style as any).isDay === true;
-
-    // Extraer isDay del style para no pasarlo al DOM
-    const { isDay: _isDay, ...cleanStyle } = style as any;
-
     const linea2 = svc && notas ? `${svc} — ${notas}` : svc || notas;
-
+    const color = citaColor(cita.estado);
+    const fs = (style.fontSize as number) || 11;
+    const risk = cita.cliente_id ? clientRiskCache[cita.cliente_id] : null;
     return (
-      <div
-        key={cita.id}
-        onClick={() => setSelectedCita(cita)}
+      <div key={cita.id} onClick={() => setSelectedCita(cita)}
         style={{
-          ...cleanStyle,
+          ...style,
           background: `${color}33`,
           borderLeft: `3px solid ${color}`,
           cursor: 'pointer',
-          overflow: 'hidden',
           zIndex: 10,
           pointerEvents: 'auto',
           boxShadow: `0 1px 4px ${color}33`,
-          padding: 0,
-          boxSizing: 'border-box',
-        }}
-      >
-        {/* ── VISTA DÍA: padding propio, texto que respira ── */}
-        {isDay ? (
-          <div style={{ padding: '12px 14px', height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <div style={{ fontSize: fs, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.35, wordBreak: 'break-word', display: 'flex', alignItems: 'flex-start', gap: 4 }}>
-              <span>{name}</span>
-              {risk?.show && <span style={{ fontSize: Math.max(fs - 2, 8), lineHeight: 1, flexShrink: 0, marginTop: 1 }}>{risk.icon}</span>}
-            </div>
-            {!isCompact && linea2 && (
-              <div style={{ fontSize: fs, fontWeight: 400, color: '#FFFFFF', lineHeight: 1.35, wordBreak: 'break-word', opacity: 0.9, marginTop: 3 }}>
-                {linea2}
-              </div>
-            )}
-          </div>
-        ) : (
-          /* ── VISTA SEMANA: padding compacto, max 3 líneas ── */
-          <div style={{ padding: '5px 6px', height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden' }}>
-            <div style={{ fontSize: fs, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, display: 'flex', alignItems: 'flex-start', gap: 3, overflow: 'hidden' }}>
-              <span style={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any, wordBreak: 'break-word' }}>{name}</span>
-              {risk?.show && <span style={{ fontSize: Math.max(fs - 2, 8), flexShrink: 0 }}>{risk.icon}</span>}
-            </div>
-            {!isCompact && linea2 && (
-              <div style={{ fontSize: fs - 1, fontWeight: 400, color: '#FFFFFF', opacity: 0.85, lineHeight: 1.3, marginTop: 2, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as any, wordBreak: 'break-word' }}>
-                {linea2}
-              </div>
-            )}
+          boxSizing: 'border-box' as const,
+        }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
+          <span style={{ fontSize: fs, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.35, wordBreak: 'break-word' as const, flex: 1 }}>{name}</span>
+          {risk?.show && (
+            <span style={{ fontSize: Math.max(fs - 2, 8), lineHeight: 1, flexShrink: 0, marginTop: 1 }}>
+              {risk.icon}
+            </span>
+          )}
+        </div>
+        {linea2 && (
+          <div style={{ fontSize: fs - 1, fontWeight: 400, color: '#FFFFFF', opacity: 0.85, lineHeight: 1.35, wordBreak: 'break-word' as const, marginTop: 2 }}>
+            {linea2}
           </div>
         )}
       </div>
@@ -576,11 +484,10 @@ export default function Dashboard() {
                     const top = ((citaStart - startMin) / 30) * 50;
                     const h = (dur / 30) * 50;
                     return renderCitaBlock(cita, {
-                      position: 'absolute', top, height: h, minHeight: h, left: 8, right: 8,
-                      borderRadius: 10,
+                      position: 'absolute', top, minHeight: h, left: 8, right: 8,
+                      borderRadius: 10, padding: '10px 14px',
                       fontSize: 14,
-                      isDay: true,
-                    } as any);
+                    });
                   })}
                 </div>
                 {isToday(selectedDate) && currentMinutes >= startMin && currentMinutes < endMin && (
@@ -753,8 +660,8 @@ export default function Dashboard() {
                             const h = (dur / 30) * WEEK_SLOT_H;
                             if (top >= visibleSlots.length * WEEK_SLOT_H || top + h <= 0) return null;
                             return renderCitaBlock(cita, {
-                              position: 'absolute', top, height: h, minHeight: h, left: 2, right: 2,
-                              borderRadius: 5, padding: '5px 7px', fontSize: 12,
+                              position: 'absolute', top, minHeight: h, left: 2, right: 2,
+                              borderRadius: 5, padding: '6px 8px', fontSize: 11,
                             });
                           })}
 
@@ -970,13 +877,6 @@ export default function Dashboard() {
                     placeholder="Observaciones, preferencias..." />
                 </div>
 
-                {/* Error de edición */}
-                {editError && (
-                  <div style={{ padding: '10px 14px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 10 }}>
-                    <p style={{ color: C.red, fontSize: 13, lineHeight: 1.4 }}>⚠ {editError}</p>
-                  </div>
-                )}
-
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button onClick={() => cancelarCita(editingCita.id)}
                     style={{ flex: 1, padding: '10px 0', borderRadius: 12, background: `${C.red}22`, border: `1px solid ${C.red}55`, color: C.red, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
@@ -984,7 +884,7 @@ export default function Dashboard() {
                   </button>
                   <button onClick={guardarEdicion} disabled={editLoading}
                     style={{ flex: 2, padding: '10px 0', borderRadius: 12, background: C.green, border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: editLoading ? 0.6 : 1 }}>
-                    {editLoading ? 'Comprobando...' : 'Guardar cambios'}
+                    {editLoading ? 'Guardando...' : 'Guardar cambios'}
                   </button>
                 </div>
               </div>
