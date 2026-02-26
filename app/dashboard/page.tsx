@@ -447,20 +447,13 @@ export default function Dashboard() {
           zIndex: 10,
           pointerEvents: 'auto',
           boxShadow: `0 1px 4px ${color}33`,
-          // Sin padding aquí — lo gestiona el div interior
           padding: 0,
+          boxSizing: 'border-box',
         }}
       >
         {/* ── VISTA DÍA: padding propio, texto que respira ── */}
         {isDay ? (
-          <div style={{
-            padding: '10px 14px',
-            height: '100%',
-            boxSizing: 'border-box',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'flex-start',
-          }}>
+          <div style={{ padding: '12px 14px', height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <div style={{ fontSize: fs, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.35, wordBreak: 'break-word', display: 'flex', alignItems: 'flex-start', gap: 4 }}>
               <span>{name}</span>
               {risk?.show && <span style={{ fontSize: Math.max(fs - 2, 8), lineHeight: 1, flexShrink: 0, marginTop: 1 }}>{risk.icon}</span>}
@@ -473,33 +466,13 @@ export default function Dashboard() {
           </div>
         ) : (
           /* ── VISTA SEMANA: padding compacto, max 3 líneas ── */
-          <div style={{
-            padding: '4px 6px',
-            height: '100%',
-            boxSizing: 'border-box',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'flex-start',
-            overflow: 'hidden',
-          }}>
-            <div style={{ fontSize: fs, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 3 }}>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+          <div style={{ padding: '5px 6px', height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden' }}>
+            <div style={{ fontSize: fs, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, display: 'flex', alignItems: 'flex-start', gap: 3, overflow: 'hidden' }}>
+              <span style={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any, wordBreak: 'break-word' }}>{name}</span>
               {risk?.show && <span style={{ fontSize: Math.max(fs - 2, 8), flexShrink: 0 }}>{risk.icon}</span>}
             </div>
             {!isCompact && linea2 && (
-              <div style={{
-                fontSize: fs - 1,
-                fontWeight: 400,
-                color: '#FFFFFF',
-                opacity: 0.85,
-                lineHeight: 1.3,
-                marginTop: 1,
-                overflow: 'hidden',
-                display: '-webkit-box',
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: 'vertical' as any,
-                wordBreak: 'break-word',
-              }}>
+              <div style={{ fontSize: fs - 1, fontWeight: 400, color: '#FFFFFF', opacity: 0.85, lineHeight: 1.3, marginTop: 2, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as any, wordBreak: 'break-word' }}>
                 {linea2}
               </div>
             )}
