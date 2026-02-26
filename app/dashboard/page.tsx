@@ -753,22 +753,18 @@ export default function Dashboard() {
                         return currentMinutes >= m && currentMinutes < m + 30;
                       })();
 
-                      cells.push(
-                        {/* Determine if this slot is a continuation of a cita */}
-                        {(() => {
-                          const isContinuation = coveredSlots.has(si) && !cita;
-                          // Find the cita that covers this slot (for continuation styling)
-                          const coveringCita = isContinuation
-                            ? dayCitaMaps[di].dayCitas?.find((c: any) => {
-                                const cs = rawTimeMin(c.hora_inicio);
-                                const ce = c.hora_fin ? rawTimeMin(c.hora_fin) : cs + 30;
-                                const slotM = timeToMinutes(slot);
-                                return slotM > cs && slotM < ce;
-                              })
-                            : null;
-                          const contColor = coveringCita ? citaColor(coveringCita.estado) : null;
+                      const isContinuation = coveredSlots.has(si) && !cita;
+                      const coveringCita = isContinuation
+                        ? dayCitaMaps[di].dayCitas?.find((c: any) => {
+                            const cs = rawTimeMin(c.hora_inicio);
+                            const ce = c.hora_fin ? rawTimeMin(c.hora_fin) : cs + 30;
+                            const slotM = timeToMinutes(slot);
+                            return slotM > cs && slotM < ce;
+                          })
+                        : null;
+                      const contColor = coveringCita ? citaColor(coveringCita.estado) : null;
 
-                          return (
+                      cells.push(
                             <div key={`cell-${si}-${di}`} style={{
                               gridColumn: di + 2,
                               gridRow: rowIdx,
@@ -832,8 +828,6 @@ export default function Dashboard() {
                               )}
                             </div>
                           );
-                        })()}
-                      );
                     });
                   });
 
