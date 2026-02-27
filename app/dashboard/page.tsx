@@ -414,7 +414,7 @@ export default function Dashboard() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}
         className="main-content-desktop">
 
-      {/* HEADER — 64px, todo en una línea */}
+      {/* HEADER — 56px, todo en una línea */}
       <div style={{
         height: 56,
         background: C.surface,
@@ -596,8 +596,18 @@ export default function Dashboard() {
             </div>
           </div>
           <button onClick={() => openModal(selectedDate, '')}
-            className="fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-lg z-40"
-            style={{ background: C.green }}>
+            style={{
+              position: 'fixed',
+              bottom: 'calc(80px + env(safe-area-inset-bottom))',
+              right: 16,
+              width: 56, height: 56,
+              borderRadius: '50%',
+              background: C.green,
+              border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 20px rgba(34,197,94,0.45)',
+              zIndex: 35,
+            }}>
             <Plus className="w-6 h-6 text-white" />
           </button>
         </>)}
@@ -885,7 +895,7 @@ export default function Dashboard() {
                 background: C.green,
                 border: 'none', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: `0 4px 20px rgba(34,197,94,0.45)`,
+                boxShadow: '0 4px 20px rgba(34,197,94,0.45)',
                 zIndex: 35,
               }}>
               <Plus className="w-6 h-6 text-white" />
@@ -954,7 +964,7 @@ export default function Dashboard() {
                 background: C.green,
                 border: 'none', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: `0 4px 20px rgba(34,197,94,0.45)`,
+                boxShadow: '0 4px 20px rgba(34,197,94,0.45)',
                 zIndex: 35,
               }}>
               <Plus className="w-6 h-6 text-white" />
