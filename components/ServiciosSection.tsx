@@ -54,12 +54,21 @@ function ModalServicio({
   onCerrar: () => void;
 }) {
   return (
-    <div
-      style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:50, display:'flex', alignItems:'flex-end', justifyContent:'center' }}
-      onClick={onCerrar}
-    >
+    <>
+      <style>{`
+        @media (min-width: 640px) {
+          .svc-modal-overlay { align-items: center !important; }
+          .svc-modal-box { border-radius: 16px !important; max-width: 480px !important; }
+        }
+      `}</style>
       <div
-        style={{ background: C.panel, borderRadius:'20px 20px 0 0', padding:24, width:'100%', maxWidth:480, paddingBottom:36 }}
+        className="svc-modal-overlay"
+        style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:50, display:'flex', alignItems:'flex-end', justifyContent:'center', padding:'0 0' }}
+        onClick={onCerrar}
+      >
+      <div
+        className="svc-modal-box"
+        style={{ background: C.panel, borderRadius:'20px 20px 0 0', padding:24, width:'100%', maxWidth:'100%', paddingBottom:36, maxHeight:'92vh', overflowY:'auto' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -151,7 +160,8 @@ function ModalServicio({
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
