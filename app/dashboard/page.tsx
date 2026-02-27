@@ -757,7 +757,7 @@ export default function Dashboard() {
                               borderBottom: `1px solid ${isHour ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.06)'}`,
                               borderLeft: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`,
                               borderRight: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`,
-                              borderRadius: si === visibleSlots.length - 1 ? '0 0 10px 10px' : 0,
+
                               position: 'relative',
                               display: 'flex',
                               flexDirection: 'column',
@@ -820,9 +820,9 @@ export default function Dashboard() {
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: `42px repeat(7, 1fr)`,
-                      gridTemplateRows: `44px`,
-                      gridAutoRows: `${WEEK_SLOT_H}px`,
-                      gap: '0 4px',
+                      gridTemplateRows: `44px repeat(${visibleSlots.length}, ${WEEK_SLOT_H}px)`,
+                      columnGap: '4px',
+                      rowGap: 0,
                     }}>
                       {cells}
                     </div>
