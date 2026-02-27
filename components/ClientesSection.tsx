@@ -2,178 +2,164 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Search, Plus, X, Phone, Mail, ChevronRight, ArrowLeft, Trash2, Edit2, Check, Calendar, MessageCircle, DollarSign } from 'lucide-react';
-import { calcularFiabilidad, type FiabilidadResult } from '@/lib/fiabilidad';
+import { Search, Plus, X, Phone, Mail, ChevronRight, ArrowLeft, Trash2, Edit2, Check, Calendar, MessageCircle, DollarSign, AlertTriangle, ChevronDown } from 'lucide-react';
+import { calcularFiabilidad, inferEstadoDetallado, type FiabilidadResult } from '@/lib/fiabilidad';
 
 const C = {
   bg: '#0B0F1A', panel: '#111827', panelAlt: '#1A2332',
   accent: '#22C55E', accentDim: 'rgba(34,197,94,0.15)',
   red: '#EF4444', redDim: 'rgba(239,68,68,0.12)',
-  amber: '#F59E0B', blue: '#3B82F6', purple: '#A855F7',
+  amber: '#F59E0B', blue: '#3B82F6', purple: '#A855F7', orange: '#FB923C',
   text: '#F1F5F9', textMid: '#94A3B8', textDim: '#4B5563',
-  divider: 'rgba(148,163,184,0.06)', grid: 'rgba(148,163,184,0.05)',
+  divider: 'rgba(148,163,184,0.06)',
 };
+
+const ESTADOS_DETALLADOS = [
+  { key: 'completada', label: 'Completada', icon: '✅', color: '#10B981' },
+  { key: 'no_show_real', label: 'No-show real', icon: '🔴', color: '#EF4444' },
+  { key: 'no_show_justificado', label: 'No-show justificado', icon: '🟠', color: '#FB923C' },
+  { key: 'cancelacion_tardia', label: 'Cancelación tardía', icon: '🟡', color: '#F59E0B' },
+  { key: 'cancelacion_anticipada', label: 'Cancelación anticipada', icon: '⚪', color: '#6B7280' },
+  { key: 'reprogramada', label: 'Reprogramada', icon: '🔵', color: '#3B82F6' },
+];
+
+function getEstadoVisual(cita: any) {
+  const ed = inferEstadoDetallado(cita);
+  return ESTADOS_DETALLADOS.find(e => e.key === ed) || ESTADOS_DETALLADOS[0];
+}
 
 interface Cliente { id: string; nombre: string; telefono?: string; email?: string; notas?: string; created_at?: string; }
 interface FormCliente { nombre: string; telefono: string; email: string; notas: string; }
 
-/* ═══ FIABILIDAD RING ═══ */
-function FiabilidadRing({ fiab, size = 150 }: { fiab: FiabilidadResult; size?: number }) {
-  const s = 10, r = (size - s) / 2, circ = 2 * Math.PI * r;
-  const off = circ - (fiab.score / 100) * circ;
+/* ═══ DONUT — solo completadas vs incidencias ═══ */
+function DonutSimple({ completadas, incidencias, total }: { completadas: number; incidencias: number; total: number }) {
+  if (total === 0) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 140, color: C.textDim, fontSize: 11 }}>Sin datos</div>;
+  const size = 140, stroke = 16, r = (size - stroke) / 2, circ = 2 * Math.PI * r;
+  const pComp = completadas / total;
+  const dComp = pComp * circ;
+  const dInc = incidencias > 0 ? (incidencias / total) * circ : 0;
   return (
-    <div style={{ position: 'relative', width: size, height: size }}>
-      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(148,163,184,0.08)" strokeWidth={s} />
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={fiab.color} strokeWidth={s}
-          strokeDasharray={circ} strokeDashoffset={off} strokeLinecap="round"
-          style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1)' }} />
-      </svg>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ fontSize: 36, fontWeight: 800, color: fiab.color, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{fiab.score}%</span>
-        <span style={{ fontSize: 9, color: C.textMid, fontWeight: 700, letterSpacing: 1.5, marginTop: 3, textTransform: 'uppercase' }}>{fiab.label}</span>
-      </div>
-    </div>
-  );
-}
-
-/* ═══ DONUT CHART DE ESTADOS ═══ */
-function DonutEstados({ completadas, canceladas, noShows }: { completadas: number; canceladas: number; noShows: number }) {
-  const total = completadas + canceladas + noShows;
-  if (total === 0) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 160, color: C.textDim, fontSize: 11 }}>
-      Sin datos
-    </div>
-  );
-
-  const size = 160, stroke = 18, r = (size - stroke) / 2, circ = 2 * Math.PI * r;
-  const segments = [
-    { value: completadas, color: C.accent, label: 'Completadas' },
-    { value: canceladas, color: C.amber, label: 'Canceladas' },
-    { value: noShows, color: C.red, label: 'No-show' },
-  ].filter(s => s.value > 0);
-
-  let offset = 0;
-  const arcs = segments.map(seg => {
-    const pct = seg.value / total;
-    const dash = pct * circ;
-    const arc = { ...seg, pct, dash, offset };
-    offset += dash + 3;
-    return arc;
-  });
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, width: '100%' }}>
-      {/* Donut SVG centrado */}
-      <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+      <div style={{ position: 'relative', width: size, height: size }}>
         <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
           <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(148,163,184,0.06)" strokeWidth={stroke} />
-          {arcs.map((arc, i) => (
-            <circle key={i}
-              cx={size/2} cy={size/2} r={r} fill="none"
-              stroke={arc.color} strokeWidth={stroke}
-              strokeDasharray={`${arc.dash} ${circ - arc.dash}`}
-              strokeDashoffset={-arc.offset}
-              strokeLinecap="butt"
-            />
-          ))}
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={C.accent} strokeWidth={stroke}
+            strokeDasharray={`${dComp} ${circ - dComp}`} strokeDashoffset={0} strokeLinecap="butt" />
+          {dInc > 0 && (
+            <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={C.red} strokeWidth={stroke}
+              strokeDasharray={`${dInc} ${circ - dInc}`} strokeDashoffset={-(dComp + 2)} strokeLinecap="butt" />
+          )}
         </svg>
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <span style={{ fontSize: 30, fontWeight: 800, color: C.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{total}</span>
-          <span style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', marginTop: 3 }}>citas</span>
+          <span style={{ fontSize: 26, fontWeight: 800, color: C.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{total}</span>
+          <span style={{ fontSize: 8, color: C.textDim, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginTop: 2 }}>citas</span>
         </div>
       </div>
-
-      {/* Leyenda horizontal debajo */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%', maxWidth: 200 }}>
-        {segments.map((seg, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 10, height: 10, borderRadius: 3, background: seg.color, flexShrink: 0 }} />
-            <span style={{ fontSize: 12, color: C.textMid, flex: 1 }}>{seg.label}</span>
-            <span style={{ fontSize: 14, fontWeight: 800, color: seg.color, fontVariantNumeric: 'tabular-nums' }}>{seg.value}</span>
-            <span style={{ fontSize: 10, color: C.textDim, minWidth: 30, textAlign: 'right' }}>
-              {Math.round((seg.value / total) * 100)}%
-            </span>
+      <div style={{ display: 'flex', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ width: 8, height: 8, borderRadius: 2, background: C.accent }} />
+          <span style={{ fontSize: 11, color: C.textMid }}>Completadas <b style={{ color: C.accent }}>{completadas}</b></span>
+        </div>
+        {incidencias > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <div style={{ width: 8, height: 8, borderRadius: 2, background: C.red }} />
+            <span style={{ fontSize: 11, color: C.textMid }}>Incidencias <b style={{ color: C.red }}>{incidencias}</b></span>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
 }
 
-/* ═══ BAR CHART actividad ═══ */
-function ActivityChart({ citas }: { citas: any[] }) {
-  const data = useMemo(() => {
-    const now = new Date();
-    const r: { label: string; count: number; cur: boolean }[] = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const y = d.getFullYear(), m = d.getMonth();
-      const count = citas.filter(c => {
-        if (!c.hora_inicio) return false;
-        const cd = new Date(c.hora_inicio);
-        return cd.getFullYear() === y && cd.getMonth() === m && c.estado !== 'cancelada' && c.estado !== 'Cancelada';
-      }).length;
-      r.push({ label: d.toLocaleDateString('es-ES', { month: 'short' }).replace('.','').toUpperCase(), count, cur: i === 0 });
-    }
-    return r;
-  }, [citas]);
-
-  const max = Math.max(...data.map(d => d.count), 1);
-  const W = 300, H = 90, pL = 22, pR = 8, pT = 14, pB = 22;
-  const cW = W - pL - pR, cH = H - pT - pB;
-  const bW = cW / data.length, bI = bW * 0.52;
-  const ticks: number[] = [];
-  const step = max <= 3 ? 1 : max <= 8 ? 2 : 5;
-  for (let t = 0; t <= max; t += step) ticks.push(t);
-  if (ticks[ticks.length-1] < max) ticks.push(max);
-
+/* ═══ RISK BADGE ═══ */
+function RiskBadge({ fiab }: { fiab: FiabilidadResult }) {
+  const icons: Record<string, string> = { fiable: '🟢', atencion: '🟡', riesgo: '🔴', nuevo: '⚫' };
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
-      {ticks.map(t => {
-        const y = pT + cH - (t / max) * cH;
-        return (<g key={t}>
-          <line x1={pL} x2={W-pR} y1={y} y2={y} stroke={C.grid} strokeWidth={1} />
-          <text x={pL-4} y={y+3} textAnchor="end" fill={C.textDim} fontSize={8} fontFamily="system-ui">{t}</text>
-        </g>);
-      })}
-      {data.map((d, i) => {
-        const x = pL + i * bW + (bW - bI) / 2;
-        const bH = d.count === 0 ? 2 : (d.count / max) * cH;
-        const y = pT + cH - bH;
-        return (<g key={i}>
-          <rect x={x} y={y} width={bI} height={bH} rx={2.5} fill={d.cur ? C.accent : 'rgba(34,197,94,0.3)'} />
-          {d.count > 0 && <text x={x+bI/2} y={y-4} textAnchor="middle" fill={d.cur ? C.accent : C.textMid} fontSize={9} fontWeight={700} fontFamily="system-ui">{d.count}</text>}
-          <text x={x+bI/2} y={H-5} textAnchor="middle" fill={d.cur ? C.text : C.textDim} fontSize={8} fontWeight={d.cur ? 700 : 400} fontFamily="system-ui">{d.label}</text>
-        </g>);
-      })}
-    </svg>
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: '4px 10px', borderRadius: 8,
+      background: fiab.riskColor + '18',
+      border: `1px solid ${fiab.riskColor}33`,
+      fontSize: 12, fontWeight: 700, color: fiab.riskColor,
+    }}>
+      {icons[fiab.riskLabel] || '⚫'} {fiab.displayLabel}
+    </span>
   );
 }
 
-/* ═══ TIMELINE DOT ═══ */
-function TDot({ cita, isLast }: { cita: any; isLast: boolean }) {
-  const estado = (cita.estado || '').toLowerCase();
-  const col = estado === 'cancelada' ? C.textDim : (estado === 'no-show' || estado === 'no_show') ? C.red : C.accent;
-  const f = new Date(cita.hora_inicio), now = new Date();
-  const diff = Math.floor((now.getTime() - f.getTime()) / 86400000);
-  const ds = diff === 0 ? 'Hoy' : diff === 1 ? 'Ayer' : diff < 7 ? `${diff}d` : diff < 30 ? `${Math.floor(diff/7)}sem` : f.toLocaleDateString('es-ES',{day:'numeric',month:'short'});
-  const sv = cita.servicios?.nombre || cita.servicio_nombre_libre || 'Servicio';
-  const hr = cita.hora_inicio?.substring(11, 16);
-  const imp = cita.importe;
+/* ═══ METRIC CARD ═══ */
+function MetricCard({ value, label, sub, color }: { value: string | number; label: string; sub?: string; color: string }) {
   return (
-    <div style={{ display: 'flex', gap: 8, minHeight: 30 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 8, flexShrink: 0 }}>
-        <div style={{ width: 7, height: 7, borderRadius: '50%', background: col, flexShrink: 0, marginTop: 3 }} />
-        {!isLast && <div style={{ flex: 1, width: 1, background: C.divider, marginTop: 2 }} />}
+    <div style={{ background: C.panelAlt, borderRadius: 10, padding: '14px 16px', flex: 1, minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+        <span style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+        {sub && <span style={{ fontSize: 10, color: C.textDim }}>{sub}</span>}
       </div>
-      <div style={{ flex: 1, paddingBottom: isLast ? 0 : 4, display: 'flex', alignItems: 'baseline', gap: 5, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11, fontWeight: 600, color: C.text }}>{sv}</span>
-        <span style={{ fontSize: 10, color: C.textDim }}>{hr} · {ds}</span>
-        {imp != null && imp > 0 && <span style={{ fontSize: 10, color: C.accent, fontWeight: 600 }}>{imp}€</span>}
-        {estado === 'cancelada' && <span style={{ fontSize: 9, color: C.textDim, fontWeight: 600 }}>CANCEL.</span>}
-        {(estado === 'no-show' || estado === 'no_show') && <span style={{ fontSize: 9, color: C.red, fontWeight: 600 }}>NO-SHOW</span>}
+      <span style={{ fontSize: 10, color: C.textDim, fontWeight: 600, letterSpacing: 0.3, textTransform: 'uppercase', marginTop: 4, display: 'block' }}>{label}</span>
+    </div>
+  );
+}
+
+/* ═══ HISTORY ROW (editable) ═══ */
+function HistoryRow({ cita, onUpdate }: { cita: any; onUpdate: (id: string, ed: string) => void; key?: string }) {
+  const [dropOpen, setDropOpen] = useState(false);
+  const vis = getEstadoVisual(cita);
+  const f = cita.hora_inicio ? new Date(cita.hora_inicio) : null;
+  const dateStr = f ? f.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+  const timeStr = cita.hora_inicio?.substring(11, 16) || '';
+  const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: `1px solid ${C.divider}`, position: 'relative' }}>
+      {/* Date + time */}
+      <div style={{ width: 90, flexShrink: 0 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: C.text, display: 'block' }}>{dateStr}</span>
+        <span style={{ fontSize: 10, color: C.textDim }}>{timeStr}</span>
       </div>
+      {/* Estado badge — clickable */}
+      <div style={{ position: 'relative' }}>
+        <button onClick={() => setDropOpen(!dropOpen)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            padding: '3px 8px', borderRadius: 6, border: `1px solid ${vis.color}33`,
+            background: vis.color + '15', cursor: 'pointer', fontSize: 11, fontWeight: 600, color: vis.color,
+          }}>
+          <span>{vis.icon}</span> {vis.label} <ChevronDown style={{ width: 10, height: 10 }} />
+        </button>
+        {dropOpen && (
+          <>
+            <div style={{ position: 'fixed', inset: 0, zIndex: 60 }} onClick={() => setDropOpen(false)} />
+            <div style={{
+              position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 61,
+              background: C.panel, border: `1px solid ${C.divider}`, borderRadius: 8,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.5)', minWidth: 200, overflow: 'hidden',
+            }}>
+              {ESTADOS_DETALLADOS.map(ed => (
+                <button key={ed.key}
+                  onClick={() => { onUpdate(cita.id, ed.key); setDropOpen(false); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                    padding: '8px 12px', border: 'none', cursor: 'pointer', fontSize: 12,
+                    background: inferEstadoDetallado(cita) === ed.key ? ed.color + '15' : 'transparent',
+                    color: inferEstadoDetallado(cita) === ed.key ? ed.color : C.text,
+                    fontWeight: inferEstadoDetallado(cita) === ed.key ? 700 : 400,
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = ed.color + '10')}
+                  onMouseLeave={e => (e.currentTarget.style.background = inferEstadoDetallado(cita) === ed.key ? ed.color + '15' : 'transparent')}
+                >
+                  <span>{ed.icon}</span> {ed.label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+      {/* Service */}
+      <span style={{ fontSize: 12, color: C.textMid, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{svc}</span>
+      {/* Importe */}
+      {cita.importe != null && cita.importe > 0 && (
+        <span style={{ fontSize: 11, color: C.accent, fontWeight: 600 }}>{cita.importe}€</span>
+      )}
     </div>
   );
 }
@@ -206,6 +192,7 @@ function ModalCliente({ editando, form, setForm, guardando, error, onGuardar, on
   );
 }
 
+/* ═══ COMPONENTE PRINCIPAL ═══ */
 export default function ClientesSection({ empresaId }: { empresaId: string }) {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -221,29 +208,25 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
 
-  // ═══ FILTRO ACTIVO para métricas clicables ═══
-  type FiltroEstado = 'todos' | 'completadas' | 'canceladas' | 'no-show';
-  const [filtroActivo, setFiltroActivo] = useState<FiltroEstado>('todos');
-
   const fiabilidad = useMemo(() => calcularFiabilidad(historialCitas), [historialCitas]);
 
   const analytics = useMemo(() => {
     if (historialCitas.length === 0) return null;
     const now = new Date();
-    const estado = (c: any) => (c.estado || '').toLowerCase();
-    const ok = historialCitas.filter(c => estado(c) !== 'cancelada' && estado(c) !== 'no-show' && estado(c) !== 'no_show');
-    const canc = historialCitas.filter(c => estado(c) === 'cancelada');
-    const ns = historialCitas.filter(c => estado(c) === 'no-show' || estado(c) === 'no_show');
-    const past = ok.filter(c => new Date(c.hora_inicio) <= now);
+    const completadas = historialCitas.filter(c => inferEstadoDetallado(c) === 'completada');
+    const past = completadas.filter(c => new Date(c.hora_inicio) <= now);
     const lastDate = past.length > 0 ? new Date(past[0].hora_inicio) : null;
     const daysSince = lastDate ? Math.floor((now.getTime() - lastDate.getTime()) / 86400000) : null;
 
     let freq: number | null = null;
     if (past.length >= 2) {
       const ts = past.map(c => new Date(c.hora_inicio).getTime()).sort((a,b) => b-a);
-      let td = 0; for (let i = 0; i < ts.length-1; i++) td += ts[i]-ts[i+1];
+      let td = 0;
+      for (let i = 0; i < ts.length-1; i++) td += ts[i]-ts[i+1];
       freq = Math.round(td / ((ts.length-1) * 86400000));
     }
+
+    const incidencias = fiabilidad.noShowsReales + fiabilidad.cancelacionesTardias;
 
     const svc: Record<string,number> = {};
     historialCitas.forEach(c => { const nm = c.servicios?.nombre || c.servicio_nombre_libre; if (nm) svc[nm] = (svc[nm]||0)+1; });
@@ -253,50 +236,52 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
     const ingresoTotal = citasConImporte.reduce((s, c) => s + (parseFloat(c.importe) || 0), 0);
     const mediaPorVisita = citasConImporte.length > 0 ? ingresoTotal / citasConImporte.length : 0;
 
-    const ins: string[] = [];
+    // Frequency label
+    let freqLabel = '—';
     if (freq !== null) {
-      if (freq <= 7) ins.push('Viene ~cada semana');
-      else if (freq <= 14) ins.push(`Cada ~${freq} días`);
-      else if (freq <= 35) ins.push(`Cada ~${Math.round(freq/7)} semanas`);
-      else ins.push(`Cada ~${Math.round(freq/30)} meses`);
+      if (freq <= 7) freqLabel = '~semanal';
+      else if (freq <= 14) freqLabel = `~${freq}d`;
+      else if (freq <= 35) freqLabel = `~${Math.round(freq/7)} sem`;
+      else freqLabel = `~${Math.round(freq/30)} mes`;
     }
+
+    // Last visit label
+    let lastLabel = '—';
     if (daysSince !== null) {
-      if (daysSince === 0) ins.push('Vino hoy');
-      else if (daysSince < 7) ins.push(`Última: hace ${daysSince}d`);
-      else if (daysSince < 30) ins.push(`Última: hace ${Math.floor(daysSince/7)} sem`);
-      else ins.push(`Última: hace ${Math.floor(daysSince/30)} meses`);
+      if (daysSince === 0) lastLabel = 'Hoy';
+      else if (daysSince < 7) lastLabel = `${daysSince}d`;
+      else if (daysSince < 30) lastLabel = `${Math.floor(daysSince/7)} sem`;
+      else lastLabel = `${Math.floor(daysSince/30)} mes`;
     }
-    if (freq !== null && daysSince !== null && daysSince > freq * 1.5) ins.push('⚠ Más tiempo del habitual sin venir');
-    const fut = historialCitas.filter(c => new Date(c.hora_inicio) > now && estado(c) !== 'cancelada');
-    if (fut.length > 0) { const d = Math.floor((new Date(fut[fut.length-1].hora_inicio).getTime()-now.getTime())/86400000); ins.push(d===0?'Cita hoy':d===1?'Cita mañana':`Próxima en ${d}d`); }
-    else if (ok.length > 0) ins.push('Sin próxima cita');
+
+    // Future citas
+    const fut = historialCitas.filter(c => new Date(c.hora_inicio) > now && inferEstadoDetallado(c) === 'completada');
 
     return {
-      visits: ok.length, canc: canc.length, ns: ns.length, total: historialCitas.length,
-      daysSince, freq,
-      top: top ? { name: top[0], count: top[1] } : null, ins,
+      completadas: fiabilidad.completadas, incidencias, total: historialCitas.length,
+      daysSince, freq, freqLabel, lastLabel,
+      top: top ? { name: top[0], count: top[1] } : null,
       ingresoTotal, mediaPorVisita, citasConImporte: citasConImporte.length,
+      hasFuture: fut.length > 0,
+      lastVisitColor: daysSince !== null && daysSince > 60 ? C.red : daysSince !== null && daysSince > 30 ? C.amber : C.text,
     };
-  }, [historialCitas]);
-
-  // ═══ Citas filtradas según métrica activa ═══
-  const citasFiltradas = useMemo(() => {
-    if (filtroActivo === 'todos') return historialCitas;
-    return historialCitas.filter(c => {
-      const est = (c.estado || '').toLowerCase();
-      if (filtroActivo === 'completadas') return est !== 'cancelada' && est !== 'no-show' && est !== 'no_show';
-      if (filtroActivo === 'canceladas') return est === 'cancelada';
-      if (filtroActivo === 'no-show') return est === 'no-show' || est === 'no_show';
-      return true;
-    });
-  }, [historialCitas, filtroActivo]);
+  }, [historialCitas, fiabilidad]);
 
   useEffect(() => { if (empresaId) { load(); loadConfig(); } }, [empresaId]);
-  useEffect(() => { if (vistaDetalle) { loadCitas(vistaDetalle.id); setFiltroActivo('todos'); } }, [vistaDetalle]);
+  useEffect(() => { if (vistaDetalle) { loadCitas(vistaDetalle.id); } }, [vistaDetalle]);
 
   async function load() { setLoading(true); const { data } = await supabase.from('clientes').select('*').eq('empresa_id',empresaId).order('nombre'); setClientes(data||[]); setLoading(false); }
   async function loadConfig() { const { data } = await supabase.from('empresas').select('mostrar_importe').eq('id',empresaId).single(); setMostrarImporte(data?.mostrar_importe || false); }
   async function loadCitas(id: string) { setLoadingCitas(true); const { data } = await supabase.from('citas').select('*, servicios(nombre)').eq('cliente_id',id).order('hora_inicio',{ascending:false}).limit(200); setHistorialCitas(data||[]); setLoadingCitas(false); }
+
+  // ═══ UPDATE ESTADO DETALLADO ═══
+  async function updateEstadoDetallado(citaId: string, nuevoEstado: string) {
+    await supabase.from('citas').update({ estado_detallado: nuevoEstado }).eq('id', citaId);
+    // Update local state immediately
+    setHistorialCitas(prev => prev.map(c =>
+      c.id === citaId ? { ...c, estado_detallado: nuevoEstado } : c
+    ));
+  }
 
   const filtered = clientes.filter(c => c.nombre.toLowerCase().includes(busqueda.toLowerCase()) || (c.telefono||'').includes(busqueda) || (c.email||'').toLowerCase().includes(busqueda.toLowerCase()));
 
@@ -324,14 +309,7 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
   if (vistaDetalle) {
     const a = analytics;
     const f = fiabilidad;
-
-    // Botones de filtro clicable
-    const filtros: { key: FiltroEstado; label: string; count: number; color: string }[] = [
-      { key: 'todos',       label: 'Todas',        count: historialCitas.length, color: C.textMid },
-      { key: 'completadas', label: 'Completadas',  count: a?.visits ?? 0,        color: C.accent },
-      { key: 'canceladas',  label: 'Canceladas',   count: a?.canc ?? 0,          color: C.amber },
-      { key: 'no-show',     label: 'No-show',      count: a?.ns ?? 0,            color: C.red },
-    ];
+    const incidencias = f.noShowsReales + f.cancelacionesTardias;
 
     return (
       <div style={{ height: '100vh', background: C.bg, color: C.text, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -342,7 +320,7 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
             style={{ color: C.textMid, background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}>
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <span style={{ fontSize: 12, color: C.textDim, fontWeight: 600, letterSpacing: 0.5 }}>ANÁLISIS DE CLIENTE</span>
+          <span style={{ fontSize: 12, color: C.textDim, fontWeight: 600, letterSpacing: 0.5 }}>CLIENTE</span>
           <div style={{ flex: 1 }} />
           <button onClick={() => openEdit(vistaDetalle)}
             style={{ color: C.textMid, background: 'none', border: `1px solid ${C.divider}`, cursor: 'pointer', padding: '4px 10px', borderRadius: 5, fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -358,10 +336,13 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
             {/* SIDEBAR IZQUIERDO */}
             <div style={{ width: 260, flexShrink: 0, background: C.panel, borderRight: `1px solid ${C.divider}`, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
 
-              {/* Identidad */}
+              {/* Identidad + Risk Badge */}
               <div style={{ padding: '20px 18px 14px', borderBottom: `1px solid ${C.divider}` }}>
-                <div style={{ width: 44, height: 44, borderRadius: 8, background: C.accentDim, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: C.accent, marginBottom: 10 }}>
-                  {vistaDetalle.nombre[0].toUpperCase()}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 8, background: C.accentDim, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: C.accent }}>
+                    {vistaDetalle.nombre[0].toUpperCase()}
+                  </div>
+                  <RiskBadge fiab={f} />
                 </div>
                 <h2 style={{ fontSize: 17, fontWeight: 800, lineHeight: 1.2, marginBottom: 3 }}>{vistaDetalle.nombre}</h2>
                 <p style={{ fontSize: 11, color: C.textDim }}>Desde {fmtDate(vistaDetalle.created_at)}</p>
@@ -376,21 +357,11 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
                     ? <a href={`tel:${vistaDetalle.telefono}`} style={{ display:'flex',alignItems:'center',gap:7,color:C.text,textDecoration:'none',fontSize:12 }}><Phone className="w-3.5 h-3.5" style={{color:C.accent,flexShrink:0}}/> {vistaDetalle.telefono}</a>
                     : <span style={{fontSize:11,color:C.textDim}}>Sin teléfono</span>}
                   {vistaDetalle.email
-                    ? <a href={`mailto:${vistaDetalle.email}`} style={{ display:'flex',alignItems:'center',gap:7,color:C.text,textDecoration:'none',fontSize:12,wordBreak:'break-all' }}><Mail className="w-3.5 h-3.5" style={{color:C.blue,flexShrink:0}}/> {vistaDetalle.email}</a>
+                    ? <a href={`mailto:${vistaDetalle.email}`} style={{ display:'flex',alignItems:'center',gap:7,color:C.text,textDecoration:'none',fontSize:12,wordBreak:'break-all' as const }}><Mail className="w-3.5 h-3.5" style={{color:C.blue,flexShrink:0}}/> {vistaDetalle.email}</a>
                     : <span style={{fontSize:11,color:C.textDim}}>Sin email</span>}
                 </div>
                 {vistaDetalle.notas && <p style={{ fontSize:11,color:C.textMid,marginTop:8,lineHeight:1.5,borderTop:`1px solid ${C.divider}`,paddingTop:8 }}>{vistaDetalle.notas}</p>}
               </div>
-
-              {/* Insights */}
-              {a && a.ins.length > 0 && (
-                <div style={{ padding: '12px 18px', borderBottom: `1px solid ${C.divider}` }}>
-                  <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 7 }}>INSIGHTS</p>
-                  {a.ins.map((t,i) => (
-                    <p key={i} style={{ fontSize: 11, lineHeight: 1.6, color: t.includes('⚠') ? C.amber : C.textMid, fontWeight: t.includes('⚠') ? 600 : 400 }}>{t}</p>
-                  ))}
-                </div>
-              )}
 
               {/* Acciones */}
               <div style={{ padding: '12px 18px', borderBottom: `1px solid ${C.divider}` }}>
@@ -425,131 +396,82 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
             </div>
 
             {/* PANEL PRINCIPAL */}
-            <div style={{ flex: 1, overflow: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
               {a ? (<>
 
-                {/* FILA 1: Fiabilidad + Donut (protagonista) + Métricas */}
-                <div style={{ display: 'grid', gridTemplateColumns: '170px 260px 1fr', gap: 2 }}>
+                {/* BLOQUE B — 4 Metric Cards */}
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <MetricCard value={a.completadas} label="Completadas" color={C.accent} />
+                  <MetricCard value={incidencias} label="Incidencias" color={incidencias > 0 ? C.red : C.textDim} sub={incidencias > 0 ? `${f.noShowsReales} ns · ${f.cancelacionesTardias} ct` : ''} />
+                  <MetricCard value={a.freqLabel} label="Frecuencia" color={C.blue} />
+                  <MetricCard value={a.lastLabel} label="Última visita" color={a.lastVisitColor} />
+                </div>
 
-                  {/* Anillo fiabilidad */}
-                  <div style={{ background: C.panel, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px 14px', gap: 8 }}>
-                    <FiabilidadRing fiab={f} size={120} />
-                    <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>Fiabilidad</p>
-                    {f.alertLevel !== 'none' && f.alertMessage && (
-                      <div style={{
-                        padding: '5px 8px', borderRadius: 6, textAlign: 'center', maxWidth: 150,
-                        background: f.alertLevel === 'danger' ? C.redDim : f.alertLevel === 'warn' ? 'rgba(245,158,11,0.1)' : 'rgba(59,130,246,0.06)',
-                      }}>
-                        <p style={{ fontSize: 9, color: f.alertLevel === 'danger' ? C.red : f.alertLevel === 'warn' ? C.amber : C.textMid, lineHeight: 1.4 }}>
-                          {f.alertMessage}
-                        </p>
+                {/* BLOQUE C — Alerta (si hay riesgo) */}
+                {f.alertMessage && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 14px', borderRadius: 10,
+                    background: f.alertLevel === 'danger' ? C.redDim : f.alertLevel === 'warn' ? 'rgba(245,158,11,0.08)' : 'rgba(59,130,246,0.06)',
+                    border: `1px solid ${f.alertLevel === 'danger' ? 'rgba(239,68,68,0.25)' : f.alertLevel === 'warn' ? 'rgba(245,158,11,0.25)' : 'rgba(59,130,246,0.15)'}`,
+                  }}>
+                    <AlertTriangle style={{ width: 16, height: 16, color: f.riskColor, flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, fontWeight: 600, color: f.riskColor, lineHeight: 1.4 }}>
+                      {f.alertMessage}
+                    </span>
+                  </div>
+                )}
+
+                {/* BLOQUE D — Donut + Historial editable */}
+                <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 14, flex: 1, minHeight: 0 }}>
+
+                  {/* Donut */}
+                  <div style={{ background: C.panel, borderRadius: 12, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <DonutSimple completadas={f.completadas} incidencias={incidencias} total={f.totalCitas} />
+                    {/* Desglose debajo del donut */}
+                    {(f.noShowsReales > 0 || f.noShowsJustificados > 0 || f.cancelacionesTardias > 0 || f.cancelacionesAnticipadas > 0 || f.reprogramadas > 0) && (
+                      <div style={{ marginTop: 14, width: '100%', borderTop: `1px solid ${C.divider}`, paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {ESTADOS_DETALLADOS.slice(1).map(ed => {
+                          const count = ed.key === 'no_show_real' ? f.noShowsReales
+                            : ed.key === 'no_show_justificado' ? f.noShowsJustificados
+                            : ed.key === 'cancelacion_tardia' ? f.cancelacionesTardias
+                            : ed.key === 'cancelacion_anticipada' ? f.cancelacionesAnticipadas
+                            : ed.key === 'reprogramada' ? f.reprogramadas : 0;
+                          if (count === 0) return null;
+                          return (
+                            <div key={ed.key} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: 10 }}>{ed.icon}</span>
+                              <span style={{ fontSize: 10, color: C.textMid, flex: 1 }}>{ed.label}</span>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: ed.color }}>{count}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
 
-                  {/* Donut estados — protagonista */}
-                  <div style={{ background: C.panel, padding: '16px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 14, textTransform: 'uppercase', alignSelf: 'flex-start' }}>Distribución</p>
-                    <DonutEstados completadas={a.visits} canceladas={a.canc} noShows={a.ns} />
-                  </div>
-
-                  {/* Métricas clicables */}
-                  <div style={{ background: C.panel, padding: '16px 20px' }}>
-                    <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 10, textTransform: 'uppercase' }}>Métricas</p>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', columnGap: 16 }}>
-                      {[
-                        { v: a.visits, l: 'Completadas', c: C.accent, filtro: 'completadas' as FiltroEstado },
-                        { v: a.canc,   l: 'Cancelaciones', c: a.canc > 0 ? C.amber : C.textDim, filtro: 'canceladas' as FiltroEstado },
-                        { v: a.ns,     l: 'No-shows', c: a.ns > 0 ? C.red : C.textDim, filtro: 'no-show' as FiltroEstado },
-                        { v: a.freq ? `~${a.freq}` : '—', l: 'Intervalo medio', c: C.blue, s: a.freq ? 'días' : '', filtro: 'todos' as FiltroEstado },
-                        { v: a.total,  l: 'Total citas', c: C.textMid, filtro: 'todos' as FiltroEstado },
-                        { v: a.daysSince !== null ? a.daysSince : '—', l: 'Desde última', c: a.daysSince !== null && a.daysSince > 60 ? C.red : a.daysSince !== null && a.daysSince > 30 ? C.amber : C.text, s: a.daysSince !== null ? 'días' : '', filtro: 'todos' as FiltroEstado },
-                      ].map((k: any, i) => {
-                        const isClickable = ['completadas','canceladas','no-show'].includes(k.filtro);
-                        const isActive = filtroActivo === k.filtro && isClickable;
-                        return (
-                          <div key={i}
-                            onClick={() => isClickable ? setFiltroActivo(isActive ? 'todos' : k.filtro) : undefined}
-                            style={{
-                              padding: '10px 0', borderBottom: `1px solid ${C.divider}`,
-                              cursor: isClickable ? 'pointer' : 'default',
-                              borderRadius: isActive ? 6 : 0,
-                              background: isActive ? k.c + '10' : 'transparent',
-                              outline: isActive ? `1px solid ${k.c}30` : 'none',
-                              transition: 'background 0.15s',
-                            }}>
-                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                              <span style={{ fontSize: 24, fontWeight: 800, color: k.c, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{k.v}</span>
-                              {k.s && <span style={{ fontSize: 10, color: C.textDim }}>{k.s}</span>}
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <span style={{ fontSize: 10, color: C.textDim, fontWeight: 600, letterSpacing: 0.3, textTransform: 'uppercase' }}>{k.l}</span>
-                              {isClickable && <span style={{ fontSize: 8, color: isActive ? k.c : C.textDim }}>▼</span>}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                {/* FILA 2: Actividad + Historial filtrado */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, flex: 1 }}>
-
-                  {/* Gráfico actividad — compacto */}
-                  <div style={{ background: C.panel, padding: '12px 14px' }}>
-                    <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>Actividad · 6 meses</p>
-                    <ActivityChart citas={historialCitas} />
-                  </div>
-
-                  {/* Historial filtrado */}
-                  <div style={{ background: C.panel, padding: '14px 16px', overflow: 'auto', maxHeight: 280 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                      <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>
-                        {filtroActivo === 'todos' ? 'Últimas citas' : filtros.find(f => f.key === filtroActivo)?.label}
-                        {' '}
-                        <span style={{ color: C.textDim, fontWeight: 400 }}>({citasFiltradas.length})</span>
-                      </p>
-                      {filtroActivo !== 'todos' && (
-                        <button onClick={() => setFiltroActivo('todos')}
-                          style={{ fontSize: 9, color: C.textDim, background: C.panelAlt, border: 'none', cursor: 'pointer', padding: '2px 6px', borderRadius: 4 }}>
-                          Ver todas
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Pills de filtro rápido */}
-                    <div style={{ display: 'flex', gap: 4, marginBottom: 10, flexWrap: 'wrap' }}>
-                      {filtros.map(fl => (
-                        <button key={fl.key} onClick={() => setFiltroActivo(fl.key)}
-                          style={{
-                            padding: '3px 8px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 600,
-                            background: filtroActivo === fl.key ? fl.color + '22' : C.panelAlt,
-                            color: filtroActivo === fl.key ? fl.color : C.textDim,
-                            outline: filtroActivo === fl.key ? `1px solid ${fl.color}44` : 'none',
-                          }}>
-                          {fl.label} {fl.count > 0 && `(${fl.count})`}
-                        </button>
-                      ))}
-                    </div>
-
-                    {citasFiltradas.length > 0 ? (
-                      <>
-                        {citasFiltradas.slice(0, 15).map((c, i, arr) => <TDot key={c.id} cita={c} isLast={i === arr.length - 1} />)}
-                        {citasFiltradas.length > 15 && <p style={{ fontSize: 10, color: C.textDim, marginTop: 6 }}>+{citasFiltradas.length - 15} más</p>}
-                      </>
+                  {/* Historial editable */}
+                  <div style={{ background: C.panel, borderRadius: 12, padding: '14px 16px', overflow: 'auto', minHeight: 200 }}>
+                    <p style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: 1, marginBottom: 10, textTransform: 'uppercase' }}>
+                      Historial de citas <span style={{ fontWeight: 400 }}>({historialCitas.length})</span>
+                    </p>
+                    {historialCitas.length > 0 ? (
+                      historialCitas.slice(0, 30).map(c => (
+                        <HistoryRow key={c.id} cita={c} onUpdate={updateEstadoDetallado} />
+                      ))
                     ) : (
-                      <p style={{ fontSize: 11, color: C.textDim }}>
-                        {filtroActivo === 'todos' ? 'Sin citas' : `Sin citas en este filtro`}
-                      </p>
+                      <p style={{ fontSize: 11, color: C.textDim }}>Sin citas registradas</p>
+                    )}
+                    {historialCitas.length > 30 && (
+                      <p style={{ fontSize: 10, color: C.textDim, marginTop: 8, textAlign: 'center' }}>+{historialCitas.length - 30} citas más</p>
                     )}
                   </div>
                 </div>
 
-                {/* FILA 3: Rentabilidad (opcional) */}
+                {/* BLOQUE E — Rentabilidad */}
                 {mostrarImporte && a.citasConImporte > 0 && (
                   <div style={{
-                    background: C.panel, padding: '14px 20px',
+                    background: C.panel, borderRadius: 12, padding: '14px 20px',
                     display: 'flex', alignItems: 'center', gap: 28,
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -566,10 +488,6 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
                       <div>
                         <span style={{ fontSize: 22, fontWeight: 800, color: C.text, fontVariantNumeric: 'tabular-nums' }}>{a.mediaPorVisita.toFixed(0)}€</span>
                         <p style={{ fontSize: 10, color: C.textDim, fontWeight: 600, textTransform: 'uppercase' }}>Media por visita</p>
-                      </div>
-                      <div>
-                        <span style={{ fontSize: 22, fontWeight: 800, color: C.textMid, fontVariantNumeric: 'tabular-nums' }}>{a.citasConImporte}/{a.total}</span>
-                        <p style={{ fontSize: 10, color: C.textDim, fontWeight: 600, textTransform: 'uppercase' }}>Con importe</p>
                       </div>
                     </div>
                   </div>
