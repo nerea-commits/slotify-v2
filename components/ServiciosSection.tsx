@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, X, Check, Trash2, Copy, Clock, Euro, GripVertical, ToggleLeft, ToggleRight, Edit2 } from 'lucide-react';
+import { Plus, X, Check, Trash2, Copy, Clock, GripVertical, ToggleLeft, ToggleRight, Edit2, Upload, Download, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 const C = {
   bg: '#0B0F1A', panel: '#111827', panelAlt: '#1A2332',
@@ -33,6 +33,336 @@ interface FormServicio {
 const COLORS = ['#22C55E','#3B82F6','#A855F7','#F59E0B','#EF4444','#EC4899','#06B6D4','#F97316'];
 
 const DURACIONES = [15,20,30,45,60,75,90,120];
+
+// ── CSV IMPORT ─────────────────────────────────────────────────────────
+interface CsvRow {
+  nombre: string;
+  duracion_minutos: number;
+  precio: number | null;
+  color: string;
+  _line: number;
+  _error?: string;
+}
+
+const CSV_TEMPLATE = `nombre,duracion,precio,color
+Corte de pelo,30,15,#22C55E
+Tinte completo,90,45,#3B82F6
+Manicura,45,20,#A855F7`;
+
+function downloadTemplate() {
+  const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'plantilla_servicios.csv';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function normalizeDuracion(val: string): number | null {
+  const clean = val.replace(/[^0-9]/g, '');
+  const n = parseInt(clean);
+  return isNaN(n) || n < 5 ? null : n;
+}
+
+function normalizePrecio(val: string): number | null {
+  if (!val || !val.trim()) return null;
+  const clean = val.trim().replace(',', '.');
+  const n = parseFloat(clean);
+  return isNaN(n) ? null : n;
+}
+
+function normalizeColor(val: string): string {
+  if (!val || !val.trim()) return '#22C55E';
+  const v = val.trim();
+  if (v.startsWith('#')) return v;
+  const named: Record<string, string> = { verde:'#22C55E', azul:'#3B82F6', rojo:'#EF4444', naranja:'#F97316', morado:'#A855F7', rosa:'#EC4899', cyan:'#06B6D4', amarillo:'#F59E0B' };
+  return named[v.toLowerCase()] || '#22C55E';
+}
+
+function parseCSV(text: string): CsvRow[] {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+
+  const col = (row: string[], names: string[]): string => {
+    for (const n of names) {
+      const idx = headers.indexOf(n);
+      if (idx !== -1 && row[idx] !== undefined) return (row[idx] || '').trim();
+    }
+    return '';
+  };
+
+  return lines.slice(1).map((line, i) => {
+    const row = line.split(',');
+    const nombre = col(row, ['nombre', 'name']);
+    const durRaw = col(row, ['duracion', 'duration', 'minutos', 'min']);
+    const precioRaw = col(row, ['precio', 'price']);
+    const colorRaw = col(row, ['color']);
+
+    const errors: string[] = [];
+    if (!nombre) errors.push('nombre vacío');
+    const dur = normalizeDuracion(durRaw);
+    if (dur === null) errors.push('duración inválida');
+
+    return {
+      nombre,
+      duracion_minutos: dur ?? 0,
+      precio: normalizePrecio(precioRaw),
+      color: normalizeColor(colorRaw),
+      _line: i + 2,
+      _error: errors.length ? errors.join(', ') : undefined,
+    };
+  }).filter(r => r.nombre || r._error); // skip completely empty rows
+}
+
+// ── IMPORT MODAL ───────────────────────────────────────────────────────
+type ImportStep = 1 | 2 | 3;
+
+function ModalImportar({
+  empresaId, serviciosExistentes, onDone, onCerrar,
+}: {
+  empresaId: string;
+  serviciosExistentes: Servicio[];
+  onDone: (msg: string) => void;
+  onCerrar: () => void;
+}) {
+  const [step, setStep] = useState<ImportStep>(1);
+  const [rows, setRows] = useState<CsvRow[]>([]);
+  const [actualizarSiCoincide, setActualizarSiCoincide] = useState(false);
+  const [importando, setImportando] = useState(false);
+  const [resultErrors, setResultErrors] = useState<CsvRow[]>([]);
+  const [showErrorList, setShowErrorList] = useState(false);
+
+  const validas = rows.filter(r => !r._error);
+  const conError = rows.filter(r => !!r._error);
+
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const text = ev.target?.result as string;
+      const parsed = parseCSV(text);
+      setRows(parsed);
+      setStep(3);
+    };
+    reader.readAsText(f, 'UTF-8');
+  }
+
+  async function confirmar() {
+    setImportando(true);
+    let creados = 0, actualizados = 0;
+    const errores: CsvRow[] = [];
+    const maxOrden = serviciosExistentes.length > 0 ? Math.max(...serviciosExistentes.map(s => s.orden)) : 0;
+
+    for (let i = 0; i < validas.length; i++) {
+      const r = validas[i];
+      try {
+        if (actualizarSiCoincide) {
+          const existing = serviciosExistentes.find(s => s.nombre.toLowerCase().trim() === r.nombre.toLowerCase().trim());
+          if (existing) {
+            await supabase.from('servicios').update({
+              duracion_minutos: r.duracion_minutos,
+              precio: r.precio,
+              color: r.color,
+            }).eq('id', existing.id);
+            actualizados++;
+            continue;
+          }
+        }
+        await supabase.from('servicios').insert({
+          empresa_id: empresaId,
+          nombre: r.nombre,
+          duracion_minutos: r.duracion_minutos,
+          precio: r.precio,
+          color: r.color,
+          activo: true,
+          orden: maxOrden + i + 1,
+        });
+        creados++;
+      } catch {
+        errores.push({ ...r, _error: 'Error al guardar en BD' });
+      }
+    }
+
+    setResultErrors(errores);
+    setImportando(false);
+    const msg = [
+      creados > 0 ? `Creados: ${creados}` : '',
+      actualizados > 0 ? `Actualizados: ${actualizados}` : '',
+      (conError.length + errores.length) > 0 ? `Errores: ${conError.length + errores.length}` : '',
+    ].filter(Boolean).join(' · ');
+    onDone(msg);
+  }
+
+  return (
+    <>
+      <style>{`
+        @media (min-width: 640px) {
+          .imp-modal-overlay { align-items: center !important; }
+          .imp-modal-box { border-radius: 16px !important; max-width: 520px !important; }
+        }
+      `}</style>
+      <div className="imp-modal-overlay"
+        style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', zIndex:60, display:'flex', alignItems:'flex-end', justifyContent:'center' }}
+        onClick={onCerrar}
+      >
+        <div className="imp-modal-box"
+          style={{ background:'#111827', borderRadius:'20px 20px 0 0', padding:24, width:'100%', maxWidth:'100%', maxHeight:'90vh', overflowY:'auto', paddingBottom:32 }}
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+            <div>
+              <h3 style={{ fontSize:17, fontWeight:700, color:'#F1F5F9' }}>Importar servicios</h3>
+              <p style={{ fontSize:11, color:'#4B5563', marginTop:2 }}>Paso {step} de 3</p>
+            </div>
+            <button onClick={onCerrar} style={{ background:'none', border:'none', cursor:'pointer', color:'#94A3B8', padding:4 }}>
+              <X size={18}/>
+            </button>
+          </div>
+
+          {/* Progress bar */}
+          <div style={{ height:3, background:'rgba(148,163,184,0.1)', borderRadius:2, marginBottom:24, overflow:'hidden' }}>
+            <div style={{ height:'100%', background:'#22C55E', width:`${(step/3)*100}%`, transition:'width 0.3s', borderRadius:2 }}/>
+          </div>
+
+          {/* STEP 1 — Descargar plantilla */}
+          {step === 1 && (
+            <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+              <div style={{ background:'#1A2332', borderRadius:12, padding:16 }}>
+                <p style={{ fontSize:13, fontWeight:600, color:'#F1F5F9', marginBottom:6 }}>📋 Descarga la plantilla CSV</p>
+                <p style={{ fontSize:12, color:'#64748B', lineHeight:1.6, marginBottom:12 }}>
+                  Rellena con tus servicios. Columnas: <code style={{ color:'#22C55E', fontSize:11 }}>nombre</code>, <code style={{ color:'#22C55E', fontSize:11 }}>duracion</code>, <code style={{ color:'#22C55E', fontSize:11 }}>precio</code> (opcional), <code style={{ color:'#22C55E', fontSize:11 }}>color</code> (opcional).
+                </p>
+                <button onClick={downloadTemplate}
+                  style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 14px', borderRadius:9, border:'1px solid rgba(34,197,94,0.3)', background:'rgba(34,197,94,0.08)', color:'#22C55E', cursor:'pointer', fontSize:13, fontWeight:600 }}>
+                  <Download size={14}/> Descargar plantilla.csv
+                </button>
+              </div>
+              <div style={{ background:'#1A2332', borderRadius:12, padding:14 }}>
+                <p style={{ fontSize:11, color:'#64748B', lineHeight:1.7 }}>
+                  ✓ La duración se acepta en minutos (ej: <code style={{ color:'#94A3B8' }}>30</code> o <code style={{ color:'#94A3B8' }}>30 min</code>)<br/>
+                  ✓ El precio acepta coma o punto (ej: <code style={{ color:'#94A3B8' }}>15,50</code> o <code style={{ color:'#94A3B8' }}>15.50</code>)<br/>
+                  ✓ El color es opcional — acepta HEX o nombre básico
+                </p>
+              </div>
+              <button onClick={() => setStep(2)}
+                style={{ width:'100%', padding:'13px', borderRadius:12, border:'none', background:'#22C55E', color:'#fff', cursor:'pointer', fontSize:14, fontWeight:700 }}>
+                Tengo el CSV listo →
+              </button>
+            </div>
+          )}
+
+          {/* STEP 2 — Subir CSV */}
+          {step === 2 && (
+            <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+              <label style={{
+                display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+                gap:12, padding:'32px 20px',
+                background:'#1A2332', border:'2px dashed rgba(34,197,94,0.25)', borderRadius:14,
+                cursor:'pointer', transition:'border-color 0.15s',
+              }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(34,197,94,0.5)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(34,197,94,0.25)'; }}
+              >
+                <Upload size={28} style={{ color:'#22C55E' }}/>
+                <div style={{ textAlign:'center' }}>
+                  <p style={{ fontSize:14, fontWeight:600, color:'#F1F5F9' }}>Selecciona o arrastra tu CSV</p>
+                  <p style={{ fontSize:12, color:'#4B5563', marginTop:4 }}>Solo archivos .csv</p>
+                </div>
+                <input type="file" accept=".csv,text/csv" onChange={handleFile}
+                  style={{ position:'absolute', width:1, height:1, opacity:0, pointerEvents:'none' }}/>
+              </label>
+              <button onClick={() => setStep(1)}
+                style={{ background:'none', border:'none', color:'#64748B', cursor:'pointer', fontSize:13, textDecoration:'underline' }}>
+                ← Volver
+              </button>
+            </div>
+          )}
+
+          {/* STEP 3 — Preview + Confirmar */}
+          {step === 3 && (
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              {/* Resumen */}
+              <div style={{ display:'flex', gap:10 }}>
+                <div style={{ flex:1, background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.2)', borderRadius:10, padding:'10px 14px', textAlign:'center' }}>
+                  <p style={{ fontSize:22, fontWeight:800, color:'#22C55E' }}>{validas.length}</p>
+                  <p style={{ fontSize:11, color:'#64748B', fontWeight:600 }}>VÁLIDAS</p>
+                </div>
+                {conError.length > 0 && (
+                  <div style={{ flex:1, background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:10, padding:'10px 14px', textAlign:'center' }}>
+                    <p style={{ fontSize:22, fontWeight:800, color:'#EF4444' }}>{conError.length}</p>
+                    <p style={{ fontSize:11, color:'#64748B', fontWeight:600 }}>CON ERROR</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Opción actualizar */}
+              <label style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', background:'#1A2332', borderRadius:10, cursor:'pointer' }}>
+                <input type="checkbox" checked={actualizarSiCoincide} onChange={e => setActualizarSiCoincide(e.target.checked)}
+                  style={{ width:16, height:16, accentColor:'#22C55E' }}/>
+                <div>
+                  <p style={{ fontSize:13, color:'#F1F5F9', fontWeight:500 }}>Actualizar si el nombre coincide</p>
+                  <p style={{ fontSize:11, color:'#4B5563' }}>Si está desactivado, siempre crea nuevos</p>
+                </div>
+              </label>
+
+              {/* Preview tabla */}
+              <div style={{ maxHeight:220, overflowY:'auto', borderRadius:10, border:'1px solid rgba(148,163,184,0.07)' }}>
+                {rows.slice(0, 10).map((r, i) => (
+                  <div key={i} style={{
+                    display:'flex', alignItems:'center', gap:10, padding:'9px 12px',
+                    background: i % 2 === 0 ? '#1A2332' : '#111827',
+                    borderLeft: r._error ? '3px solid #EF4444' : '3px solid #22C55E',
+                  }}>
+                    <div style={{ width:8, height:8, borderRadius:2, background: r._error ? '#EF4444' : r.color, flexShrink:0 }}/>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:12, fontWeight:600, color: r._error ? '#EF4444' : '#F1F5F9', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                        {r.nombre || '(sin nombre)'}
+                        {r._error && <span style={{ fontSize:10, color:'#EF4444', marginLeft:6, fontWeight:400 }}>— {r._error}</span>}
+                      </p>
+                      {!r._error && (
+                        <p style={{ fontSize:10, color:'#4B5563' }}>
+                          {fmtDuracion(r.duracion_minutos)}{r.precio != null ? ` · ${r.precio}€` : ''}
+                        </p>
+                      )}
+                    </div>
+                    <span style={{ fontSize:10, color:'#334155', flexShrink:0 }}>L{r._line}</span>
+                  </div>
+                ))}
+                {rows.length > 10 && (
+                  <div style={{ padding:'8px 12px', background:'#111827', textAlign:'center' }}>
+                    <p style={{ fontSize:11, color:'#4B5563' }}>+{rows.length - 10} filas más</p>
+                  </div>
+                )}
+              </div>
+
+              {validas.length === 0 && (
+                <div style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 14px', background:'rgba(239,68,68,0.08)', borderRadius:10, border:'1px solid rgba(239,68,68,0.2)' }}>
+                  <AlertTriangle size={14} style={{ color:'#EF4444' }}/>
+                  <p style={{ fontSize:13, color:'#EF4444' }}>No hay filas válidas para importar.</p>
+                </div>
+              )}
+
+              <div style={{ display:'flex', gap:10 }}>
+                <button onClick={() => { setStep(2); setRows([]); }}
+                  style={{ flex:1, padding:'12px', borderRadius:12, border:'1px solid rgba(148,163,184,0.1)', background:'transparent', color:'#94A3B8', cursor:'pointer', fontSize:13, fontWeight:600 }}>
+                  ← Cambiar CSV
+                </button>
+                <button onClick={confirmar} disabled={importando || validas.length === 0}
+                  style={{ flex:2, padding:'12px', borderRadius:12, border:'none', background: validas.length === 0 ? '#1A2332' : '#22C55E', color: validas.length === 0 ? '#334155' : '#fff', cursor: validas.length === 0 ? 'not-allowed' : 'pointer', fontSize:14, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                  {importando ? 'Importando...' : <><CheckCircle2 size={15}/> Importar {validas.length} servicios</>}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+
 
 function fmtDuracion(min: number): string {
   if (min < 60) return `${min}min`;
@@ -177,6 +507,8 @@ export default function ServiciosSection({ empresaId }: { empresaId: string }) {
   const [error, setError] = useState('');
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [dragItem, setDragItem] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [toast, setToast] = useState('');
 
   useEffect(() => { if (empresaId) load(); }, [empresaId]);
 
@@ -188,6 +520,11 @@ export default function ServiciosSection({ empresaId }: { empresaId: string }) {
       .order('orden').order('nombre');
     setServicios(data || []);
     setLoading(false);
+  }
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(''), 4000);
   }
 
   function openNew() {
@@ -306,10 +643,18 @@ export default function ServiciosSection({ empresaId }: { empresaId: string }) {
             {inactivos.length > 0 && ` · ${inactivos.length} inactivo${inactivos.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <button onClick={openNew}
-          style={{ background: C.green, color:'#fff', border:'none', borderRadius:12, padding:'10px 16px', cursor:'pointer', fontSize:13, fontWeight:700, display:'flex', alignItems:'center', gap:6 }}>
-          <Plus size={15}/> Nuevo
-        </button>
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={() => setImportOpen(true)}
+            style={{ background:'transparent', color: C.textMid, border:`1px solid ${C.border}`, borderRadius:12, padding:'9px 14px', cursor:'pointer', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:6 }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(148,163,184,0.25)'; (e.currentTarget as HTMLElement).style.color = C.text; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = C.border; (e.currentTarget as HTMLElement).style.color = C.textMid; }}>
+            <Upload size={13}/> Importar
+          </button>
+          <button onClick={openNew}
+            style={{ background: C.green, color:'#fff', border:'none', borderRadius:12, padding:'10px 16px', cursor:'pointer', fontSize:13, fontWeight:700, display:'flex', alignItems:'center', gap:6 }}>
+            <Plus size={15}/> Nuevo
+          </button>
+        </div>
       </div>
 
       <div style={{ padding:'16px 16px 0', maxWidth:640, margin:'0 auto' }}>
@@ -454,6 +799,23 @@ export default function ServiciosSection({ empresaId }: { empresaId: string }) {
           </>
         )}
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div style={{ position:'fixed', bottom: 80, left:'50%', transform:'translateX(-50%)', background:'#1E293B', border:'1px solid rgba(34,197,94,0.3)', borderRadius:12, padding:'12px 20px', zIndex:70, display:'flex', alignItems:'center', gap:10, boxShadow:'0 4px 20px rgba(0,0,0,0.4)', whiteSpace:'nowrap' }}>
+          <CheckCircle2 size={16} style={{ color:'#22C55E', flexShrink:0 }}/>
+          <p style={{ fontSize:13, color:'#F1F5F9', fontWeight:500 }}>{toast}</p>
+        </div>
+      )}
+
+      {importOpen && (
+        <ModalImportar
+          empresaId={empresaId}
+          serviciosExistentes={servicios}
+          onDone={msg => { setImportOpen(false); showToast(msg); load(); }}
+          onCerrar={() => setImportOpen(false)}
+        />
+      )}
 
       {modalOpen && (
         <ModalServicio
