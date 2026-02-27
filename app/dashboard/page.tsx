@@ -8,6 +8,7 @@ import BottomNav from '@/components/BottomNav';
 import NuevaCitaModal from '@/components/NuevaCitaModal';
 import ClientesSection from '@/components/ClientesSection';
 import ServiciosSection from '@/components/ServiciosSection';
+import ConfiguracionSection from '@/components/ConfiguracionSection';
 import { calcularFiabilidad, getRiskIndicator } from '@/lib/fiabilidad';
 
 const ALL_SLOTS = Array.from({ length: 48 }, (_, i) => {
@@ -489,7 +490,7 @@ export default function Dashboard() {
           {activeSection === 'servicios' && <ServiciosSection empresaId={empresa?.id || ''} />}
           {activeSection === 'estadisticas' && <div className="flex items-center justify-center pt-32 text-gray-500">Estadísticas — próximamente</div>}
           {activeSection === 'notificaciones' && <div className="flex items-center justify-center pt-32 text-gray-500">Notificaciones — próximamente</div>}
-          {activeSection === 'configuracion' && <div className="flex items-center justify-center pt-32 text-gray-500">Configuración — próximamente</div>}
+          {activeSection === 'configuracion' && <ConfiguracionSection empresaId={empresa?.id || ''} profesionalId={profesional?.id || ''}/>}
         </div>
       )}
 
