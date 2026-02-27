@@ -54,7 +54,7 @@ function periodLabel(p: PeriodoFiltro) {
 }
 
 // ─── Donut interactivo ────────────────────────────────────────────────────────
-interface DonutSegment { value: number; color: string; label: string; key: SegmentoActivo; pct?: number; }
+interface DonutSegment { value: number; color: string; label: string; key: SegmentoActivo; }
 interface DonutProps {
   completadas: number; canceladas: number; noShows: number; total: number;
   periodo: PeriodoFiltro; segmentoActivo: SegmentoActivo;
@@ -148,7 +148,7 @@ const DonutInteractivo = memo(function DonutInteractivo({ completadas, cancelada
           }}>
             <span style={{ fontSize: 12, color: tooltip.seg.color, fontWeight: 700 }}>{tooltip.seg.label}</span>
             <span style={{ fontSize: 11, color: C.textMid, marginLeft: 8 }}>
-              {tooltip.seg.value} · {Math.round(tooltip.seg.pct * 100)}%
+              {tooltip.seg.value} · {total > 0 ? Math.round((tooltip.seg.value / total) * 100) : 0}%
             </span>
           </div>
         )}
