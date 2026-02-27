@@ -7,6 +7,7 @@ import Sidebar from '@/components/Sidebar';
 import BottomNav from '@/components/BottomNav';
 import NuevaCitaModal from '@/components/NuevaCitaModal';
 import ClientesSection from '@/components/ClientesSection';
+import ServiciosSection from '@/components/ServiciosSection';
 import { calcularFiabilidad, getRiskIndicator } from '@/lib/fiabilidad';
 
 const ALL_SLOTS = Array.from({ length: 48 }, (_, i) => {
@@ -414,7 +415,7 @@ export default function Dashboard() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}
         className="main-content-desktop">
 
-      {/* HEADER — 56px, todo en una línea */}
+      {/* HEADER — 64px, todo en una línea */}
       <div style={{
         height: 56,
         background: C.surface,
@@ -485,7 +486,7 @@ export default function Dashboard() {
       {activeSection !== 'agenda' && (
         <div className="flex-1 overflow-y-auto" style={{ background: C.bg }}>
           {activeSection === 'clientes' && <ClientesSection empresaId={empresa?.id || ''} />}
-          {activeSection === 'servicios' && <div className="flex items-center justify-center pt-32 text-gray-500">Servicios — próximamente</div>}
+          {activeSection === 'servicios' && <ServiciosSection empresaId={empresa?.id || ''} />}
           {activeSection === 'estadisticas' && <div className="flex items-center justify-center pt-32 text-gray-500">Estadísticas — próximamente</div>}
           {activeSection === 'notificaciones' && <div className="flex items-center justify-center pt-32 text-gray-500">Notificaciones — próximamente</div>}
           {activeSection === 'configuracion' && <div className="flex items-center justify-center pt-32 text-gray-500">Configuración — próximamente</div>}
@@ -596,18 +597,8 @@ export default function Dashboard() {
             </div>
           </div>
           <button onClick={() => openModal(selectedDate, '')}
-            style={{
-              position: 'fixed',
-              bottom: 'calc(80px + env(safe-area-inset-bottom))',
-              right: 16,
-              width: 56, height: 56,
-              borderRadius: '50%',
-              background: C.green,
-              border: 'none', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 4px 20px rgba(34,197,94,0.45)',
-              zIndex: 35,
-            }}>
+            className="fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-lg z-40"
+            style={{ background: C.green }}>
             <Plus className="w-6 h-6 text-white" />
           </button>
         </>)}
@@ -895,7 +886,7 @@ export default function Dashboard() {
                 background: C.green,
                 border: 'none', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 20px rgba(34,197,94,0.45)',
+                boxShadow: `0 4px 20px rgba(34,197,94,0.45)`,
                 zIndex: 35,
               }}>
               <Plus className="w-6 h-6 text-white" />
@@ -964,7 +955,7 @@ export default function Dashboard() {
                 background: C.green,
                 border: 'none', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 20px rgba(34,197,94,0.45)',
+                boxShadow: `0 4px 20px rgba(34,197,94,0.45)`,
                 zIndex: 35,
               }}>
               <Plus className="w-6 h-6 text-white" />
