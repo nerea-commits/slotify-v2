@@ -58,7 +58,7 @@ export default function Sidebar({ empresaNombre, profesionalNombre, isAdmin, onN
         top: 0,
         left: 0,
         zIndex: 40,
-        overflow: 'hidden',
+        overflow: 'visible',
       }}
     >
       {/* Logo + empresa */}
