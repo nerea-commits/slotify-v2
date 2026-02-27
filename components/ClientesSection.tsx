@@ -68,11 +68,11 @@ const DonutInteractivo = memo(function DonutInteractivo({ completadas, cancelada
   const SIZE = 220, STROKE = 22, r = (SIZE - STROKE) / 2, circ = 2 * Math.PI * r;
   const gap = 3;
 
-  const segments: DonutSegment[] = useMemo(() => [
-    { value: completadas, color: C.accent, label: 'Completadas', key: 'completadas' },
-    { value: canceladas,  color: C.amber,  label: 'Canceladas',  key: 'canceladas'  },
-    { value: noShows,     color: C.red,    label: 'No-show',     key: 'noshow'      },
-  ].filter(s => s.value > 0), [completadas, canceladas, noShows]);
+  const segments: DonutSegment[] = useMemo(() => ([
+    { value: completadas, color: C.accent, label: 'Completadas', key: 'completadas' as SegmentoActivo },
+    { value: canceladas,  color: C.amber,  label: 'Canceladas',  key: 'canceladas'  as SegmentoActivo },
+    { value: noShows,     color: C.red,    label: 'No-show',     key: 'noshow'      as SegmentoActivo },
+  ] as DonutSegment[]).filter(s => s.value > 0), [completadas, canceladas, noShows]);
 
   const arcs = useMemo(() => {
     let off = 0;
