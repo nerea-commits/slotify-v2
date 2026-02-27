@@ -522,12 +522,12 @@ function VistaDetalle({ cliente, empresaId, mostrarImporte, onVolver, onCrearCit
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 10 }}>
           <KpiCard
             value={stats.freq ? `~${stats.freq}` : '—'} suffix={stats.freq ? 'días' : ''}
-            label="Frecuencia media" color={C.blue}
+            label="Frecuencia media" color={C.textMid}
           />
           <KpiCard
             value={stats.daysSince !== null ? stats.daysSince : '—'} suffix={stats.daysSince !== null ? 'd' : ''}
             label="Desde última visita"
-            color={stats.daysSince !== null && stats.daysSince > 60 ? C.red : stats.daysSince !== null && stats.daysSince > 30 ? C.amber : C.text}
+            color={C.textMid}
           />
           <KpiCard
             value={stats.noShows} label="No-shows (total)"
@@ -538,7 +538,9 @@ function VistaDetalle({ cliente, empresaId, mostrarImporte, onVolver, onCrearCit
           />
           <KpiCard
             value={stats.total} label={`Citas ${periodLabel(periodo).toLowerCase()}`}
-            color={C.textMid}
+            color={C.accent}
+            active={segmento === 'all'}
+            onClick={() => setSegmento('all')}
           />
         </div>
 
@@ -566,14 +568,23 @@ function VistaDetalle({ cliente, empresaId, mostrarImporte, onVolver, onCrearCit
 
         {/* ── HISTORIAL ── */}
         <div style={{ background: C.panel, borderRadius: 16, overflow: 'hidden' }}>
-          <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.divider}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: C.textMid, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-              {segmento === 'all' ? 'Historial' : ({ completadas: 'Completadas', canceladas: 'Canceladas', noshow: 'No-shows' }[segmento])}
-              <span style={{ color: C.textDim, fontWeight: 400, marginLeft: 6 }}>({citasFiltradas.length})</span>
-            </span>
+          <div style={{ padding: '12px 18px', borderBottom: `1px solid ${C.divider}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: C.textMid, letterSpacing: 0.5, textTransform: 'uppercase' }}>Historial</span>
+              <span style={{ fontSize: 11, color: C.textDim }}>({citasFiltradas.length})</span>
+              {segmento !== 'all' && (
+                <span style={{ fontSize: 10, color: C.textDim }}>·</span>
+              )}
+              {segmento !== 'all' && (
+                <span style={{ fontSize: 11, color: ({ completadas: C.accent, canceladas: C.amber, noshow: C.red } as Record<string,string>)[segmento], fontWeight: 600 }}>
+                  Filtrado por: {({ completadas: 'Completadas', canceladas: 'Canceladas', noshow: 'No-shows' } as Record<string,string>)[segmento]}
+                </span>
+              )}
+            </div>
             {segmento !== 'all' && (
-              <button onClick={() => setSegmento('all')} style={{ fontSize: 11, color: C.textDim, background: C.panelAlt, border: 'none', cursor: 'pointer', padding: '3px 8px', borderRadius: 6 }}>
-                Ver todas
+              <button onClick={() => setSegmento('all')}
+                style={{ fontSize: 11, color: C.textMid, background: C.panelAlt, border: `1px solid ${C.divider}`, cursor: 'pointer', padding: '4px 10px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <X size={10} /> Limpiar filtro
               </button>
             )}
           </div>
