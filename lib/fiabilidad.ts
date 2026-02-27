@@ -1,129 +1,192 @@
 // lib/fiabilidad.ts
 // ═══════════════════════════════════════════════════
-// SISTEMA DE FIABILIDAD DEL CLIENTE
-// Usado en: ClientesSection, NuevaCitaModal, Calendar
+// SISTEMA DE FIABILIDAD v2 — Puntos de riesgo (90 días)
 // ═══════════════════════════════════════════════════
 
 export interface FiabilidadResult {
-  score: number;           // 0-100
-  label: string;           // 'Excelente' | 'Buena' | 'Regular' | 'Baja' | 'Nuevo'
-  color: string;           // hex color
+  riskPoints: number;
+  riskLabel: 'fiable' | 'atencion' | 'riesgo' | 'nuevo';
+  riskColor: string;
+  displayLabel: string;
+
+  // Backward compat (calendar, modal)
+  score: number;
+  label: string;
+  color: string;
   alertLevel: 'none' | 'info' | 'warn' | 'danger';
   alertMessage: string | null;
+
+  // Counts (all-time)
   totalCitas: number;
   completadas: number;
+  noShowsReales: number;
+  noShowsJustificados: number;
+  cancelacionesTardias: number;
+  cancelacionesAnticipadas: number;
+  reprogramadas: number;
+
+  // Legacy compat
   cancelaciones: number;
   noShows: number;
-  noShowRatio: number;     // 0-1
-  cancelRatio: number;     // 0-1
+  noShowRatio: number;
+  cancelRatio: number;
 }
 
 /**
- * FÓRMULA DE FIABILIDAD
- * 
- * Base: 100 puntos
- * - No-shows:      -60 × (no_shows / total)   → Peso fuerte (no avisar es grave)
- * - Cancelaciones:  -20 × (cancel / total)     → Peso menor (cancelar es aceptable)
- * 
- * Atenuación por muestra pequeña:
- * - Si < 5 citas, atenúa la penalización proporcionalmente
- * - Evita que 1 no-show en 1 cita = 40% fiabilidad
- * - Con 1 no-show de 2 citas → ~82% (no 70%)
- * 
+ * Infiere estado_detallado desde estado si no existe
+ */
+export function inferEstadoDetallado(cita: any): string {
+  if (cita.estado_detallado) return cita.estado_detallado;
+  const e = (cita.estado || '').toLowerCase().trim();
+  if (e === 'no-show' || e === 'no_show') return 'no_show_real';
+  if (e === 'cancelada') return 'cancelacion_anticipada';
+  return 'completada';
+}
+
+/**
+ * SISTEMA DE PUNTOS (ventana 90 días):
+ *   No-show real:          +3
+ *   Cancelación tardía:    +1.5
+ *   No-show justificado:   +0.5
+ *   Cancelación anticipada: 0
+ *   Reprogramada:           0
+ *   Completada:            -0.5
+ *
  * Resultado:
- * - ≥85 → Excelente (verde)     → Sin alerta
- * - ≥70 → Buena (verde claro)   → Info si hay algún no-show
- * - ≥50 → Regular (ámbar)       → Advertencia
- * - <50 → Baja (rojo)           → Riesgo alto
- * - <3 citas → "Nuevo" (gris)   → Sin datos suficientes
+ *   0-2  → 🟢 Fiable
+ *   2-5  → 🟡 Atención
+ *   5+   → 🔴 Riesgo
+ *   <3 citas → ⚫ Nuevo
  */
 export function calcularFiabilidad(citas: any[]): FiabilidadResult {
-  if (!citas || citas.length === 0) {
-    return {
-      score: 100, label: 'Nuevo', color: '#6B7280',
-      alertLevel: 'none', alertMessage: null,
-      totalCitas: 0, completadas: 0, cancelaciones: 0, noShows: 0,
-      noShowRatio: 0, cancelRatio: 0,
-    };
-  }
+  const empty: FiabilidadResult = {
+    riskPoints: 0, riskLabel: 'nuevo', riskColor: '#6B7280',
+    displayLabel: 'Nuevo', score: 100, label: 'Nuevo', color: '#6B7280',
+    alertLevel: 'none', alertMessage: null,
+    totalCitas: 0, completadas: 0,
+    noShowsReales: 0, noShowsJustificados: 0,
+    cancelacionesTardias: 0, cancelacionesAnticipadas: 0, reprogramadas: 0,
+    cancelaciones: 0, noShows: 0, noShowRatio: 0, cancelRatio: 0,
+  };
 
+  if (!citas || citas.length === 0) return empty;
+
+  const now = new Date();
+  const windowStart = new Date(now.getTime() - 90 * 86400000);
+
+  // All-time counts
+  let comp = 0, nsReal = 0, nsJust = 0, cTardia = 0, cAntic = 0, reprog = 0;
+  let riskPoints = 0;
+
+  citas.forEach(cita => {
+    const ed = inferEstadoDetallado(cita);
+    const d = cita.hora_inicio ? new Date(cita.hora_inicio) : null;
+    const inW = d ? d >= windowStart : false;
+
+    switch (ed) {
+      case 'completada':
+        comp++;
+        if (inW) riskPoints -= 0.5;
+        break;
+      case 'no_show_real':
+        nsReal++;
+        if (inW) riskPoints += 3;
+        break;
+      case 'no_show_justificado':
+        nsJust++;
+        if (inW) riskPoints += 0.5;
+        break;
+      case 'cancelacion_tardia':
+        cTardia++;
+        if (inW) riskPoints += 1.5;
+        break;
+      case 'cancelacion_anticipada':
+        cAntic++;
+        break;
+      case 'reprogramada':
+        reprog++;
+        break;
+      default:
+        comp++;
+        break;
+    }
+  });
+
+  riskPoints = Math.max(0, riskPoints);
   const total = citas.length;
-  const cancelaciones = citas.filter(c => c.estado === 'cancelada').length;
-  const noShows = citas.filter(c => c.estado === 'no-show' || c.estado === 'no_show' || c.estado === 'No-show').length;
-  const completadas = total - cancelaciones - noShows;
+  const allNS = nsReal + nsJust;
+  const allCancel = cTardia + cAntic;
 
-  const noShowRatio = total > 0 ? noShows / total : 0;
-  const cancelRatio = total > 0 ? cancelaciones / total : 0;
-
-  // Penalización cruda
-  const rawPenalty = (noShowRatio * 60) + (cancelRatio * 20);
-
-  // Atenuación si muestra es pequeña (< 5 citas)
-  const dampenFactor = Math.min(1, total / 5);
-  const adjustedPenalty = rawPenalty * dampenFactor;
-
-  let score = Math.round(Math.max(0, Math.min(100, 100 - adjustedPenalty)));
-
-  // Si menos de 3 citas, mostrar como "Nuevo"
-  if (total < 3) {
-    return {
-      score, label: 'Nuevo', color: '#6B7280',
-      alertLevel: noShows > 0 ? 'info' : 'none',
-      alertMessage: noShows > 0 ? `Este cliente tuvo ${noShows} no-show en sus primeras citas.` : null,
-      totalCitas: total, completadas, cancelaciones, noShows,
-      noShowRatio, cancelRatio,
-    };
-  }
-
-  // Determinar nivel
-  let label: string;
-  let color: string;
+  let riskLabel: 'fiable' | 'atencion' | 'riesgo' | 'nuevo';
+  let displayLabel: string;
+  let riskColor: string;
   let alertLevel: 'none' | 'info' | 'warn' | 'danger';
   let alertMessage: string | null = null;
 
-  if (score >= 85) {
-    label = 'Excelente';
-    color = '#10B981';
-    alertLevel = noShows > 0 ? 'info' : 'none';
-    if (noShows > 0) {
-      alertMessage = `Este cliente tuvo ${noShows} no-show anteriormente.`;
+  if (total < 3) {
+    riskLabel = 'nuevo';
+    displayLabel = 'Nuevo';
+    riskColor = '#6B7280';
+    if (nsReal > 0) {
+      alertLevel = 'warn';
+      alertMessage = `Este cliente tiene ${nsReal} no-show sin justificar.`;
+    } else {
+      alertLevel = 'none';
     }
-  } else if (score >= 70) {
-    label = 'Buena';
-    color = '#22C55E';
-    alertLevel = 'info';
-    alertMessage = `Tiene ${noShows} no-show${noShows !== 1 ? 's' : ''} de ${total} citas (${Math.round(noShowRatio * 100)}%).`;
-  } else if (score >= 50) {
-    label = 'Regular';
-    color = '#F59E0B';
-    alertLevel = 'warn';
-    alertMessage = `Tiene ${noShows} no-show${noShows !== 1 ? 's' : ''} previos. Considera confirmar la cita.`;
-  } else {
-    label = 'Baja';
-    color = '#EF4444';
+  } else if (riskPoints >= 5) {
+    riskLabel = 'riesgo';
+    displayLabel = 'Riesgo';
+    riskColor = '#EF4444';
     alertLevel = 'danger';
-    const pct = Math.round(noShowRatio * 100);
-    alertMessage = `Cliente con alto índice de ausencia (${pct}% no-show). Considera solicitar señal.`;
+    const parts: string[] = [];
+    if (nsReal > 0) parts.push(`${nsReal} no-show${nsReal !== 1 ? 's' : ''} reales`);
+    if (cTardia > 0) parts.push(`${cTardia} cancelación${cTardia !== 1 ? 'es' : ''} tardía${cTardia !== 1 ? 's' : ''}`);
+    alertMessage = parts.length > 0 ? parts.join(' y ') + '.' : 'Patrón de incidencias recurrente.';
+  } else if (riskPoints >= 2) {
+    riskLabel = 'atencion';
+    displayLabel = 'Atención';
+    riskColor = '#F59E0B';
+    alertLevel = 'warn';
+    const parts: string[] = [];
+    if (nsReal > 0) parts.push(`${nsReal} no-show${nsReal !== 1 ? 's' : ''}`);
+    if (cTardia > 0) parts.push(`${cTardia} cancelación${cTardia !== 1 ? 'es' : ''} tardía${cTardia !== 1 ? 's' : ''}`);
+    alertMessage = parts.length > 0 ? parts.join(' y ') + '.' : null;
+  } else {
+    riskLabel = 'fiable';
+    displayLabel = 'Fiable';
+    riskColor = '#10B981';
+    // Alert from first no-show ever
+    if (nsReal > 0) {
+      alertLevel = 'info';
+      alertMessage = `Este cliente tiene ${nsReal} no-show registrado${nsReal !== 1 ? 's' : ''}.`;
+    } else {
+      alertLevel = 'none';
+    }
   }
 
+  const score = Math.max(0, Math.min(100, Math.round(100 - riskPoints * 10)));
+
   return {
-    score, label, color, alertLevel, alertMessage,
-    totalCitas: total, completadas, cancelaciones, noShows,
-    noShowRatio, cancelRatio,
+    riskPoints, riskLabel, riskColor, displayLabel,
+    score, label: displayLabel, color: riskColor,
+    alertLevel, alertMessage,
+    totalCitas: total, completadas: comp,
+    noShowsReales: nsReal, noShowsJustificados: nsJust,
+    cancelacionesTardias: cTardia, cancelacionesAnticipadas: cAntic,
+    reprogramadas: reprog,
+    cancelaciones: allCancel, noShows: allNS,
+    noShowRatio: total > 0 ? allNS / total : 0,
+    cancelRatio: total > 0 ? allCancel / total : 0,
   };
 }
 
-/**
- * Determina si debe mostrarse indicador de riesgo en el calendario
- * Solo para fiabilidad < 70 (Regular o Baja)
- * Retorna null si no hay riesgo, o el color del indicador
- */
-export function getRiskIndicator(fiabilidad: FiabilidadResult): { show: boolean; color: string; icon: '⚠' | '🔴' | null } {
-  if (fiabilidad.label === 'Nuevo' || fiabilidad.score >= 70) {
-    return { show: false, color: 'transparent', icon: null };
+export function getRiskIndicator(fiabilidad: FiabilidadResult): { show: boolean; color: string; icon: string | null } {
+  // Show warning from first no-show real, anywhere
+  if (fiabilidad.noShowsReales > 0) {
+    if (fiabilidad.riskLabel === 'riesgo') return { show: true, color: '#EF4444', icon: '🔴' };
+    return { show: true, color: '#F59E0B', icon: '⚠' };
   }
-  if (fiabilidad.score >= 50) {
-    return { show: true, color: '#F59E0B', icon: '⚠' }; // Ámbar
-  }
-  return { show: true, color: '#EF4444', icon: '🔴' }; // Rojo
+  if (fiabilidad.riskLabel === 'atencion') return { show: true, color: '#F59E0B', icon: '⚠' };
+  if (fiabilidad.riskLabel === 'riesgo') return { show: true, color: '#EF4444', icon: '🔴' };
+  return { show: false, color: 'transparent', icon: null };
 }
