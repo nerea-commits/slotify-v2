@@ -54,7 +54,7 @@ function periodLabel(p: PeriodoFiltro) {
 }
 
 // ─── Donut interactivo ────────────────────────────────────────────────────────
-interface DonutSegment { value: number; color: string; label: string; key: SegmentoActivo; }
+interface DonutSegment { value: number; color: string; label: string; key: SegmentoActivo; pct?: number; }
 interface DonutProps {
   completadas: number; canceladas: number; noShows: number; total: number;
   periodo: PeriodoFiltro; segmentoActivo: SegmentoActivo;
