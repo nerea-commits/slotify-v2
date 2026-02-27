@@ -769,14 +769,19 @@ export default function Dashboard() {
                                 <div
                                   onClick={() => setSelectedCita(cita)}
                                   style={{
+                                    position: 'absolute',
+                                    inset: 0,
                                     background: `${citaColor(cita.estado)}33`,
                                     borderLeft: `3px solid ${citaColor(cita.estado)}`,
                                     borderRadius: 4,
                                     padding: '8px 10px',
                                     cursor: 'pointer',
                                     boxShadow: `0 1px 3px ${citaColor(cita.estado)}33`,
-                                    width: '100%',
                                     boxSizing: 'border-box' as const,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'center',
+                                    overflow: 'hidden',
                                   }}
                                 >
                                   <span style={{ fontSize: 12, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.35, wordBreak: 'break-word' as const, display: 'block' }}>
