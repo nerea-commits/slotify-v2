@@ -1063,15 +1063,6 @@ export default function Dashboard() {
 
       </>)}
 
-      <Sidebar
-        open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        empresaNombre={empresa?.nombre || ''}
-        isAdmin={isAdmin}
-        onNavigate={(section) => { setActiveSection(section); setSidebarOpen(false); }}
-        activeSection={activeSection}
-      />
-
       <NuevaCitaModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
