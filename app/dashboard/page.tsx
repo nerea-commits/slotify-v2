@@ -401,34 +401,83 @@ export default function Dashboard() {
 
       {/* SIDEBAR — desktop only */}
       <Sidebar
-        open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(c => !c)}
         empresaNombre={empresa?.nombre || 'Mi negocio'}
+        profesionalNombre={profesional?.nombre || ''}
         isAdmin={isAdmin}
         onNavigate={setActiveSection}
         activeSection={activeSection}
       />
 
-      {/* MAIN CONTENT — offset by sidebar width on desktop */}
+      {/* MAIN CONTENT */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}
         className="main-content-desktop">
 
-      {/* HEADER */}
-      <div className="flex items-center justify-between px-4 flex-shrink-0"
-        style={{ background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}`, height: 52 }}>
-        {/* Mobile: hamburger + logo */}
-        <div className="flex items-center gap-3 show-mobile-flex">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold" style={{ background: C.green }}>
+      {/* HEADER — 64px, todo en una línea */}
+      <div style={{
+        height: 56,
+        background: C.surface,
+        borderBottom: `1px solid ${C.surfaceAlt}`,
+        display: 'flex', alignItems: 'center',
+        padding: '0 16px', gap: 8, flexShrink: 0,
+      }}>
+        {/* Mobile: logo empresa */}
+        <div className="show-mobile-flex" style={{ alignItems: 'center', gap: 8, marginRight: 8 }}>
+          <div style={{ width: 28, height: 28, borderRadius: 7, background: C.green, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
             {empresa?.nombre?.[0]?.toUpperCase() || '?'}
           </div>
-          <p className="text-sm font-semibold">{empresa?.nombre || 'Mi negocio'}</p>
+          <p style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{empresa?.nombre || 'Mi negocio'}</p>
         </div>
-        {/* Desktop: professional info */}
-        <div className="hidden-mobile flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full inline-block" style={{ background: C.green }} />
-          <p className="text-sm" style={{ color: C.textSec }}>{profesional?.nombre || ''}</p>
+
+        {/* View selector — solo en agenda */}
+        {activeSection === 'agenda' && (
+          <div style={{ display: 'flex', gap: 4, background: C.surfaceAlt, borderRadius: 8, padding: 3 }}>
+            {(['day', 'week', 'month'] as ViewMode[]).map(v => (
+              <button key={v} onClick={() => setView(v)}
+                style={{
+                  padding: '4px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: view === v ? 600 : 400,
+                  background: view === v ? C.green : 'transparent',
+                  color: view === v ? '#fff' : C.textSec,
+                  transition: 'all 0.12s',
+                }}>
+                {v === 'day' ? 'Día' : v === 'week' ? 'Semana' : 'Mes'}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Day nav — solo en agenda */}
+        {activeSection === 'agenda' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 4 }}>
+            <button onClick={() => view === 'day' ? changeDay(-1) : view === 'week' ? changeWeek(-1) : changeMonth(-1)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textSec, padding: 4, borderRadius: 6, display: 'flex' }}>
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <div style={{ textAlign: 'center', minWidth: 130 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>
+                {view === 'day' ? formatDate(selectedDate) : view === 'week' ? (() => { const wd = getWeekDays(); return `${wd[0].getDate()} – ${wd[6].getDate()} ${wd[6].toLocaleDateString('es-ES',{month:'short',year:'numeric'})}`; })() : formatMonth(selectedDate)}
+              </p>
+              {view === 'day' && isToday(selectedDate) && <p style={{ fontSize: 10, fontWeight: 700, color: C.green, lineHeight: 1 }}>HOY</p>}
+            </div>
+            <button onClick={() => view === 'day' ? changeDay(1) : view === 'week' ? changeWeek(1) : changeMonth(1)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textSec, padding: 4, borderRadius: 6, display: 'flex' }}>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        <div style={{ flex: 1 }} />
+
+        {/* Perfil */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ textAlign: 'right' }} className="hidden-mobile">
+            <p style={{ fontSize: 12, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>{profesional?.nombre || ''}</p>
+            <p style={{ fontSize: 10, color: C.textSec, lineHeight: 1.2 }}>{isAdmin ? 'Admin' : 'Empleado'}</p>
+          </div>
+          <div style={{ width: 30, height: 30, borderRadius: 8, background: C.green, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff' }}>
+            {profesional?.nombre?.[0]?.toUpperCase() || '?'}
+          </div>
         </div>
       </div>
 
@@ -446,33 +495,8 @@ export default function Dashboard() {
       {/* AGENDA */}
       {activeSection === 'agenda' && (<>
 
-        {/* TABS */}
-        <div className="flex justify-center gap-2 py-3 px-4 flex-shrink-0"
-          style={{ background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}` }}>
-          {(['day', 'week', 'month'] as ViewMode[]).map(v => (
-            <button key={v} onClick={() => setView(v)}
-              className="px-5 py-2 rounded-full text-sm font-medium"
-              style={{
-                background: view === v ? C.green : 'transparent',
-                color: view === v ? '#fff' : C.textSec,
-                border: view === v ? 'none' : `1px solid ${C.surfaceAlt}`,
-              }}>
-              {v === 'day' ? 'Día' : v === 'week' ? 'Semana' : 'Mes'}
-            </button>
-          ))}
-        </div>
-
         {/* ── VISTA DÍA ── */}
         {view === 'day' && (<>
-          <div className="flex items-center justify-between px-4 py-3 flex-shrink-0"
-            style={{ background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}` }}>
-            <button onClick={() => changeDay(-1)} className="p-2 rounded-full"><ChevronLeft className="w-4 h-4" /></button>
-            <div className="text-center">
-              <p className="text-sm font-medium capitalize">{formatDate(selectedDate)}</p>
-              {isToday(selectedDate) && <p className="text-xs font-semibold" style={{ color: C.green }}>Hoy</p>}
-            </div>
-            <button onClick={() => changeDay(1)} className="p-2 rounded-full"><ChevronRight className="w-4 h-4" /></button>
-          </div>
 
           <div className="flex-1 overflow-y-auto" style={{ paddingTop: 8, paddingBottom: 80 }}>
             <div style={{ paddingLeft: 16, paddingRight: 16 }}>
@@ -852,8 +876,18 @@ export default function Dashboard() {
             </div>
 
             <button onClick={() => openModal()}
-              className="fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-lg z-40"
-              style={{ background: C.green }}>
+              style={{
+                position: 'fixed',
+                bottom: 'calc(80px + env(safe-area-inset-bottom))',
+                right: 16,
+                width: 56, height: 56,
+                borderRadius: '50%',
+                background: C.green,
+                border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: `0 4px 20px rgba(34,197,94,0.45)`,
+                zIndex: 35,
+              }}>
               <Plus className="w-6 h-6 text-white" />
             </button>
           </div>
@@ -911,8 +945,18 @@ export default function Dashboard() {
               </div>
             </div>
             <button onClick={() => openModal()}
-              className="fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-lg z-40"
-              style={{ background: C.green }}>
+              style={{
+                position: 'fixed',
+                bottom: 'calc(80px + env(safe-area-inset-bottom))',
+                right: 16,
+                width: 56, height: 56,
+                borderRadius: '50%',
+                background: C.green,
+                border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: `0 4px 20px rgba(34,197,94,0.45)`,
+                zIndex: 35,
+              }}>
               <Plus className="w-6 h-6 text-white" />
             </button>
           </div>
@@ -1085,7 +1129,7 @@ export default function Dashboard() {
       <style>{`
         @media (min-width: 768px) {
           .main-content-desktop {
-            margin-left: ${sidebarCollapsed ? 56 : 220}px;
+            margin-left: ${sidebarCollapsed ? 56 : 240}px;
             transition: margin-left 0.2s cubic-bezier(0.4,0,0.2,1);
           }
           .show-mobile-flex { display: none !important; }
