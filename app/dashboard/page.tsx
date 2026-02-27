@@ -767,6 +767,8 @@ export default function Dashboard() {
                               display: 'flex',
                               flexDirection: 'column',
                               justifyContent: cita ? 'center' : 'flex-start',
+                              boxSizing: 'border-box' as const,
+                              overflow: 'hidden',
                             }}>
                               {cita && (
                                 <div
@@ -775,10 +777,11 @@ export default function Dashboard() {
                                     background: `${citaColor(cita.estado)}33`,
                                     borderLeft: `3px solid ${citaColor(cita.estado)}`,
                                     borderRadius: 4,
-                                    padding: '5px 7px',
-                                    margin: '2px',
+                                    padding: '8px 10px',
                                     cursor: 'pointer',
                                     boxShadow: `0 1px 3px ${citaColor(cita.estado)}33`,
+                                    width: '100%',
+                                    boxSizing: 'border-box' as const,
                                   }}
                                 >
                                   <span style={{ fontSize: 12, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.35, wordBreak: 'break-word' as const, display: 'block' }}>
