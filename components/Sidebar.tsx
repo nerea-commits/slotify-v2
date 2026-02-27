@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 
 interface SidebarProps {
   empresaNombre: string;
+  profesionalNombre?: string;
   isAdmin: boolean;
   onNavigate: (section: string) => void;
   activeSection: string;
@@ -20,7 +21,7 @@ const NAV_ITEMS = [
   { id: 'configuracion', label: 'Configuración', icon: Settings, section: 'sys', adminOnly: true },
 ];
 
-export default function Sidebar({ empresaNombre, isAdmin, onNavigate, activeSection, collapsed, onToggleCollapse }: SidebarProps) {
+export default function Sidebar({ empresaNombre, profesionalNombre, isAdmin, onNavigate, activeSection, collapsed, onToggleCollapse }: SidebarProps) {
   const visible = NAV_ITEMS.filter(i => !i.adminOnly || isAdmin);
   const navItems = visible.filter(i => i.section === 'nav');
   const sysItems = visible.filter(i => i.section === 'sys');
@@ -73,6 +74,7 @@ export default function Sidebar({ empresaNombre, isAdmin, onNavigate, activeSect
           {!collapsed && (
             <div style={{ overflow: 'hidden' }}>
               <div style={{ color: '#fff', fontWeight: 600, fontSize: 15, whiteSpace: 'nowrap' }}>{empresaNombre}</div>
+              {profesionalNombre && <div style={{ color: '#64748B', fontSize: 12, whiteSpace: 'nowrap' }}>{profesionalNombre}</div>}
             </div>
           )}
         </div>
