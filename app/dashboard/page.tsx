@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { ChevronLeft, ChevronRight, Plus, X, Edit2 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
+import BottomNav from '@/components/BottomNav';
 import NuevaCitaModal from '@/components/NuevaCitaModal';
 import ClientesSection from '@/components/ClientesSection';
 import { calcularFiabilidad, getRiskIndicator } from '@/lib/fiabilidad';
@@ -48,6 +49,7 @@ type ViewMode = 'day' | 'week' | 'month';
 export default function Dashboard() {
   const [view, setView] = useState<ViewMode>('day');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [allCitas, setAllCitas] = useState<any[]>([]);
@@ -392,29 +394,42 @@ export default function Dashboard() {
     );
   }
 
+  const sidebarW = sidebarCollapsed ? 56 : 220;
+
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: C.bg, color: C.text }}>
+    <div style={{ minHeight: '100vh', background: C.bg, color: C.text, display: 'flex' }}>
+
+      {/* SIDEBAR — desktop only */}
+      <Sidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(c => !c)}
+        empresaNombre={empresa?.nombre || 'Mi negocio'}
+        isAdmin={isAdmin}
+        onNavigate={setActiveSection}
+        activeSection={activeSection}
+      />
+
+      {/* MAIN CONTENT — offset by sidebar width on desktop */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}
+        className="main-content-desktop">
 
       {/* HEADER */}
-      <div className="flex items-center justify-between px-4 py-3 flex-shrink-0"
-        style={{ background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}` }}>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: C.green }}>
+      <div className="flex items-center justify-between px-4 flex-shrink-0"
+        style={{ background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}`, height: 52 }}>
+        {/* Mobile: hamburger + logo */}
+        <div className="flex items-center gap-3 show-mobile-flex">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold" style={{ background: C.green }}>
             {empresa?.nombre?.[0]?.toUpperCase() || '?'}
           </div>
-          <div>
-            <p className="text-sm font-semibold">{empresa?.nombre || 'Mi negocio'}</p>
-            <p className="text-xs flex items-center gap-1" style={{ color: C.textSec }}>
-              <span className="w-2 h-2 rounded-full inline-block" style={{ background: C.green }} />
-              {profesional?.nombre || ''}
-            </p>
-          </div>
+          <p className="text-sm font-semibold">{empresa?.nombre || 'Mi negocio'}</p>
         </div>
-        <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg" style={{ color: C.textSec }}>
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
+        {/* Desktop: professional info */}
+        <div className="hidden-mobile flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full inline-block" style={{ background: C.green }} />
+          <p className="text-sm" style={{ color: C.textSec }}>{profesional?.nombre || ''}</p>
+        </div>
       </div>
 
       {/* SECCIONES */}
@@ -1066,6 +1081,30 @@ export default function Dashboard() {
         selectedDate={preselectedDate || selectedDate}
         preselectedTime={preselectedTime}
       />
+      </div>
+
+      {/* BOTTOM NAV — mobile only */}
+      <BottomNav
+        activeSection={activeSection}
+        onNavigate={setActiveSection}
+        isAdmin={isAdmin}
+      />
+
+      {/* Global layout CSS */}
+      <style>{`
+        @media (min-width: 768px) {
+          .main-content-desktop {
+            margin-left: ${sidebarCollapsed ? 56 : 220}px;
+            transition: margin-left 0.2s cubic-bezier(0.4,0,0.2,1);
+          }
+          .show-mobile-flex { display: none !important; }
+        }
+        @media (max-width: 767px) {
+          .main-content-desktop { margin-left: 0 !important; padding-bottom: 64px; }
+          .hidden-mobile { display: none !important; }
+          .show-mobile-flex { display: flex !important; }
+        }
+      `}</style>
     </div>
   );
 }
