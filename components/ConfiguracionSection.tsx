@@ -288,7 +288,7 @@ function TabHorario({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
             <p style={{ fontSize:11, color: C.textDim }}>Bloquea un rango intermedio</p>
           </div>
           <div style={{ width:40, height:22, borderRadius:11, background: pausaActiva ? C.green : C.border, position:'relative', transition:'background 0.2s', cursor:'pointer' }}
-            onClick={() => setPausaActiva(p => !p)}>
+            onClick={() => setPausaActiva((p: boolean) => !p)}>
             <div style={{ position:'absolute', top:2, left: pausaActiva ? 20 : 2, width:18, height:18, borderRadius:9, background:'#fff', transition:'left 0.2s' }}/>
           </div>
         </label>
