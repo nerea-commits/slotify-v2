@@ -32,10 +32,8 @@ function rawDate(s: string): string {
 
 function rawTimeMin(s: string): number {
   if (!s) return 0;
-  const sep = s.indexOf('T') !== -1 ? s.indexOf('T') : s.indexOf(' ');
-  if (sep === -1) return 0;
-  const [h, m] = s.substring(sep + 1).split(':').map(Number);
-  return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
+  const hhmm = s.length >= 16 ? s.substring(11, 16) : s.length >= 5 ? s.substring(0, 5) : '';
+  return timeToMinutes(hhmm);
 }
 
 const C = {
@@ -665,6 +663,7 @@ export default function Dashboard() {
                   const dayCitaMaps = weekDays.map(day => {
                     const dayCitas = citasForDate(day);
                     const citaAtSlot: Record<number, any> = {};
+                    const citaSpans: Record<number, number> = {};
                     const coveredSlots = new Set<number>();
                     dayCitas.forEach(cita => {
                       const citaStart = rawTimeMin(cita.hora_inicio);
@@ -672,11 +671,12 @@ export default function Dashboard() {
                       const dur = Math.max(citaEnd - citaStart, 30);
                       const slotIdx = visibleSlots.findIndex(s => timeToMinutes(s) === citaStart);
                       if (slotIdx === -1) return;
-                      const spanSlots = Math.ceil(dur / 30);
+                      const spanSlots = Math.max(1, Math.ceil(dur / 30));
                       citaAtSlot[slotIdx] = cita;
+                      citaSpans[slotIdx] = spanSlots;
                       for (let i = slotIdx; i < slotIdx + spanSlots; i++) coveredSlots.add(i);
                     });
-                    return { citaAtSlot, coveredSlots, dayCitas };
+                    return { citaAtSlot, citaSpans, coveredSlots, dayCitas };
                   });
 
                   const cells: React.ReactNode[] = [];
@@ -735,19 +735,14 @@ export default function Dashboard() {
                     weekDays.forEach((day, di) => {
                       const today = isToday(day);
                       const working = isWorkingDay(day);
-                      const { citaAtSlot, coveredSlots } = dayCitaMaps[di];
+                      const { citaAtSlot, citaSpans, coveredSlots } = dayCitaMaps[di];
 
                       const cita = citaAtSlot[si];
 
                       // Skip cells covered by a multi-slot cita — the start cell uses gridRow span
                       if (coveredSlots.has(si) && !cita) return;
 
-                      const spanSlots = cita
-                        ? Math.ceil(Math.max(
-                            (cita.hora_fin ? rawTimeMin(cita.hora_fin) : rawTimeMin(cita.hora_inicio) + 30) - rawTimeMin(cita.hora_inicio),
-                            30
-                          ) / 30)
-                        : 1;
+                      const spanSlots = cita ? (citaSpans[si] || 1) : 1;
 
                       const isNowSlot = today && (() => {
                         const m = timeToMinutes(slot);
