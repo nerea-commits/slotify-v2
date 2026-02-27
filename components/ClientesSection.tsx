@@ -180,25 +180,25 @@ const DonutInteractivo = memo(function DonutInteractivo({ completadas, cancelada
 });
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
-interface KpiCardProps { value: string | number; label: string; color?: string; suffix?: string; active?: boolean; onClick?: () => void; }
-const KpiCard = memo(function KpiCard({ value, label, color = C.text, suffix, active, onClick }: KpiCardProps) {
+interface KpiCardProps { value: string | number; label: string; color?: string; suffix?: string; active?: boolean; risk?: boolean; onClick?: () => void; }
+const KpiCard = memo(function KpiCard({ value, label, color = C.text, suffix, active, risk, onClick }: KpiCardProps) {
   return (
     <div onClick={onClick}
       style={{
-        background: active ? color + '12' : C.panelAlt,
-        border: `1px solid ${active ? color + '44' : C.divider}`,
-        borderRadius: 12, padding: '14px 16px',
+        background: active ? color + '12' : risk ? color + '08' : C.panelAlt,
+        border: `1px solid ${active ? color + '44' : risk ? color + '28' : C.divider}`,
+        borderRadius: 12, padding: '12px 14px',
         cursor: onClick ? 'pointer' : 'default',
         transition: 'all 0.15s',
       }}
       onMouseEnter={e => { if (onClick) (e.currentTarget as HTMLElement).style.background = color + '18'; }}
       onMouseLeave={e => { if (onClick) (e.currentTarget as HTMLElement).style.background = active ? color + '12' : C.panelAlt; }}
     >
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 3 }}>
-        <span style={{ fontSize: 26, fontWeight: 800, color, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
-        {suffix && <span style={{ fontSize: 11, color: C.textDim }}>{suffix}</span>}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 3, marginBottom: 2 }}>
+        <span style={{ fontSize: 28, fontWeight: 800, color, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+        {suffix && <span style={{ fontSize: 10, color: C.textDim }}>{suffix}</span>}
       </div>
-      <span style={{ fontSize: 11, color: C.textMid, fontWeight: 600, letterSpacing: 0.3 }}>{label}</span>
+      <span style={{ fontSize: 10, color: C.textDim, fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase' }}>{label}</span>
     </div>
   );
 });
@@ -226,9 +226,9 @@ function AlertBanner({ fiab }: { fiab: FiabilidadResult }) {
   const isRed = fiab.alertLevel === 'danger';
   const color = isRed ? C.red : C.amber;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: color + '10', border: `1px solid ${color}30`, borderRadius: 10, padding: '10px 14px' }}>
-      <AlertTriangle size={15} style={{ color, flexShrink: 0 }} />
-      <span style={{ fontSize: 12, color, fontWeight: 600 }}>{fiab.alertMessage}</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: color + '0D', border: `1px solid ${color}25`, borderRadius: 8, padding: '7px 12px' }}>
+      <AlertTriangle size={12} style={{ color, flexShrink: 0 }} />
+      <span style={{ fontSize: 11, color, fontWeight: 600 }}>{fiab.alertMessage}</span>
     </div>
   );
 }
@@ -315,7 +315,7 @@ const ModalCliente = memo(function ModalCliente({ editando, form, setForm, guard
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 60, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={onCerrar}>
       <div style={{ background: C.panel, borderRadius: '20px 20px 0 0', padding: 24, width: '100%', maxWidth: 520, paddingBottom: 36 }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <h3 style={{ fontSize: 18, fontWeight: 700 }}>{editando ? 'Editar cliente' : 'Nuevo cliente'}</h3>
           <button onClick={onCerrar} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textMid }}><X size={20} /></button>
         </div>
@@ -466,7 +466,13 @@ function VistaDetalle({ cliente, empresaId, mostrarImporte, onVolver, onCrearCit
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h2 style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>{clienteData.nombre}</h2>
-          {clienteData.telefono && <span style={{ fontSize: 12, color: C.textMid }}>{clienteData.telefono}</span>}
+          <span style={{ fontSize: 11, color: C.textDim }}>
+            {stats.daysSince !== null && stats.freq
+              ? `Última visita hace ${stats.daysSince}d · cada ~${stats.freq}d`
+              : stats.daysSince !== null
+              ? `Última visita hace ${stats.daysSince}d`
+              : clienteData.telefono || ''}
+          </span>
         </div>
 
         <RiskBadge fiab={fiab} />
@@ -486,12 +492,12 @@ function VistaDetalle({ cliente, empresaId, mostrarImporte, onVolver, onCrearCit
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 16px', maxWidth: 720, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
 
         {/* Alert */}
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 10 }}>
           <AlertBanner fiab={fiab} />
         </div>
 
         {/* Periodo filter */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <span style={{ fontSize: 12, color: C.textDim, fontWeight: 600 }}>Periodo</span>
           <div style={{ display: 'flex', background: C.panelAlt, borderRadius: 10, padding: 3, gap: 2 }}>
             {PERIODOS.map(p => (
@@ -504,7 +510,7 @@ function VistaDetalle({ cliente, empresaId, mostrarImporte, onVolver, onCrearCit
         </div>
 
         {/* Donut grande centrado */}
-        <div style={{ background: C.panel, borderRadius: 16, padding: '24px 20px', marginBottom: 12, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ background: C.panel, borderRadius: 16, padding: '18px 16px', marginBottom: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <DonutInteractivo
             completadas={stats.completadas} canceladas={stats.canceladas} noShows={stats.noShows}
             total={stats.total} periodo={periodo}
@@ -513,7 +519,7 @@ function VistaDetalle({ cliente, empresaId, mostrarImporte, onVolver, onCrearCit
         </div>
 
         {/* KPIs 2x2 */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 10 }}>
           <KpiCard
             value={stats.freq ? `~${stats.freq}` : '—'} suffix={stats.freq ? 'días' : ''}
             label="Frecuencia media" color={C.blue}
@@ -527,6 +533,7 @@ function VistaDetalle({ cliente, empresaId, mostrarImporte, onVolver, onCrearCit
             value={stats.noShows} label="No-shows (total)"
             color={stats.noShows > 0 ? C.red : C.textMid}
             active={segmento === 'noshow'}
+            risk={stats.noShows > 0 && segmento !== 'noshow'}
             onClick={() => setSegmento(segmento === 'noshow' ? 'all' : 'noshow')}
           />
           <KpiCard
