@@ -612,8 +612,7 @@ export default function Dashboard() {
             </div>
           </div>
           <button onClick={() => openModal(selectedDate, '')}
-            className="fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-lg z-40"
-            style={{ background: C.green }}>
+            style={{ position:'fixed', bottom:80, right:20, width:56, height:56, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 20px rgba(0,0,0,0.4)', zIndex:50, background: C.green, border:'none', cursor:'pointer' }}>
             <Plus className="w-6 h-6 text-white" />
           </button>
         </>)}
