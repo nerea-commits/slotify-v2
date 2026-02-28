@@ -48,17 +48,8 @@ const BUFFERS = [0, 5, 10, 15];
 const DURACIONES_DEF = [15, 20, 30, 45, 60, 90, 120];
 
 // ── Helpers ────────────────────────────────────────────────────────────
-function Label({ children }: { children: React.ReactNode }) {
-  return <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase', marginBottom:7 }}>{children}</p>;
-}
-
-function Field({ children, hint }: { children: React.ReactNode; hint?: string }) {
-  return (
-    <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-      {children}
-      {hint && <p style={{ fontSize:11, color: C.textDim, lineHeight:1.5 }}>{hint}</p>}
-    </div>
-  );
+function Label({ text }: { text: string }) {
+  return <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>{text}</p>;
 }
 
 function Input({ value, onChange, placeholder, type = 'text', disabled }: {
@@ -203,11 +194,11 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
 
-      <Field><Label>Nombre de la empresa *</Label><Input value={nombre} onChange={setNombre} placeholder="Mi negocio"/></Field>
+      <div style={{ display:"flex", flexDirection:"column" as const, gap:6 }}><p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Nombre de la empresa *</p><Input value={nombre} onChange={setNombre} placeholder="Mi negocio"/></div>
 
       {/* Logo */}
-      <Field hint="PNG cuadrado recomendado, 200×200px. El logo se muestra en el perfil.">
-        <Label>Logo</Label>
+      <div style={{ display:"flex", flexDirection:"column" as const, gap:6 }}>
+        <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Logo</p>
         <div style={{ display:'flex', alignItems:'center', gap:12 }}>
           {/* Preview */}
           <div style={{ width:56, height:56, borderRadius:12, background: C.panelAlt, border:`1px solid ${C.border}`, flexShrink:0, overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -246,35 +237,35 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
             </div>
           </div>
         </div>
-      </Field>
-
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
-        <Field><Label>Teléfono</Label><Input value={telefono} onChange={setTelefono} placeholder="+34 600 000 000" type="tel"/></Field>
-        <Field><Label>Email</Label><Input value={email} onChange={setEmail} placeholder="contacto@empresa.com" type="email"/></Field>
       </div>
 
-      <Field><Label>Dirección</Label><Input value={direccion} onChange={setDireccion} placeholder="Calle, ciudad..."/></Field>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+        <div style={{ display:"flex", flexDirection:"column" as const, gap:6 }}><p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Teléfono</p><Input value={telefono} onChange={setTelefono} placeholder="+34 600 000 000" type="tel"/></div>
+        <div style={{ display:"flex", flexDirection:"column" as const, gap:6 }}><p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Email</p><Input value={email} onChange={setEmail} placeholder="contacto@empresa.com" type="email"/></div>
+      </div>
+
+      <div style={{ display:"flex", flexDirection:"column" as const, gap:6 }}><p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Dirección</p><Input value={direccion} onChange={setDireccion} placeholder="Calle, ciudad..."/></div>
 
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
-        <Field>
-          <Label>Zona horaria</Label>
+        <div style={{ display:"flex", flexDirection:"column" as const, gap:6 }}>
+          <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Zona horaria</p>
           <Select value={timezone} onChange={setTimezone} options={TIMEZONES.map(t => ({ value:t, label:t.replace('_',' ') }))}/>
-        </Field>
-        <Field>
-          <Label>Moneda</Label>
+        </div>
+        <div style={{ display:"flex", flexDirection:"column" as const, gap:6 }}>
+          <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Moneda</p>
           <Select value={moneda} onChange={setMoneda} options={MONEDAS.map(m => ({ value:m.code, label:m.label }))}/>
-        </Field>
+        </div>
       </div>
 
       {/* Color primario */}
-      <Field hint="Color de acento en la interfaz.">
-        <Label>Color primario</Label>
+      <div style={{ display:"flex", flexDirection:"column" as const, gap:6 }}>
+        <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Color primario</p>
         <div style={{ display:'flex', alignItems:'center', gap:12 }}>
           <input type="color" value={colorPrimario} onChange={e => setColorPrimario(e.target.value)}
             style={{ width:44, height:36, borderRadius:8, border:`1px solid ${C.border}`, background:'none', cursor:'pointer', padding:2 }}/>
           <Input value={colorPrimario} onChange={setColorPrimario} placeholder="#22C55E"/>
         </div>
-      </Field>
+      </div>
 
       {/* Mostrar importe */}
       <label style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background: C.panelAlt, borderRadius:10, cursor:'pointer' }}>
@@ -349,10 +340,10 @@ function TabHorario({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
 
       {/* Apertura / Cierre */}
       <div>
-        <Label>Horario de trabajo</Label>
+        <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Horario de trabajo</p>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-          <Field><p style={{ fontSize:12, color: C.textMid, marginBottom:5 }}>Apertura</p><TimeInput value={inicio} onChange={setInicio}/></Field>
-          <Field><p style={{ fontSize:12, color: C.textMid, marginBottom:5 }}>Cierre</p><TimeInput value={fin} onChange={setFin}/></Field>
+          <div style={{ display:"flex", flexDirection:"column" as const, gap:6 }}><p style={{ fontSize:12, color: C.textMid, marginBottom:5 }}>Apertura</p><TimeInput value={inicio} onChange={setInicio}/></div>
+          <div style={{ display:"flex", flexDirection:"column" as const, gap:6 }}><p style={{ fontSize:12, color: C.textMid, marginBottom:5 }}>Cierre</p><TimeInput value={fin} onChange={setFin}/></div>
         </div>
       </div>
 
@@ -370,15 +361,15 @@ function TabHorario({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
         </label>
         {pausaActiva && (
           <div style={{ padding:'0 14px 14px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-            <Field><p style={{ fontSize:12, color: C.textMid, marginBottom:5 }}>Inicio pausa</p><TimeInput value={pausaInicio} onChange={setPausaInicio}/></Field>
-            <Field><p style={{ fontSize:12, color: C.textMid, marginBottom:5 }}>Fin pausa</p><TimeInput value={pausaFin} onChange={setPausaFin}/></Field>
+            <div style={{ display:"flex", flexDirection:"column" as const, gap:6 }}><p style={{ fontSize:12, color: C.textMid, marginBottom:5 }}>Inicio pausa</p><TimeInput value={pausaInicio} onChange={setPausaInicio}/></div>
+            <div style={{ display:"flex", flexDirection:"column" as const, gap:6 }}><p style={{ fontSize:12, color: C.textMid, marginBottom:5 }}>Fin pausa</p><TimeInput value={pausaFin} onChange={setPausaFin}/></div>
           </div>
         )}
       </div>
 
       {/* Buffer */}
-      <Field hint="Tiempo de margen automático entre cita y cita.">
-        <Label>Buffer entre citas</Label>
+      <div style={{ display:"flex", flexDirection:"column" as const, gap:6 }}>
+        <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Buffer entre citas</p>
         <div style={{ display:'flex', gap:8 }}>
           {BUFFERS.map(b => (
             <button key={b} onClick={() => setBuffer(b)}
@@ -387,11 +378,11 @@ function TabHorario({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
             </button>
           ))}
         </div>
-      </Field>
+      </div>
 
       {/* Duración por defecto */}
-      <Field hint="Se usa cuando se crea una cita sin servicio asignado. Déjalo en 'Sin definir' si prefieres configurarlo por servicio.">
-        <Label>Duración por defecto</Label>
+      <div style={{ display:"flex", flexDirection:"column" as const, gap:6 }}>
+        <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Duración por defecto</p>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
           <button onClick={() => setDurDef(null as any)}
             style={{ padding:'8px 12px', borderRadius:9, border:`1px solid ${durDef == null ? C.green+'66' : C.border}`, cursor:'pointer', fontSize:12, fontWeight:600, background: durDef == null ? 'rgba(34,197,94,0.08)' : 'transparent', color: durDef == null ? C.green : C.textDim, transition:'all 0.12s' }}>
@@ -407,11 +398,11 @@ function TabHorario({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
             );
           })}
         </div>
-      </Field>
+      </div>
 
       {/* Excepciones */}
       <div>
-        <Label>Días no disponibles (festivos / vacaciones)</Label>
+        <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Días no disponibles (festivos / vacaciones)</p>
         <div style={{ display:'flex', gap:8, marginBottom:10 }}>
           <input type="date" value={newExc} onChange={e => setNewExc(e.target.value)}
             style={{ flex:1, padding:'10px 12px', background: C.panelAlt, border:`1px solid ${C.border}`, borderRadius:10, color: C.text, fontSize:13, outline:'none', colorScheme:'dark' }}/>
