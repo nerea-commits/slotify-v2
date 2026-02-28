@@ -504,7 +504,7 @@ export default function Dashboard() {
           {activeSection === 'servicios' && <ServiciosSection empresaId={empresa?.id || ''} />}
           {activeSection === 'estadisticas' && <div className="flex items-center justify-center pt-32 text-gray-500">Estadísticas — próximamente</div>}
           {activeSection === 'notificaciones' && <div className="flex items-center justify-center pt-32 text-gray-500">Notificaciones — próximamente</div>}
-          {activeSection === 'configuracion' && <ConfiguracionSection empresaId={empresa?.id || ''} profesionalId={profesional?.id || ''} onEmpresaUpdated={(data: any) => setEmpresa((prev: any) => ({ ...prev, ...data }))}/>}
+          {activeSection === 'configuracion' && empresa && <ConfiguracionSection empresa={empresa} profesional={profesional} onEmpresaUpdated={(data: any) => setEmpresa((prev: any) => ({ ...prev, ...data }))}/>}
         </div>
       )}
 
