@@ -143,16 +143,27 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
     // Logo: si es base64 muy largo, no guardarlo en BD — solo usarlo en memoria
     const logoToSave = logoUrl.startsWith('data:') ? null : (logoUrl.trim() || null);
 
-    const { data, error: err } = await supabase.from('empresas').update({
+    // Build update object with only known-safe columns
+    const updateData: Record<string, any> = {
       nombre: nombre.trim(),
-      telefono: telefono.trim() || null,
-      email: email.trim() || null,
-      direccion: direccion.trim() || null,
       color_primario: colorPrimario,
-      timezone, moneda,
       mostrar_importe: mostrarImporte,
-      logo_url: logoToSave,
-    }).eq('id', empresa.id).select();
+    };
+    if (telefono.trim()) updateData.telefono = telefono.trim();
+    else updateData.telefono = null;
+    if (email.trim()) updateData.email = email.trim();
+    else updateData.email = null;
+    if (direccion.trim()) updateData.direccion = direccion.trim();
+    else updateData.direccion = null;
+    if (logoToSave) updateData.logo_url = logoToSave;
+    // Optional columns — only add if they exist
+    try { updateData.timezone = timezone; } catch {}
+    try { updateData.moneda = moneda; } catch {}
+
+    const { data, error: err } = await supabase.from('empresas')
+      .update(updateData)
+      .eq('id', empresa.id)
+      .select();
 
     setLoading(false);
     if (err) {
@@ -173,31 +184,45 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
       <Field><Label>Nombre de la empresa *</Label><Input value={nombre} onChange={setNombre} placeholder="Mi negocio"/></Field>
 
       {/* Logo */}
-      <Field hint="PNG cuadrado recomendado, 200×200px.">
+      <Field hint="PNG cuadrado recomendado, 200×200px. El logo se muestra en el perfil.">
         <Label>Logo</Label>
-        <div style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
-          <div style={{ flex:1, display:'flex', flexDirection:'column', gap:8 }}>
-            <Input value={logoUrl} onChange={setLogoUrl} placeholder="https://..."/>
-            <label style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 13px', background: C.panelAlt, border:`1px dashed ${C.border}`, borderRadius:10, cursor:'pointer', fontSize:12, color: C.textMid, fontWeight:600 }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = C.green+'55'; (e.currentTarget as HTMLElement).style.color = C.text; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = C.border; (e.currentTarget as HTMLElement).style.color = C.textMid; }}>
-              <Upload size={14} style={{ color: C.green }}/>
-              Subir desde ordenador
-              <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = ev => setLogoUrl(ev.target?.result as string);
-                reader.readAsDataURL(file);
-              }}/>
-            </label>
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          {/* Preview */}
+          <div style={{ width:56, height:56, borderRadius:12, background: C.panelAlt, border:`1px solid ${C.border}`, flexShrink:0, overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            {logoUrl
+              ? <img src={logoUrl} alt="logo" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e => { (e.target as HTMLImageElement).style.display='none'; }}/>
+              : <span style={{ fontSize:20, color: C.textDim }}>🏢</span>
+            }
           </div>
-          {logoUrl && (
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
-              <img src={logoUrl} alt="logo" style={{ width:52, height:52, borderRadius:10, objectFit:'cover', background: C.panelAlt, border:`1px solid ${C.border}` }} onError={e => { (e.target as HTMLImageElement).style.display='none'; }}/>
-              <button onClick={() => setLogoUrl('')} style={{ background:'none', border:'none', cursor:'pointer', color: C.textDim, fontSize:10 }}>Quitar</button>
+          <div style={{ flex:1, display:'flex', flexDirection:'column', gap:8 }}>
+            {/* URL input — only show if not base64 */}
+            {(!logoUrl || !logoUrl.startsWith('data:')) && (
+              <Input value={logoUrl} onChange={setLogoUrl} placeholder="https://url-de-imagen.com/logo.png"/>
+            )}
+            {logoUrl && logoUrl.startsWith('data:') && (
+              <p style={{ fontSize:12, color: C.green, fontWeight:600 }}>✓ Imagen cargada desde ordenador</p>
+            )}
+            <div style={{ display:'flex', gap:8 }}>
+              <label style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'9px 13px', background: C.panelAlt, border:`1px dashed ${C.border}`, borderRadius:10, cursor:'pointer', fontSize:12, color: C.textMid, fontWeight:600 }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = C.green+'55'; (e.currentTarget as HTMLElement).style.color = C.text; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = C.border; (e.currentTarget as HTMLElement).style.color = C.textMid; }}>
+                <Upload size={13} style={{ color: C.green }}/>
+                {logoUrl ? 'Cambiar' : 'Subir desde ordenador'}
+                <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = ev => setLogoUrl(ev.target?.result as string);
+                  reader.readAsDataURL(file);
+                }}/>
+              </label>
+              {logoUrl && (
+                <button onClick={() => setLogoUrl('')} style={{ padding:'9px 12px', borderRadius:10, border:`1px solid ${C.border}`, background:'transparent', cursor:'pointer', color: C.textDim, fontSize:12 }}>
+                  Quitar
+                </button>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </Field>
 
@@ -680,7 +705,7 @@ export default function ConfiguracionSection({
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
   // Mobile accordion
-  const [mobileOpen, setMobileOpen] = useState<string | null>('empresa');
+  const [mobileOpen, setMobileOpen] = useState<string | null>(null);
 
   useEffect(() => {
     if (!empresaId) return;
