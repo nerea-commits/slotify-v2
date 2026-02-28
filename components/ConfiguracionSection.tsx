@@ -137,8 +137,13 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
 
   async function save() {
     if (!nombre.trim()) { setError('El nombre es obligatorio'); return; }
+    if (!empresa?.id) { setError('Error: empresa sin ID'); return; }
     setLoading(true); setError('');
-    const { error: err } = await supabase.from('empresas').update({
+
+    // Logo: si es base64 muy largo, no guardarlo en BD — solo usarlo en memoria
+    const logoToSave = logoUrl.startsWith('data:') ? null : (logoUrl.trim() || null);
+
+    const { data, error: err } = await supabase.from('empresas').update({
       nombre: nombre.trim(),
       telefono: telefono.trim() || null,
       email: email.trim() || null,
@@ -146,10 +151,19 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
       color_primario: colorPrimario,
       timezone, moneda,
       mostrar_importe: mostrarImporte,
-      logo_url: logoUrl.trim() || null,
-    }).eq('id', empresa.id);
+      logo_url: logoToSave,
+    }).eq('id', empresa.id).select();
+
     setLoading(false);
-    if (err) { setError('Error al guardar'); return; }
+    if (err) {
+      console.error('Supabase error:', err);
+      setError(`Error: ${err.message || err.code || 'Sin permisos para actualizar'}`);
+      return;
+    }
+    if (!data || data.length === 0) {
+      setError('Sin permisos para actualizar esta empresa (RLS). Revisa las políticas en Supabase.');
+      return;
+    }
     onSaved({ nombre, color_primario: colorPrimario, logo_url: logoUrl });
   }
 
