@@ -123,6 +123,7 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
   const [moneda, setMoneda] = useState(empresa?.moneda || 'EUR');
   const [mostrarImporte, setMostrarImporte] = useState(empresa?.mostrar_importe || false);
   const [logoUrl, setLogoUrl] = useState(empresa?.logo_url || '');
+  const [logoUploading, setLogoUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -174,44 +175,53 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
       <div style={{ display:"flex", flexDirection:"column" as const, gap:6 }}><p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Nombre de la empresa *</p><Input value={nombre} onChange={setNombre} placeholder="Mi negocio"/></div>
 
       {/* Logo */}
-      <div style={{ display:"flex", flexDirection:"column" as const, gap:6 }}>
-        <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Logo</p>
-        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+      <div style={{ display:"flex", flexDirection:"column" as const, gap:8 }}>
+        <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:4 }}>Logo</p>
+        <div style={{ display:'flex', alignItems:'center', gap:14 }}>
           {/* Preview */}
-          <div style={{ width:56, height:56, borderRadius:12, background: C.panelAlt, border:`1px solid ${C.border}`, flexShrink:0, overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ width:64, height:64, borderRadius:14, background: C.panelAlt, border:`2px solid ${C.border}`, flexShrink:0, overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
             {logoUrl
-              ? <img src={logoUrl} alt="logo" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e => { (e.target as HTMLImageElement).style.display='none'; }}/>
-              : <span style={{ fontSize:20, color: C.textDim }}>🏢</span>
+              ? <img src={logoUrl} alt="logo" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+              : <span style={{ fontSize:24, color: C.textDim }}>🏢</span>
             }
           </div>
           <div style={{ flex:1, display:'flex', flexDirection:'column', gap:8 }}>
-            {/* URL input — only show if not base64 */}
-            {(!logoUrl || !logoUrl.startsWith('data:')) && (
-              <Input value={logoUrl} onChange={setLogoUrl} placeholder="https://url-de-imagen.com/logo.png"/>
+            {logoUrl && <p style={{ fontSize:12, color: C.green, fontWeight:600 }}>✓ Logo guardado</p>}
+            <label style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'11px 16px', background: C.panelAlt, border:`1px dashed ${logoUrl ? C.green+'44' : C.border}`, borderRadius:10, cursor: logoUploading ? 'wait' : 'pointer', fontSize:13, color: C.textMid, fontWeight:600, transition:'all 0.15s' }}
+              onMouseEnter={e => { if (!logoUploading) { (e.currentTarget as HTMLElement).style.borderColor = C.green+'88'; (e.currentTarget as HTMLElement).style.color = C.text; }}}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = logoUrl ? C.green+'44' : C.border; (e.currentTarget as HTMLElement).style.color = C.textMid; }}>
+              {logoUploading
+                ? <><RefreshCw size={14} style={{ color: C.green, animation:'spin 1s linear infinite' }}/> Subiendo...</>
+                : <><Upload size={14} style={{ color: C.green }}/>{logoUrl ? 'Cambiar logo' : 'Subir logo desde ordenador'}</>
+              }
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" style={{ display:'none' }} disabled={logoUploading} onChange={async e => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setLogoUploading(true);
+                try {
+                  const ext = file.name.split('.').pop() || 'png';
+                  const path = `${empresa.id}/logo_${Date.now()}.${ext}`;
+                  const { error: upErr } = await supabase.storage.from('logos').upload(path, file, { upsert: true });
+                  if (upErr) throw upErr;
+                  const { data: urlData } = supabase.storage.from('logos').getPublicUrl(path);
+                  const publicUrl = urlData.publicUrl;
+                  setLogoUrl(publicUrl);
+                  // Save to DB immediately
+                  await supabase.from('empresas').update({ logo_url: publicUrl }).eq('id', empresa.id);
+                  onSaved({ nombre, color_primario: colorPrimario, logo_url: publicUrl });
+                } catch (err: any) {
+                  setError('Error al subir logo: ' + (err.message || 'intenta de nuevo'));
+                } finally {
+                  setLogoUploading(false);
+                }
+              }}/>
+            </label>
+            {logoUrl && (
+              <button onClick={async () => { setLogoUrl(''); await supabase.from('empresas').update({ logo_url: null }).eq('id', empresa.id); onSaved({ nombre, color_primario: colorPrimario, logo_url: null }); }}
+                style={{ background:'none', border:'none', cursor:'pointer', color: C.textDim, fontSize:12, textAlign:'left' as const }}>
+                Quitar logo
+              </button>
             )}
-            {logoUrl && logoUrl.startsWith('data:') && (
-              <p style={{ fontSize:12, color: C.green, fontWeight:600 }}>✓ Imagen cargada desde ordenador</p>
-            )}
-            <div style={{ display:'flex', gap:8 }}>
-              <label style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'9px 13px', background: C.panelAlt, border:`1px dashed ${C.border}`, borderRadius:10, cursor:'pointer', fontSize:12, color: C.textMid, fontWeight:600 }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = C.green+'55'; (e.currentTarget as HTMLElement).style.color = C.text; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = C.border; (e.currentTarget as HTMLElement).style.color = C.textMid; }}>
-                <Upload size={13} style={{ color: C.green }}/>
-                {logoUrl ? 'Cambiar' : 'Subir desde ordenador'}
-                <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = ev => setLogoUrl(ev.target?.result as string);
-                  reader.readAsDataURL(file);
-                }}/>
-              </label>
-              {logoUrl && (
-                <button onClick={() => setLogoUrl('')} style={{ padding:'9px 12px', borderRadius:10, border:`1px solid ${C.border}`, background:'transparent', cursor:'pointer', color: C.textDim, fontSize:12 }}>
-                  Quitar
-                </button>
-              )}
-            </div>
           </div>
         </div>
       </div>
