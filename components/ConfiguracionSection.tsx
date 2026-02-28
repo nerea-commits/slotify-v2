@@ -159,13 +159,28 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
       <Field><Label>Nombre de la empresa *</Label><Input value={nombre} onChange={setNombre} placeholder="Mi negocio"/></Field>
 
       {/* Logo */}
-      <Field hint="URL de imagen o sube directamente. Recomendado: PNG cuadrado 200×200px.">
-        <Label>Logo (URL)</Label>
+      <Field hint="PNG cuadrado recomendado, 200×200px.">
+        <Label>Logo</Label>
         <div style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
-          <div style={{ flex:1 }}><Input value={logoUrl} onChange={setLogoUrl} placeholder="https://..." /></div>
+          <div style={{ flex:1, display:'flex', flexDirection:'column', gap:8 }}>
+            <Input value={logoUrl} onChange={setLogoUrl} placeholder="https://..."/>
+            <label style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 13px', background: C.panelAlt, border:`1px dashed ${C.border}`, borderRadius:10, cursor:'pointer', fontSize:12, color: C.textMid, fontWeight:600 }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = C.green+'55'; (e.currentTarget as HTMLElement).style.color = C.text; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = C.border; (e.currentTarget as HTMLElement).style.color = C.textMid; }}>
+              <Upload size={14} style={{ color: C.green }}/>
+              Subir desde ordenador
+              <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = ev => setLogoUrl(ev.target?.result as string);
+                reader.readAsDataURL(file);
+              }}/>
+            </label>
+          </div>
           {logoUrl && (
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
-              <img src={logoUrl} alt="logo" style={{ width:44, height:44, borderRadius:8, objectFit:'cover', background: C.panelAlt }} onError={e => { (e.target as HTMLImageElement).style.display='none'; }}/>
+              <img src={logoUrl} alt="logo" style={{ width:52, height:52, borderRadius:10, objectFit:'cover', background: C.panelAlt, border:`1px solid ${C.border}` }} onError={e => { (e.target as HTMLImageElement).style.display='none'; }}/>
               <button onClick={() => setLogoUrl('')} style={{ background:'none', border:'none', cursor:'pointer', color: C.textDim, fontSize:10 }}>Quitar</button>
             </div>
           )}
@@ -288,7 +303,7 @@ function TabHorario({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
             <p style={{ fontSize:11, color: C.textDim }}>Bloquea un rango intermedio</p>
           </div>
           <div style={{ width:40, height:22, borderRadius:11, background: pausaActiva ? C.green : C.border, position:'relative', transition:'background 0.2s', cursor:'pointer' }}
-            onClick={() => setPausaActiva((p: boolean) => !p)}>
+            onClick={() => setPausaActiva((prev: boolean) => !prev)}>
             <div style={{ position:'absolute', top:2, left: pausaActiva ? 20 : 2, width:18, height:18, borderRadius:9, background:'#fff', transition:'left 0.2s' }}/>
           </div>
         </label>
@@ -314,9 +329,13 @@ function TabHorario({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
       </Field>
 
       {/* Duración por defecto */}
-      <Field hint="Se usa cuando se crea una cita sin servicio asignado.">
+      <Field hint="Se usa cuando se crea una cita sin servicio asignado. Déjalo en 'Sin definir' si prefieres configurarlo por servicio.">
         <Label>Duración por defecto</Label>
-        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+          <button onClick={() => setDurDef(null as any)}
+            style={{ padding:'8px 12px', borderRadius:9, border:`1px solid ${durDef == null ? C.green+'66' : C.border}`, cursor:'pointer', fontSize:12, fontWeight:600, background: durDef == null ? 'rgba(34,197,94,0.08)' : 'transparent', color: durDef == null ? C.green : C.textDim, transition:'all 0.12s' }}>
+            Sin definir
+          </button>
           {DURACIONES_DEF.map(d => {
             const label = d < 60 ? `${d}min` : d === 60 ? '1h' : `${Math.floor(d/60)}h${d%60?` ${d%60}m`:''}`;
             return (
@@ -635,10 +654,11 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
 // MAIN
 // ══════════════════════════════════════════════════════
 export default function ConfiguracionSection({
-  empresaId, profesionalId,
+  empresaId, profesionalId, onEmpresaUpdated,
 }: {
   empresaId: string;
   profesionalId: string;
+  onEmpresaUpdated?: (data: any) => void;
 }) {
   const [activeTab, setActiveTab] = useState('empresa');
   const [empresa, setEmpresa] = useState<any>(null);
@@ -664,6 +684,7 @@ export default function ConfiguracionSection({
 
   function handleSaved(tab: string, data: any) {
     setEmpresa((prev: any) => ({ ...prev, ...data }));
+    onEmpresaUpdated?.(data);
     showToast('Cambios guardados');
   }
 
