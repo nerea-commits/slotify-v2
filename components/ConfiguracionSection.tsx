@@ -140,25 +140,48 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
     if (!empresa?.id) { setError('Error: empresa sin ID'); return; }
     setLoading(true); setError('');
 
-    // Logo: si es base64 muy largo, no guardarlo en BD — solo usarlo en memoria
-    const logoToSave = logoUrl.startsWith('data:') ? null : (logoUrl.trim() || null);
+    let finalLogoUrl = logoUrl;
 
-    // Build update object with only known-safe columns
+    // Upload base64 logo to Supabase Storage
+    if (logoUrl && logoUrl.startsWith('data:')) {
+      try {
+        const base64Data = logoUrl.split(',')[1];
+        const byteChars = atob(base64Data);
+        const byteArr = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+        const blob = new Blob([byteArr], { type: 'image/png' });
+        const fileName = `logos/${empresa.id}_${Date.now()}.png`;
+
+        const { error: uploadErr } = await supabase.storage
+          .from('empresas')
+          .upload(fileName, blob, { upsert: true, contentType: 'image/png' });
+
+        if (uploadErr) {
+          // Storage bucket might not exist — save without logo but continue
+          console.warn('Logo upload failed:', uploadErr.message);
+          finalLogoUrl = '';
+        } else {
+          const { data: urlData } = supabase.storage.from('empresas').getPublicUrl(fileName);
+          finalLogoUrl = urlData.publicUrl;
+          setLogoUrl(finalLogoUrl);
+        }
+      } catch (e) {
+        console.warn('Logo processing error:', e);
+        finalLogoUrl = '';
+      }
+    }
+
     const updateData: Record<string, any> = {
       nombre: nombre.trim(),
       color_primario: colorPrimario,
       mostrar_importe: mostrarImporte,
+      telefono: telefono.trim() || null,
+      email: email.trim() || null,
+      direccion: direccion.trim() || null,
+      logo_url: finalLogoUrl || null,
+      timezone,
+      moneda,
     };
-    if (telefono.trim()) updateData.telefono = telefono.trim();
-    else updateData.telefono = null;
-    if (email.trim()) updateData.email = email.trim();
-    else updateData.email = null;
-    if (direccion.trim()) updateData.direccion = direccion.trim();
-    else updateData.direccion = null;
-    if (logoToSave) updateData.logo_url = logoToSave;
-    // Optional columns — only add if they exist
-    try { updateData.timezone = timezone; } catch {}
-    try { updateData.moneda = moneda; } catch {}
 
     const { data, error: err } = await supabase.from('empresas')
       .update(updateData)
@@ -167,15 +190,14 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
 
     setLoading(false);
     if (err) {
-      console.error('Supabase error:', err);
-      setError(`Error: ${err.message || err.code || 'Sin permisos para actualizar'}`);
+      setError(`Error al guardar: ${err.message}`);
       return;
     }
     if (!data || data.length === 0) {
-      setError('Sin permisos para actualizar esta empresa (RLS). Revisa las políticas en Supabase.');
+      setError('Sin permisos (RLS). Verifica las políticas de Supabase.');
       return;
     }
-    onSaved({ nombre, color_primario: colorPrimario, logo_url: logoUrl });
+    onSaved({ nombre, color_primario: colorPrimario, logo_url: finalLogoUrl });
   }
 
   return (
