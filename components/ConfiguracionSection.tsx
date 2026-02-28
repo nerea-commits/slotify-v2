@@ -131,36 +131,8 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
     if (!empresa?.id) { setError('Error: empresa sin ID'); return; }
     setLoading(true); setError('');
 
-    let finalLogoUrl = logoUrl;
-
-    // Upload base64 logo to Supabase Storage
-    if (logoUrl && logoUrl.startsWith('data:')) {
-      try {
-        const base64Data = logoUrl.split(',')[1];
-        const byteChars = atob(base64Data);
-        const byteArr = new Uint8Array(byteChars.length);
-        for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
-        const blob = new Blob([byteArr], { type: 'image/png' });
-        const fileName = `logos/${empresa.id}_${Date.now()}.png`;
-
-        const { error: uploadErr } = await supabase.storage
-          .from('empresas')
-          .upload(fileName, blob, { upsert: true, contentType: 'image/png' });
-
-        if (uploadErr) {
-          // Storage bucket might not exist — save without logo but continue
-          console.warn('Logo upload failed:', uploadErr.message);
-          finalLogoUrl = '';
-        } else {
-          const { data: urlData } = supabase.storage.from('empresas').getPublicUrl(fileName);
-          finalLogoUrl = urlData.publicUrl;
-          setLogoUrl(finalLogoUrl);
-        }
-      } catch (e) {
-        console.warn('Logo processing error:', e);
-        finalLogoUrl = '';
-      }
-    }
+    // Logo: only save URL strings, skip base64 (too large for DB)
+    const finalLogoUrl = (logoUrl && !logoUrl.startsWith('data:')) ? logoUrl.trim() : null;
 
     const updateData: Record<string, any> = {
       nombre: nombre.trim(),
@@ -719,6 +691,13 @@ export default function ConfiguracionSection({
   const [toast, setToast] = useState('');
   // Mobile accordion
   const [mobileOpen, setMobileOpen] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   useEffect(() => {
     if (!empresaId) return;
@@ -760,12 +739,6 @@ export default function ConfiguracionSection({
     <div style={{ background: C.bg, minHeight:'100vh', color: C.text }}>
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .cfg-desktop { display: flex; }
-        .cfg-mobile  { display: none; }
-        @media (max-width: 767px) {
-          .cfg-desktop { display: none !important; }
-          .cfg-mobile  { display: block !important; }
-        }
       `}</style>
 
       {/* Header */}
@@ -775,7 +748,7 @@ export default function ConfiguracionSection({
       </div>
 
       {/* ── DESKTOP: sidebar tabs + content ── */}
-      <div className="cfg-desktop" style={{ maxWidth:900, margin:'0 auto', padding:24, gap:24, alignItems:'flex-start' }}>
+      <div style={{ maxWidth:900, margin:'0 auto', padding:24, gap:24, alignItems:'flex-start', display: isMobile ? 'none' : 'flex' }}>
         {/* Tab list */}
         <div style={{ width:200, flexShrink:0, display:'flex', flexDirection:'column', gap:2 }}>
           {TABS.map(tab => {
@@ -809,7 +782,7 @@ export default function ConfiguracionSection({
       </div>
 
       {/* ── MOBILE: accordion ── */}
-      <div className="cfg-mobile" style={{ padding:'12px 16px 80px', display:'flex', flexDirection:'column', gap:6 }}>
+      <div style={{ padding:'12px 16px 80px', flexDirection:'column', gap:6, display: isMobile ? 'flex' : 'none' }}>
         {TABS.map(tab => {
           const open = mobileOpen === tab.id;
           const Icon = tab.icon;
