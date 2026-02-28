@@ -130,7 +130,7 @@ export default function Sidebar({
       </div>
 
       {/* NAV */}
-      <nav style={{ flex: 1, padding: collapsed ? '10px 4px' : '10px 8px', display: 'flex', flexDirection: 'column', gap: 1, overflowY: 'auto' }}>
+      <nav style={{ flex: 1, minHeight: 0, padding: collapsed ? '10px 4px' : '10px 8px', display: 'flex', flexDirection: 'column', gap: 1, overflowY: 'auto' }}>
         {!collapsed && <p style={{ fontSize: 10, color: '#334155', fontWeight: 700, letterSpacing: 1.2, padding: '4px 12px 6px', textTransform: 'uppercase' as const }}>Navegación</p>}
         {navItems.map(i => renderNav(i.id, i.label, i.icon))}
         {sysItems.length > 0 && <>
@@ -141,7 +141,7 @@ export default function Sidebar({
       </nav>
 
       {/* BOTTOM — siempre visible */}
-      <div style={{ padding: collapsed ? '8px 4px' : '8px 8px', borderTop: '1px solid rgba(148,163,184,0.07)', display: 'flex', flexDirection: 'column', gap: 1, flexShrink: 0 }}>
+      <div style={{ padding: collapsed ? '8px 4px 16px' : '8px 8px 16px', borderTop: '1px solid rgba(148,163,184,0.07)', display: 'flex', flexDirection: 'column', gap: 1, flexShrink: 0, background: '#0F172A' }}>
         <button onClick={changeProfile} title="Cambiar perfil"
           style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, justifyContent: collapsed ? 'center' : 'flex-start', padding: collapsed ? '10px 0' : '9px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'transparent', color: '#64748B', fontSize: 13 }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.06)'; }}
