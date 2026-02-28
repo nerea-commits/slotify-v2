@@ -98,10 +98,10 @@ export default function Sidebar({
         padding: collapsed ? '20px 0 16px' : '20px 16px 16px',
         borderBottom: '1px solid rgba(148,163,184,0.07)',
         display: 'flex', alignItems: 'center',
-        justifyContent: collapsed ? 'center' : 'space-between',
+        justifyContent: 'space-between',
         flexShrink: 0,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: collapsed ? 0 : 11, minWidth: 0 }}>
           <div style={{
             width: 38, height: 38, borderRadius: 10,
             background: empresaLogo ? 'transparent' : `linear-gradient(135deg, ${accent} 0%, ${accent}cc 100%)`,
@@ -132,8 +132,8 @@ export default function Sidebar({
           </button>
         )}
         {collapsed && (
-          <button onClick={onToggleCollapse} style={{ position: 'absolute', bottom: -1, left: '50%', transform: 'translateX(-50%)', background: '#1E293B', border: '1px solid rgba(148,163,184,0.1)', cursor: 'pointer', color: '#475569', padding: '2px 6px', borderRadius: '0 0 6px 6px', display: 'flex', zIndex: 1 }}>
-            <ChevronRight size={12} />
+          <button onClick={onToggleCollapse} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', padding: 4, borderRadius: 5, display: 'flex' }}>
+            <ChevronRight size={15} />
           </button>
         )}
       </div>
