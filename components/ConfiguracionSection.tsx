@@ -149,13 +149,14 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
       .select();
 
     setLoading(false);
+    console.log('[CONFIG SAVE] empresa.id:', empresa.id, 'error:', e1, 'data:', d1);
 
     if (e1) {
-      setError(`Error: ${e1.message}`);
+      setError(`Error Supabase: ${e1.message} (code: ${e1.code})`);
       return;
     }
     if (!d1 || d1.length === 0) {
-      setError('Sin permisos para guardar. Verifica las políticas RLS en Supabase.');
+      setError('RLS bloqueó el guardado. Abre DevTools > Console para ver el log y compártelo.');
       return;
     }
 
