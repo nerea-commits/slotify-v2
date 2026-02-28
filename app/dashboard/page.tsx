@@ -89,7 +89,7 @@ export default function Dashboard() {
       if (!session) { window.location.href = '/login'; return; }
       const eid = localStorage.getItem('slotify_empresa_id');
       const pid = localStorage.getItem('slotify_profesional_id');
-      const admin = localStorage.getItem('slotify_rol') === 'admin';
+      const rolGuardado = localStorage.getItem('slotify_rol') || ''; const admin = rolGuardado === 'admin' || rolGuardado === 'administración' || rolGuardado === 'administracion' || rolGuardado === 'owner';
       isAdminRef.current = admin;
       empresaIdRef.current = eid;
       profesionalIdRef.current = pid;
@@ -102,7 +102,15 @@ export default function Dashboard() {
       }
       if (pid) {
         supabase.from('profesionales').select('*').eq('id', pid).single()
-          .then(({ data }) => { if (data) setProfesional(data); });
+          .then(({ data }) => {
+            if (data) {
+              setProfesional(data);
+              const r = (data.rol || '').toLowerCase();
+              const isAdm = r === 'admin' || r === 'administración' || r === 'administracion' || r === 'owner';
+              setIsAdmin(isAdm);
+              isAdminRef.current = isAdm;
+            }
+          });
       } else if (eid) {
         supabase.from('profesionales').select('*').eq('empresa_id', eid).limit(1).single()
           .then(({ data }) => {
@@ -110,6 +118,10 @@ export default function Dashboard() {
               setProfesional(data);
               localStorage.setItem('slotify_profesional_id', data.id);
               profesionalIdRef.current = data.id;
+              const r2 = (data.rol || '').toLowerCase();
+              const isAdm2 = r2 === 'admin' || r2 === 'administración' || r2 === 'administracion' || r2 === 'owner';
+              setIsAdmin(isAdm2);
+              isAdminRef.current = isAdm2;
             }
           });
       }
@@ -148,7 +160,7 @@ export default function Dashboard() {
   async function loadAllCitas() {
     const eid = empresaIdRef.current || localStorage.getItem('slotify_empresa_id');
     if (!eid) return;
-    const admin = isAdminRef.current || localStorage.getItem('slotify_rol') === 'admin';
+    const rolLS = localStorage.getItem('slotify_rol') || ''; const admin = isAdminRef.current || rolLS === 'admin' || rolLS === 'administración' || rolLS === 'administracion' || rolLS === 'owner';
     const pid = profesionalIdRef.current || localStorage.getItem('slotify_profesional_id');
     const ref = new Date(selectedDate);
     const from = new Date(ref.getFullYear(), ref.getMonth() - 1, 1);
