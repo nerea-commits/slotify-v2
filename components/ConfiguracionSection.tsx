@@ -683,38 +683,29 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
 // MAIN
 // ══════════════════════════════════════════════════════
 export default function ConfiguracionSection({
-  empresaId, profesionalId, onEmpresaUpdated,
+  empresa: empresaProp, profesional: profesionalProp, onEmpresaUpdated,
 }: {
-  empresaId: string;
-  profesionalId: string;
+  empresa: any;
+  profesional: any;
   onEmpresaUpdated?: (data: any) => void;
 }) {
   const [activeTab, setActiveTab] = useState('empresa');
-  const [empresa, setEmpresa] = useState<any>(null);
-  const [profesionalActual, setProfesionalActual] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  // Empresa state comes from parent — no internal fetch needed
+  const [empresa, setEmpresa] = useState<any>(empresaProp);
+  const [profesionalActual] = useState<any>(profesionalProp);
   const [toast, setToast] = useState('');
-  // Mobile accordion
   const [mobileOpen, setMobileOpen] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Sync if parent updates empresa
+  useEffect(() => { setEmpresa(empresaProp); }, [empresaProp?.id]);
+
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
-
-  useEffect(() => {
-    if (!empresaId) return;
-    Promise.all([
-      supabase.from('empresas').select('*').eq('id', empresaId).single(),
-      supabase.from('profesionales').select('*').eq('id', profesionalId).single(),
-    ]).then(([{ data: emp }, { data: prof }]) => {
-      setEmpresa(emp);
-      setProfesionalActual(prof);
-      setLoading(false);
-    });
-  }, [empresaId, profesionalId]);
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 3500); }
 
@@ -724,7 +715,7 @@ export default function ConfiguracionSection({
     showToast('Cambios guardados');
   }
 
-  if (loading) return (
+  if (!empresa) return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:300, color: C.textDim }}>
       Cargando configuración...
     </div>
