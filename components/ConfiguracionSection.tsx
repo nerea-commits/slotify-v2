@@ -134,32 +134,36 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
     // Logo: only save URL strings, skip base64 (too large for DB)
     const finalLogoUrl = (logoUrl && !logoUrl.startsWith('data:')) ? logoUrl.trim() : null;
 
-    const updateData: Record<string, any> = {
-      nombre: nombre.trim(),
-      color_primario: colorPrimario,
-      mostrar_importe: mostrarImporte,
-      telefono: telefono.trim() || null,
-      email: email.trim() || null,
-      direccion: direccion.trim() || null,
-      logo_url: finalLogoUrl || null,
-      timezone,
-      moneda,
-    };
-
-    const { data, error: err } = await supabase.from('empresas')
-      .update(updateData)
+    // Step 1: Save core fields (always exist)
+    const { data: d1, error: e1 } = await supabase.from('empresas')
+      .update({
+        nombre: nombre.trim(),
+        color_primario: colorPrimario,
+        mostrar_importe: mostrarImporte,
+        telefono: telefono.trim() || null,
+        email: email.trim() || null,
+        direccion: direccion.trim() || null,
+        logo_url: finalLogoUrl || null,
+      })
       .eq('id', empresa.id)
       .select();
 
     setLoading(false);
-    if (err) {
-      setError(`Error al guardar: ${err.message}`);
+
+    if (e1) {
+      setError(`Error: ${e1.message}`);
       return;
     }
-    if (!data || data.length === 0) {
-      setError('Sin permisos (RLS). Verifica las políticas de Supabase.');
+    if (!d1 || d1.length === 0) {
+      setError('Sin permisos para guardar. Verifica las políticas RLS en Supabase.');
       return;
     }
+
+    // Step 2: Try optional columns (may not exist yet)
+    await supabase.from('empresas')
+      .update({ timezone, moneda })
+      .eq('id', empresa.id);
+
     onSaved({ nombre, color_primario: colorPrimario, logo_url: finalLogoUrl });
   }
 
