@@ -1134,13 +1134,11 @@ export default function Dashboard() {
       </div>
 
       {/* BOTTOM NAV — mobile only */}
-      <div className="show-mobile-only">
-        <BottomNav
-          activeSection={activeSection}
-          onNavigate={setActiveSection}
-          isAdmin={isAdmin}
-        />
-      </div>
+      <BottomNav
+        activeSection={activeSection}
+        onNavigate={setActiveSection}
+        isAdmin={isAdmin}
+      />
 
       {/* Global layout CSS */}
       <style>{`
@@ -1154,8 +1152,10 @@ export default function Dashboard() {
         @media (max-width: 767px) {
           .main-content-desktop { margin-left: 0 !important; padding-bottom: 64px; }
           .hidden-mobile { display: none !important; }
+          .show-mobile-only { display: none !important; }
           .show-mobile-only { display: none; }
           .show-mobile-flex { display: flex !important; }
+          .show-mobile-only { display: flex !important; }
           .show-mobile-only { display: block; }
         }
       `}</style>
