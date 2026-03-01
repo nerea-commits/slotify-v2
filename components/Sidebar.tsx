@@ -76,10 +76,13 @@ export default function Sidebar({
     );
   }
 
+  const sidebarW = collapsed ? 56 : 240;
+
   return (
+    <>
     <aside style={{
       position: 'fixed', top: 0, left: 0, bottom: 0,
-      width: collapsed ? 56 : 240,
+      width: sidebarW,
       background: '#0F172A',
       borderRight: '1px solid rgba(148,163,184,0.07)',
       display: 'flex', flexDirection: 'column',
@@ -121,29 +124,7 @@ export default function Sidebar({
           )}
         </div>
 
-        {/* Toggle button — protrudes outside sidebar */}
-        <button onClick={onToggleCollapse}
-          style={{
-            position: 'absolute',
-            right: -12,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            width: 24, height: 24,
-            borderRadius: '50%',
-            background: '#1E293B',
-            border: '1px solid rgba(148,163,184,0.15)',
-            cursor: 'pointer',
-            color: '#64748B',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            zIndex: 50,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-            flexShrink: 0,
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#F1F5F9'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(148,163,184,0.35)'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#64748B'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(148,163,184,0.15)'; }}
-        >
-          {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
-        </button>
+
       </div>
 
       {/* NAV */}
@@ -178,5 +159,29 @@ export default function Sidebar({
       </div>
 
     </aside>
+
+    {/* Toggle button — outside aside so it protrudes */}
+    <button onClick={onToggleCollapse}
+      style={{
+        position: 'fixed',
+        top: 36,
+        left: sidebarW - 12,
+        width: 24, height: 24,
+        borderRadius: '50%',
+        background: '#1E293B',
+        border: '2px solid rgba(148,163,184,0.2)',
+        cursor: 'pointer',
+        color: '#64748B',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 41,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+        transition: 'left 0.2s cubic-bezier(0.4,0,0.2,1)',
+      }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#F1F5F9'; (e.currentTarget as HTMLElement).style.background = '#334155'; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#64748B'; (e.currentTarget as HTMLElement).style.background = '#1E293B'; }}
+    >
+      {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
+    </button>
+    </>
   );
 }
