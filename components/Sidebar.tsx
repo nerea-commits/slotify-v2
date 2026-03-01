@@ -80,7 +80,7 @@ export default function Sidebar({
 
   return (
     <>
-    <aside style={{
+    <aside className="hidden-mobile" style={{
       position: 'fixed', top: 0, left: 0, bottom: 0,
       width: sidebarW,
       background: '#0F172A',
@@ -93,17 +93,17 @@ export default function Sidebar({
 
       {/* HEADER */}
       <div style={{
-        height: 72, padding: '0 12px', flexShrink: 0,
+        height: 76, padding: '0 12px', flexShrink: 0,
         borderBottom: '1px solid rgba(148,163,184,0.07)',
         display: 'flex', alignItems: 'center', gap: 10,
         position: 'relative',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
           <div style={{
-            width: 46, height: 46, borderRadius: 12, flexShrink: 0,
+            width: 56, height: 56, borderRadius: 14, flexShrink: 0,
             background: empresaLogo ? '#0F172A' : ('linear-gradient(135deg, ' + accent + ' 0%, ' + accent + 'bb 100%)'),
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 18, fontWeight: 800, color: '#fff',
+            fontSize: 22, fontWeight: 800, color: '#fff',
             overflow: 'hidden', boxShadow: '0 2px 12px ' + accent + '55',
           }}>
             {empresaLogo
@@ -161,10 +161,10 @@ export default function Sidebar({
     </aside>
 
     {/* Toggle button — outside aside so it protrudes */}
-    <button onClick={onToggleCollapse}
+    <button className="hidden-mobile" onClick={onToggleCollapse}
       style={{
         position: 'fixed',
-        top: 36,
+        top: 26,
         left: sidebarW - 12,
         width: 24, height: 24,
         borderRadius: '50%',
