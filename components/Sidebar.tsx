@@ -90,42 +90,59 @@ export default function Sidebar({
 
       {/* HEADER */}
       <div style={{
-        height: 64, padding: '0 10px', flexShrink: 0,
+        height: 72, padding: '0 12px', flexShrink: 0,
         borderBottom: '1px solid rgba(148,163,184,0.07)',
-        display: 'flex', alignItems: 'center', gap: 8,
-        justifyContent: collapsed ? 'center' : 'space-between',
+        display: 'flex', alignItems: 'center', gap: 10,
+        position: 'relative',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
           <div style={{
-            width: 36, height: 36, borderRadius: 9, flexShrink: 0,
+            width: 46, height: 46, borderRadius: 12, flexShrink: 0,
             background: empresaLogo ? '#0F172A' : ('linear-gradient(135deg, ' + accent + ' 0%, ' + accent + 'bb 100%)'),
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 15, fontWeight: 800, color: '#fff',
-            overflow: 'hidden', boxShadow: '0 2px 8px ' + accent + '44',
+            fontSize: 18, fontWeight: 800, color: '#fff',
+            overflow: 'hidden', boxShadow: '0 2px 12px ' + accent + '55',
           }}>
             {empresaLogo
-              ? <img src={empresaLogo} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              ? <img src={empresaLogo} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                   onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               : (empresaNombre?.[0]?.toUpperCase() || 'S')
             }
           </div>
           {!collapsed && (
             <div style={{ minWidth: 0, flex: 1 }}>
-              <p style={{ fontSize: 13.5, fontWeight: 700, color: '#F1F5F9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: '#F1F5F9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
                 {empresaNombre || 'Mi negocio'}
               </p>
-              <p style={{ fontSize: 11, color: accent, fontWeight: 600, letterSpacing: 0.3, marginTop: 1 }}>
+              <p style={{ fontSize: 11, color: accent, fontWeight: 600, letterSpacing: 0.3, marginTop: 2 }}>
                 {profesionalNombre || ''}
               </p>
             </div>
           )}
         </div>
+
+        {/* Toggle button — protrudes outside sidebar */}
         <button onClick={onToggleCollapse}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', padding: 4, borderRadius: 6, display: 'flex', flexShrink: 0 }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#94A3B8'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#475569'; }}
+          style={{
+            position: 'absolute',
+            right: -12,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: 24, height: 24,
+            borderRadius: '50%',
+            background: '#1E293B',
+            border: '1px solid rgba(148,163,184,0.15)',
+            cursor: 'pointer',
+            color: '#64748B',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 50,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+            flexShrink: 0,
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#F1F5F9'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(148,163,184,0.35)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#64748B'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(148,163,184,0.15)'; }}
         >
-          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
         </button>
       </div>
 
