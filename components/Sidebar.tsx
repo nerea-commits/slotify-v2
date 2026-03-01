@@ -94,11 +94,13 @@ export default function Sidebar({
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <div style={{
-          width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+          width: collapsed ? 36 : 52, height: collapsed ? 36 : 52,
+          borderRadius: collapsed ? 10 : 14, flexShrink: 0,
           background: empresaLogo ? '#0F172A' : ('linear-gradient(135deg, ' + accent + ' 0%, ' + accent + 'bb 100%)'),
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 22, fontWeight: 800, color: '#fff',
+          fontSize: collapsed ? 15 : 22, fontWeight: 800, color: '#fff',
           overflow: 'hidden', boxShadow: '0 2px 12px ' + accent + '55',
+          transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)',
         }}>
           {empresaLogo
             ? <img src={empresaLogo} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
@@ -116,14 +118,7 @@ export default function Sidebar({
             </p>
           </div>
         )}
-        {/* Collapse arrow — always visible, right side of header */}
-        <button onClick={onToggleCollapse} title={collapsed ? 'Expandir' : 'Contraer'}
-          style={{ flexShrink: 0, width: 28, height: 28, borderRadius: 8, border: '1px solid rgba(148,163,184,0.12)', background: 'transparent', cursor: 'pointer', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.12s' }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.08)'; (e.currentTarget as HTMLElement).style.color = '#94A3B8'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#475569'; }}
-        >
-          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-        </button>
+
       </div>
 
       {/* NAV */}
