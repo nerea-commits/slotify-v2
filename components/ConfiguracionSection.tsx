@@ -179,10 +179,10 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
         <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:4 }}>Logo</p>
         <div style={{ display:'flex', alignItems:'center', gap:14 }}>
           {/* Preview */}
-          <div style={{ width:64, height:64, borderRadius:14, background: C.panelAlt, border:`2px solid ${C.border}`, flexShrink:0, overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ width:80, height:80, borderRadius:14, background: C.panelAlt, border:`2px solid ${C.border}`, flexShrink:0, overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
             {logoUrl
-              ? <img src={logoUrl} alt="logo" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-              : <span style={{ fontSize:24, color: C.textDim }}>🏢</span>
+              ? <img src={logoUrl} alt="logo" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
+              : <span style={{ fontSize:28, color: C.textDim }}>🏢</span>
             }
           </div>
           <div style={{ flex:1, display:'flex', flexDirection:'column', gap:8 }}>
@@ -782,7 +782,7 @@ export default function ConfiguracionSection({
         </div>
 
         {/* Content panel */}
-        <div style={{ flex:1, background: C.panel, borderRadius:16, padding:24, minWidth:0 }}>
+        <div style={{ flex:1, background: C.panel, borderRadius:16, padding:24, minWidth:0, paddingBottom:40 }}>
           {renderTabContent(activeTab)}
         </div>
       </div>
