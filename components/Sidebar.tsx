@@ -116,6 +116,14 @@ export default function Sidebar({
             </p>
           </div>
         )}
+        {/* Collapse arrow — always visible, right side of header */}
+        <button onClick={onToggleCollapse} title={collapsed ? 'Expandir' : 'Contraer'}
+          style={{ flexShrink: 0, width: 28, height: 28, borderRadius: 8, border: '1px solid rgba(148,163,184,0.12)', background: 'transparent', cursor: 'pointer', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.12s' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.08)'; (e.currentTarget as HTMLElement).style.color = '#94A3B8'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#475569'; }}
+        >
+          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        </button>
       </div>
 
       {/* NAV */}
