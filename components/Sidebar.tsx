@@ -33,7 +33,6 @@ export default function Sidebar({
   isAdmin, onNavigate, activeSection,
 }: SidebarProps) {
   const accent = colorPrimario || '#22C55E';
-
   const navItems = NAV_ITEMS.filter(i => i.id === 'agenda' || isAdmin);
   const sysItems = isAdmin ? SYSTEM_ITEMS : [];
 
@@ -76,13 +75,10 @@ export default function Sidebar({
     );
   }
 
-  const sidebarW = collapsed ? 56 : 240;
-
   return (
-    <>
     <aside className="hidden-mobile" style={{
       position: 'fixed', top: 0, left: 0, bottom: 0,
-      width: sidebarW,
+      width: collapsed ? 56 : 240,
       background: '#0F172A',
       borderRight: '1px solid rgba(148,163,184,0.07)',
       display: 'flex', flexDirection: 'column',
@@ -95,36 +91,31 @@ export default function Sidebar({
       <div style={{
         height: 76, padding: '0 12px', flexShrink: 0,
         borderBottom: '1px solid rgba(148,163,184,0.07)',
-        display: 'flex', alignItems: 'center', gap: 10,
-        position: 'relative',
+        display: 'flex', alignItems: 'center', gap: 12,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: 14, flexShrink: 0,
-            background: empresaLogo ? '#0F172A' : ('linear-gradient(135deg, ' + accent + ' 0%, ' + accent + 'bb 100%)'),
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 22, fontWeight: 800, color: '#fff',
-            overflow: 'hidden', boxShadow: '0 2px 12px ' + accent + '55',
-          }}>
-            {empresaLogo
-              ? <img src={empresaLogo} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                  onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-              : (empresaNombre?.[0]?.toUpperCase() || 'S')
-            }
-          </div>
-          {!collapsed && (
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <p style={{ fontSize: 14, fontWeight: 700, color: '#F1F5F9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
-                {empresaNombre || 'Mi negocio'}
-              </p>
-              <p style={{ fontSize: 11, color: accent, fontWeight: 600, letterSpacing: 0.3, marginTop: 2 }}>
-                {profesionalNombre || ''}
-              </p>
-            </div>
-          )}
+        <div style={{
+          width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+          background: empresaLogo ? '#0F172A' : ('linear-gradient(135deg, ' + accent + ' 0%, ' + accent + 'bb 100%)'),
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 22, fontWeight: 800, color: '#fff',
+          overflow: 'hidden', boxShadow: '0 2px 12px ' + accent + '55',
+        }}>
+          {empresaLogo
+            ? <img src={empresaLogo} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            : (empresaNombre?.[0]?.toUpperCase() || 'S')
+          }
         </div>
-
-
+        {!collapsed && (
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ fontSize: 14, fontWeight: 700, color: '#F1F5F9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
+              {empresaNombre || 'Mi negocio'}
+            </p>
+            <p style={{ fontSize: 11, color: accent, fontWeight: 600, letterSpacing: 0.3, marginTop: 2 }}>
+              {profesionalNombre || ''}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* NAV */}
@@ -138,10 +129,10 @@ export default function Sidebar({
         </>}
       </nav>
 
-      {/* BOTTOM — siempre visible */}
-      <div style={{ padding: collapsed ? '8px 4px 16px' : '8px 8px 16px', borderTop: '1px solid rgba(148,163,184,0.07)', display: 'flex', flexDirection: 'column', gap: 1, flexShrink: 0, background: '#0F172A' }}>
+      {/* BOTTOM */}
+      <div style={{ borderTop: '1px solid rgba(148,163,184,0.07)', flexShrink: 0, background: '#0F172A', paddingBottom: 16 }}>
         <button onClick={changeProfile} title="Cambiar perfil"
-          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, justifyContent: collapsed ? 'center' : 'flex-start', padding: collapsed ? '10px 0' : '9px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'transparent', color: '#64748B', fontSize: 13 }}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, justifyContent: collapsed ? 'center' : 'flex-start', padding: collapsed ? '10px 0' : '9px 12px', border: 'none', cursor: 'pointer', background: 'transparent', color: '#64748B', fontSize: 13 }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.06)'; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
         >
@@ -149,39 +140,23 @@ export default function Sidebar({
           {!collapsed && <span>Cambiar perfil</span>}
         </button>
         <button onClick={logout} title="Cerrar sesión"
-          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, justifyContent: collapsed ? 'center' : 'flex-start', padding: collapsed ? '10px 0' : '9px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'transparent', color: '#EF4444', fontSize: 13 }}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, justifyContent: collapsed ? 'center' : 'flex-start', padding: collapsed ? '10px 0' : '9px 12px', border: 'none', cursor: 'pointer', background: 'transparent', color: '#EF4444', fontSize: 13 }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.07)'; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
         >
           <LogOut size={16} style={{ flexShrink: 0, color: '#EF4444' }} />
           {!collapsed && <span>Cerrar sesión</span>}
         </button>
+        <button onClick={onToggleCollapse} title={collapsed ? 'Expandir' : 'Contraer'}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, justifyContent: collapsed ? 'center' : 'flex-start', padding: collapsed ? '10px 0' : '9px 12px', border: 'none', borderTop: '1px solid rgba(148,163,184,0.07)', cursor: 'pointer', background: 'transparent', color: '#475569', fontSize: 13 }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.06)'; (e.currentTarget as HTMLElement).style.color = '#94A3B8'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#475569'; }}
+        >
+          {collapsed ? <ChevronRight size={16} style={{ flexShrink: 0 }} /> : <ChevronLeft size={16} style={{ flexShrink: 0 }} />}
+          {!collapsed && <span>Contraer menú</span>}
+        </button>
       </div>
 
     </aside>
-
-    {/* Toggle button — outside aside so it protrudes */}
-    <button className="hidden-mobile" onClick={onToggleCollapse}
-      style={{
-        position: 'fixed',
-        top: 26,
-        left: sidebarW - 12,
-        width: 24, height: 24,
-        borderRadius: '50%',
-        background: '#1E293B',
-        border: '2px solid rgba(148,163,184,0.2)',
-        cursor: 'pointer',
-        color: '#64748B',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 41,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-        transition: 'left 0.2s cubic-bezier(0.4,0,0.2,1)',
-      }}
-      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#F1F5F9'; (e.currentTarget as HTMLElement).style.background = '#334155'; }}
-      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#64748B'; (e.currentTarget as HTMLElement).style.background = '#1E293B'; }}
-    >
-      {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
-    </button>
-    </>
   );
 }
