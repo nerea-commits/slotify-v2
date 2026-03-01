@@ -97,7 +97,7 @@ export default function BottomNav({ activeSection, onNavigate, isAdmin }: Bottom
       </div>
 
       {/* Bottom bar */}
-      <nav style={{
+      <nav className="show-mobile-only" style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         height: 64,
         background: '#0F172A',
