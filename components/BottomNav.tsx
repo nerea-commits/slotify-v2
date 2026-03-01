@@ -38,6 +38,11 @@ export default function BottomNav({ activeSection, onNavigate, isAdmin }: Bottom
 
   return (
     <>
+      <style>{`
+        @media (min-width: 768px) {
+          .bottom-nav-bar { display: none !important; }
+        }
+      `}</style>
       {/* Sheet overlay */}
       {masOpen && (
         <div
@@ -97,7 +102,7 @@ export default function BottomNav({ activeSection, onNavigate, isAdmin }: Bottom
       </div>
 
       {/* Bottom bar */}
-      <nav className="show-mobile-only" style={{
+      <nav className="bottom-nav-bar" style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         height: 64,
         background: '#0F172A',
