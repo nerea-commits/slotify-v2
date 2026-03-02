@@ -155,7 +155,7 @@ export default function EstadisticasSection({ empresaId }: { empresaId: string }
     const creado = new Date(c.created_at);
     return creado >= desde && creado <= hasta;
   }).length;
-  const clientesRecurrentes = [...clientesEnPeriodo].filter(id => {
+  const clientesRecurrentes = Array.from(clientesEnPeriodo).filter(id => {
     const citasCliente = citas.filter(c => c.cliente_id === id);
     return citasCliente.length > 1;
   }).length;
