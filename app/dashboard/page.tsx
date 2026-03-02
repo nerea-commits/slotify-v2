@@ -86,49 +86,72 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    async function init() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { window.location.href = '/login'; return; }
-      const eid = localStorage.getItem('slotify_empresa_id');
-      const pid = localStorage.getItem('slotify_profesional_id');
-      const rolGuardado = localStorage.getItem('slotify_rol') || ''; const admin = rolGuardado === 'admin' || rolGuardado === 'administración' || rolGuardado === 'administracion' || rolGuardado === 'owner';
-      isAdminRef.current = admin;
-      empresaIdRef.current = eid;
-      profesionalIdRef.current = pid;
-      setIsAdmin(admin);
-      if (eid) {
-        supabase.from('empresas').select('*').eq('id', eid).single()
-          .then(({ data }) => { if (data) setEmpresa(data); });
-        supabase.from('estados_cita').select('*').eq('empresa_id', eid).eq('activo', true).order('orden')
-          .then(({ data }) => { if (data) setEstadosCita(data); });
-      }
-      if (pid) {
-        supabase.from('profesionales').select('*').eq('id', pid).single()
-          .then(({ data }) => {
-            if (data) {
-              setProfesional(data);
-              const r = (data.rol || '').toLowerCase();
-              const isAdm = r === 'admin' || r === 'administración' || r === 'administracion' || r === 'owner';
-              setIsAdmin(isAdm);
-              isAdminRef.current = isAdm;
-            }
-          });
-      } else if (eid) {
-        supabase.from('profesionales').select('*').eq('empresa_id', eid).limit(1).single()
-          .then(({ data }) => {
-            if (data) {
-              setProfesional(data);
-              localStorage.setItem('slotify_profesional_id', data.id);
-              profesionalIdRef.current = data.id;
-              const r2 = (data.rol || '').toLowerCase();
-              const isAdm2 = r2 === 'admin' || r2 === 'administración' || r2 === 'administracion' || r2 === 'owner';
-              setIsAdmin(isAdm2);
-              isAdminRef.current = isAdm2;
-            }
-          });
-      }
+async function init() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) { window.location.href = '/login'; return; }
+
+  // 1) Usuario autenticado (fuente de verdad)
+  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  const user = userData?.user;
+
+  if (userErr || !user) {
+    // Si por lo que sea no podemos obtener user, salimos (más seguro)
+    window.location.href = '/login';
+    return;
+  }
+
+  // 2) Buscar el profesional vinculado a este usuario
+  const { data: prof, error: profErr } = await supabase
+    .from('profesionales')
+    .select('*')
+    .eq('user_id', user.id)
+    .single();
+
+  if (profErr || !prof) {
+    // Fallback temporal: si aún no está vinculado, intentamos lo que había antes
+    const eidLS = localStorage.getItem('slotify_empresa_id');
+    const pidLS = localStorage.getItem('slotify_profesional_id');
+
+    empresaIdRef.current = eidLS;
+    profesionalIdRef.current = pidLS;
+
+    if (eidLS) {
+      supabase.from('empresas').select('*').eq('id', eidLS).single()
+        .then(({ data }) => { if (data) setEmpresa(data); });
+      supabase.from('estados_cita').select('*').eq('empresa_id', eidLS).eq('activo', true).order('orden')
+        .then(({ data }) => { if (data) setEstadosCita(data); });
     }
-    init();
+
+    if (pidLS) {
+      supabase.from('profesionales').select('*').eq('id', pidLS).single()
+        .then(({ data }) => { if (data) setProfesional(data); });
+    }
+
+    return;
+  }
+
+  // 3) Ya tenemos el profesional real (sin localStorage)
+  setProfesional(prof);
+  profesionalIdRef.current = prof.id;
+
+  const eid = prof.empresa_id as string | null;
+  empresaIdRef.current = eid;
+
+  // Admin desde rol del profesional
+  const r = (prof.rol || '').toLowerCase();
+  const isAdm = r === 'admin' || r === 'administración' || r === 'administracion' || r === 'owner';
+  setIsAdmin(isAdm);
+  isAdminRef.current = isAdm;
+
+  // 4) Cargar empresa y estados_cita igual que antes
+  if (eid) {
+    supabase.from('empresas').select('*').eq('id', eid).single()
+      .then(({ data }) => { if (data) setEmpresa(data); });
+    supabase.from('estados_cita').select('*').eq('empresa_id', eid).eq('activo', true).order('orden')
+      .then(({ data }) => { if (data) setEstadosCita(data); });
+  }
+}
+init();
   }, []);
 
   useEffect(() => {
