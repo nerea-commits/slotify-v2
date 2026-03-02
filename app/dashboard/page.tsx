@@ -127,6 +127,7 @@ async function init() {
         .then(({ data }) => { if (data) setProfesional(data); });
     }
 
+    console.warn('⚠️ No se encontró profesional por user_id. Usando fallback localStorage temporal.');
     return;
   }
 
