@@ -87,7 +87,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    async function init() {
+   async function init() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { window.location.href = '/login'; return; }
 
@@ -99,51 +99,64 @@ export default function Dashboard() {
         return;
       }
 
-      const { data: prof, error: profErr } = await supabase
-        .from('profesionales')
+      // 1. ¿Es admin? (tiene empresa vinculada)
+      const { data: emp } = await supabase
+        .from('empresas')
         .select('*')
-        .eq('user_id', user.id)
-        .single();
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
 
-      if (profErr || !prof) {
-        const eidLS = localStorage.getItem('slotify_empresa_id');
+      if (emp) {
+        setEmpresa(emp);
+        empresaIdRef.current = emp.id;
+        setIsAdmin(true);
+        isAdminRef.current = true;
+
+        supabase.from('estados_cita').select('*').eq('empresa_id', emp.id).eq('activo', true).order('orden')
+          .then(({ data }) => { if (data) setEstadosCita(data); });
+
         const pidLS = localStorage.getItem('slotify_profesional_id');
-
-        empresaIdRef.current = eidLS;
-        profesionalIdRef.current = pidLS;
-
-        if (eidLS) {
-          supabase.from('empresas').select('*').eq('id', eidLS).single()
-            .then(({ data }) => { if (data) setEmpresa(data); });
-          supabase.from('estados_cita').select('*').eq('empresa_id', eidLS).eq('activo', true).order('orden')
-            .then(({ data }) => { if (data) setEstadosCita(data); });
-        }
-
         if (pidLS) {
-          supabase.from('profesionales').select('*').eq('id', pidLS).single()
-            .then(({ data }) => { if (data) setProfesional(data); });
+          const { data: prof } = await supabase
+            .from('profesionales')
+            .select('*')
+            .eq('id', pidLS)
+            .eq('empresa_id', emp.id)
+            .maybeSingle();
+          if (prof) {
+            setProfesional(prof);
+            profesionalIdRef.current = prof.id;
+          }
         }
-
         return;
       }
 
-      setProfesional(prof);
-      profesionalIdRef.current = prof.id;
+      // 2. ¿Es empleado? (tiene registro en profesionales)
+      const { data: prof } = await supabase
+        .from('profesionales')
+        .select('*')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
 
-      const eid = prof.empresa_id as string | null;
-      empresaIdRef.current = eid;
+      if (prof) {
+        setProfesional(prof);
+        profesionalIdRef.current = prof.id;
+        empresaIdRef.current = prof.empresa_id;
 
-      const r = (prof.rol || '').toLowerCase();
-      const isAdm = r === 'admin' || r === 'administración' || r === 'administracion' || r === 'owner';
-      setIsAdmin(isAdm);
-      isAdminRef.current = isAdm;
+        const r = (prof.rol || '').toLowerCase();
+        const isAdm = r === 'admin' || r === 'owner';
+        setIsAdmin(isAdm);
+        isAdminRef.current = isAdm;
 
-      if (eid) {
-        supabase.from('empresas').select('*').eq('id', eid).single()
+        supabase.from('empresas').select('*').eq('id', prof.empresa_id).single()
           .then(({ data }) => { if (data) setEmpresa(data); });
-        supabase.from('estados_cita').select('*').eq('empresa_id', eid).eq('activo', true).order('orden')
+        supabase.from('estados_cita').select('*').eq('empresa_id', prof.empresa_id).eq('activo', true).order('orden')
           .then(({ data }) => { if (data) setEstadosCita(data); });
+        return;
       }
+
+      // 3. No tiene nada
+      window.location.href = '/login';
     }
     init();
   }, []);
@@ -175,12 +188,11 @@ export default function Dashboard() {
     setClientRiskCache(riskMap);
   }
 
-  async function loadAllCitas() {
-    const eid = empresaIdRef.current || localStorage.getItem('slotify_empresa_id');
+ async function loadAllCitas() {
+    const eid = empresaIdRef.current;
     if (!eid) return;
-    const rolLS = localStorage.getItem('slotify_rol') || '';
-    const admin = isAdminRef.current || rolLS === 'admin' || rolLS === 'administración' || rolLS === 'administracion' || rolLS === 'owner';
-    const pid = profesionalIdRef.current || localStorage.getItem('slotify_profesional_id');
+    const admin = isAdminRef.current;
+    const pid = profesionalIdRef.current;
     const ref = new Date(selectedDate);
     const from = new Date(ref.getFullYear(), ref.getMonth() - 1, 1);
     const to = new Date(ref.getFullYear(), ref.getMonth() + 2, 0);
