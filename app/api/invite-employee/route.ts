@@ -23,7 +23,7 @@ export async function POST(req: Request) {
           rol: rol || 'empleado',
           empresa_id,
         },
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://slotify-v2-vxnx.vercel.app'}/login`,
+       redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://slotify-v2-vxnx.vercel.app'}/auth/callback`,
       })
 
     if (userError || !userData.user) {
