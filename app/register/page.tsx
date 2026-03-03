@@ -70,13 +70,14 @@ export default function RegisterPage() {
         .select().single();
       if (errEmp) throw errEmp;
 
-      // 3. Crear profesional admin
+     // 3. Crear profesional admin
       const { data: admin, error: errAdmin } = await supabase.from('profesionales')
         .insert({
           nombre: adminNombre,
           rol: 'admin',
           pin: adminPin,
           empresa_id: emp.id,
+          auth_user_id: userId,
         })
         .select().single();
       if (errAdmin) throw errAdmin;
