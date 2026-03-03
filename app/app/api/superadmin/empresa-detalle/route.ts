@@ -53,4 +53,10 @@ export async function GET(req: Request) {
     .order('hora_inicio', { ascending: false })
     .limit(10)
 
-  con
+  const { count: totalCitas } = await supabaseAdmin
+    .from('citas')
+    .select('id', { count: 'exact', head: true })
+    .eq('empresa_id', empresa_id)
+
+  return NextResponse.json({ empresa, profesionales, citas, totalCitas })
+}
