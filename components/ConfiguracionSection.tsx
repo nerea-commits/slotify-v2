@@ -535,21 +535,40 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 3500); }
 
-  async function invitar() {
+ async function invitar() {
     if (!invNombre.trim()) { setInvError('El nombre es obligatorio'); return; }
+    if (!invEmail.trim() || !invEmail.includes('@')) { 
+      setInvError('El email es obligatorio para enviar la invitación'); return; 
+    }
     setInvLoading(true); setInvError('');
-    const { error } = await supabase.from('profesionales').insert({
-      empresa_id: empresa.id,
-      nombre: invNombre.trim(),
-      email: invEmail.trim() || null,
-      rol: invRol,
-      activo: true,
-    });
-    setInvLoading(false);
-    if (error) { setInvError('Error al crear empleado'); return; }
-    setInvNombre(''); setInvEmail(''); setInvRol('empleado');
-    await load();
-    showToast(`${invNombre} añadido`);
+    
+    try {
+      const res = await fetch('/api/invite-employee', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: invEmail.trim(),
+          nombre: invNombre.trim(),
+          rol: invRol,
+          empresa_id: empresa.id,
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        setInvError(data.error || 'Error al invitar');
+        return;
+      }
+      
+      setInvNombre(''); setInvEmail(''); setInvRol('empleado');
+      await load();
+      showToast(`Invitación enviada a ${invEmail}`);
+    } catch (err: any) {
+      setInvError(err.message || 'Error de conexión');
+    } finally {
+      setInvLoading(false);
+    }
   }
 
   async function changeRol(id: string, rol: string) {
