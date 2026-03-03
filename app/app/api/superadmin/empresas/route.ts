@@ -1,14 +1,18 @@
 export const dynamic = 'force-dynamic'
+
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-export async function GET(req: Request) {
-  const supabaseAdmin = createClient(
+function getAdmin() {
+  return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
+}
 
-  // Verificar que el que llama es superadmin
+export async function GET(req: Request) {
+  const supabaseAdmin = getAdmin()
+
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
@@ -26,13 +30,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
   }
 
-  // Traer todas las empresas con conteo de profesionales
   const { data: empresas, error } = await supabaseAdmin
     .from('empresas')
-    .select(`
-      id, nombre, email, telefono, created_at, activo, is_superadmin,
-      profesionales(count)
-    `)
+    .select(`id, nombre, email, telefono, created_at, activo, is_superadmin, profesionales(count)`)
     .eq('is_superadmin', false)
     .order('created_at', { ascending: false })
 
@@ -42,10 +42,7 @@ export async function GET(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const supabaseAdmin = getAdmin()
 
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
