@@ -571,6 +571,27 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
     }
   }
 
+  async function reenviarInvitacion(emp: any) {
+    if (!emp.email) { showToast('Este empleado no tiene email registrado'); return; }
+    try {
+      const res = await fetch('/api/invite-employee', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: emp.email,
+          nombre: emp.nombre,
+          rol: emp.rol,
+          empresa_id: empresa.id,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error || 'Error al reenviar'); return; }
+      showToast(`Invitación reenviada a ${emp.email}`);
+    } catch {
+      showToast('Error de conexión');
+    }
+  }
+
   async function changeRol(id: string, rol: string) {
     await supabase.from('profesionales').update({ rol }).eq('id', id);
     setEmpleados(prev => prev.map(e => e.id === id ? { ...e, rol } : e));
@@ -641,7 +662,15 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
                 {/* Actions */}
                 {!isMe && (
                   <div style={{ display:'flex', gap:4, flexShrink:0 }}>
-                    {/* Cambiar rol */}
+                    {/* Reenviar invitación */}
+                    {!emp.auth_user_id && emp.email && (
+                      <button onClick={() => reenviarInvitacion(emp)} title="Reenviar invitación"
+                        style={{ padding:'5px 8px', borderRadius:7, border:`1px solid ${C.border}`, background:'transparent', cursor:'pointer', color: C.amber, fontSize:11, fontWeight:600, display:'flex', alignItems:'center', gap:4 }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = C.amber + '66'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = C.border; }}>
+                        <Mail size={12}/> Reenviar
+                      </button>
+                    )}
                     <select value={emp.rol} onChange={e => changeRol(emp.id, e.target.value)}
                       style={{ padding:'5px 8px', background: C.panel, border:`1px solid ${C.border}`, borderRadius:7, color: C.textMid, fontSize:11, cursor:'pointer', outline:'none' }}>
                       <option value="empleado">Empleado</option>
