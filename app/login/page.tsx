@@ -38,37 +38,48 @@ export default function LoginPage() {
     checkSession();
   }, []);
 
-  async function loadEmpresaAndProfiles(userId: string) {
-    // Buscar empresa vinculada a este usuario auth
-    const { data: emp, error: empError } = await supabase
+ async function loadEmpresaAndProfiles(userId: string) {
+    // 1. Intentar como admin (tiene empresa propia)
+    const { data: emp } = await supabase
       .from('empresas')
       .select('*')
       .eq('auth_user_id', userId)
-      .single();
+      .maybeSingle();
 
-    if (empError || !emp) {
-      // No tiene empresa vinculada — puede que sea un usuario antiguo
-      // Intentar cargar la primera empresa disponible (compatibilidad)
-      const { data: empresas } = await supabase.from('empresas').select('*').limit(1);
-      if (!empresas || empresas.length === 0) {
-        router.push('/register');
-        return;
-      }
-      setEmpresa(empresas[0] as Empresa);
-      localStorage.setItem('slotify_empresa_id', empresas[0].id);
-
-      const { data: profs } = await supabase.from('profesionales').select('*').eq('empresa_id', empresas[0].id);
-      setProfesionales((profs || []) as Profesional[]);
-    } else {
+    if (emp) {
+      // Es admin — flujo normal con selector de perfiles
       setEmpresa(emp as Empresa);
       localStorage.setItem('slotify_empresa_id', emp.id);
-
-      const { data: profs } = await supabase.from('profesionales').select('*').eq('empresa_id', emp.id);
+      const { data: profs } = await supabase
+        .from('profesionales')
+        .select('*')
+        .eq('empresa_id', emp.id);
       setProfesionales((profs || []) as Profesional[]);
+      setStep('profiles');
+      setLoading(false);
+      return;
     }
 
-    setStep('profiles');
-    setLoading(false);
+    // 2. Intentar como empleado (tiene registro en profesionales)
+    const { data: prof } = await supabase
+      .from('profesionales')
+      .select('*, empresas(*)')
+      .eq('auth_user_id', userId)
+      .maybeSingle();
+
+    if (prof && prof.empresas) {
+      // Es empleado — ir directo al dashboard
+      const empData = prof.empresas as any;
+      setEmpresa(empData as Empresa);
+      localStorage.setItem('slotify_empresa_id', prof.empresa_id);
+      localStorage.setItem('slotify_profesional_id', prof.id);
+      localStorage.setItem('slotify_rol', prof.rol);
+      router.push('/dashboard');
+      return;
+    }
+
+    // 3. No tiene nada — registro
+    router.push('/register');
   }
 
   async function handleEmailLogin() {
