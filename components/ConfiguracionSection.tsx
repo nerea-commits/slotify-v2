@@ -662,8 +662,8 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
                 {/* Actions */}
                 {!isMe && (
                   <div style={{ display:'flex', gap:4, flexShrink:0 }}>
-                    {/* Reenviar invitación */}
-                    {!emp.auth_user_id && emp.email && (
+                   {/* Reenviar invitación */}
+                    {emp.email && (
                       <button onClick={() => reenviarInvitacion(emp)} title="Reenviar invitación"
                         style={{ padding:'5px 8px', borderRadius:7, border:`1px solid ${C.border}`, background:'transparent', cursor:'pointer', color: C.amber, fontSize:11, fontWeight:600, display:'flex', alignItems:'center', gap:4 }}
                         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = C.amber + '66'; }}
