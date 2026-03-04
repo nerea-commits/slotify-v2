@@ -933,23 +933,70 @@ export default function Dashboard() {
 
           {/* MODAL ANOTACIÓN */}
           {anotacionModal.open && (
-            <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setAnotacionModal({ open: false, date: null })}>
-              <div style={{ background: C.surface, borderRadius: 20, padding: 24, width: '100%', maxWidth: 380 }} onClick={e => e.stopPropagation()}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => { setAnotacionModal({ open: false, date: null }); setAnotacionTexto(''); }}>
+              <div style={{ background: C.surface, borderRadius: 20, padding: 24, width: '100%', maxWidth: 400, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexShrink: 0 }}>
                   <div>
-                    <h3 style={{ fontSize: 16, fontWeight: 700, color: C.text }}>Anotación interna</h3>
+                    <h3 style={{ fontSize: 16, fontWeight: 700, color: C.text }}>Notas internas</h3>
                     <p style={{ fontSize: 12, color: C.textSec, marginTop: 2 }}>
                       {anotacionModal.date?.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
                     </p>
                   </div>
-                  <button onClick={() => setAnotacionModal({ open: false, date: null })} style={{ background: 'none', border: 'none', color: C.textSec, cursor: 'pointer' }}><X className="w-5 h-5" /></button>
+                  <button onClick={() => { setAnotacionModal({ open: false, date: null }); setAnotacionTexto(''); }} style={{ background: 'none', border: 'none', color: C.textSec, cursor: 'pointer' }}>
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
-                <textarea value={anotacionTexto} onChange={e => setAnotacionTexto(e.target.value)} rows={4} autoFocus
-                  style={{ width: '100%', background: C.surfaceAlt, border: 'none', borderRadius: 12, padding: '10px 14px', color: C.text, fontSize: 14, outline: 'none', resize: 'none', boxSizing: 'border-box' as const }}
-                  placeholder="Escribe una nota para este día..." />
-                <button onClick={guardarAnotacion} disabled={anotacionLoading || !anotacionTexto.trim()}
-                  style={{ marginTop: 12, width: '100%', padding: '10px 0', borderRadius: 12, background: C.green, border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: anotacionLoading || !anotacionTexto.trim() ? 0.5 : 1 }}>
-                  {anotacionLoading ? 'Guardando...' : 'Guardar anotación'}
+
+                {anotacionModal.date && anotacionesForDate(anotacionModal.date).length > 0 && (
+                  <div style={{ overflowY: 'auto', marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0, maxHeight: 240 }}>
+                    {anotacionesForDate(anotacionModal.date).map((a: any) => (
+                      <div key={a.id} style={{ background: C.surfaceAlt, borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                        <p style={{ fontSize: 13, color: C.text, flex: 1, lineHeight: 1.5, margin: 0 }}>{a.texto}</p>
+                        <button
+                          onClick={async () => {
+                            await supabase.from('anotaciones').delete().eq('id', a.id);
+                            loadAllCitas();
+                          }}
+                          style={{ background: 'none', border: 'none', color: C.textSec, cursor: 'pointer', flexShrink: 0, padding: 2, lineHeight: 1 }}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {anotacionModal.date && anotacionesForDate(anotacionModal.date).length > 0 && (
+                  <div style={{ height: 1, background: C.surfaceAlt, marginBottom: 16, flexShrink: 0 }} />
+                )}
+
+                <textarea
+                  value={anotacionTexto}
+                  onChange={e => setAnotacionTexto(e.target.value)}
+                  rows={3}
+                  autoFocus
+                  style={{ width: '100%', background: C.surfaceAlt, border: 'none', borderRadius: 12, padding: '10px 14px', color: C.text, fontSize: 14, outline: 'none', resize: 'none', boxSizing: 'border-box' as const, flexShrink: 0 }}
+                  placeholder="Escribe una nueva nota..."
+                />
+                <button
+                  onClick={async () => {
+                    if (!anotacionTexto.trim() || !anotacionModal.date) return;
+                    setAnotacionLoading(true);
+                    await supabase.from('anotaciones').insert({
+                      empresa_id: empresaIdRef.current,
+                      profesional_id: profesionalIdRef.current,
+                      fecha: toDS(anotacionModal.date),
+                      texto: anotacionTexto.trim(),
+                    });
+                    setAnotacionTexto('');
+                    setAnotacionLoading(false);
+                    loadAllCitas();
+                  }}
+                  disabled={anotacionLoading || !anotacionTexto.trim()}
+                  style={{ marginTop: 12, width: '100%', padding: '10px 0', borderRadius: 12, background: C.green, border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: anotacionLoading || !anotacionTexto.trim() ? 0.5 : 1, flexShrink: 0 }}
+                >
+                  {anotacionLoading ? 'Guardando...' : 'Añadir nota'}
                 </button>
               </div>
             </div>
