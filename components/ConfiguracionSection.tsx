@@ -687,13 +687,9 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
         <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
           {empleados.map(emp => {
             const isMe = emp.id === profesionalActual?.id;
-            return (
-              <div key={emp.id} style={{
-                display:'flex', alignItems:'center', gap:12, padding:'12px 14px',
-                background: C.panelAlt, borderRadius:12,
-                opacity: emp.activo ? 1 : 0.55,
-                border: isMe ? `1px solid ${C.green}33` : `1px solid ${C.border}`,
-              }}>
+           return (
+              <div key={emp.id} style={{ borderRadius:12, overflow:'hidden', border: isMe ? `1px solid ${C.green}33` : `1px solid ${C.border}`, opacity: emp.activo ? 1 : 0.55, marginBottom:2 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background: C.panelAlt }}>
                 {/* Avatar */}
                 <div style={{ width:36, height:36, borderRadius:9, background: emp.color || C.panelAlt, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color:'#fff', flexShrink:0, border:`1px solid ${C.border}` }}>
                   {emp.nombre?.[0]?.toUpperCase() || '?'}
@@ -757,6 +753,7 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
                     )}
                   </div>
                 )}
+             </div>
              </div>
 
               {/* Panel horario expandible */}
