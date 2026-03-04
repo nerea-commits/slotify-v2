@@ -15,10 +15,12 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     async function handleAuth() {
-      // Supabase pone el token en el hash de la URL
+      // Supabase puede poner el token en el hash o como query params
       const hash = window.location.hash;
+      const search = window.location.search;
+
+      // Intentar con hash primero
       if (hash && hash.includes('access_token')) {
-        // Parsear los params del hash
         const params = new URLSearchParams(hash.substring(1));
         const accessToken = params.get('access_token');
         const refreshToken = params.get('refresh_token');
@@ -31,12 +33,11 @@ export default function AuthCallbackPage() {
           });
 
           if (error) {
-            setError('Error al procesar la invitación');
+            setError('El enlace ha caducado. Pide al administrador que reenvíe la invitación.');
             setLoading(false);
             return;
           }
 
-          // Si es invite o recovery, mostrar formulario de contraseña
           if (type === 'invite' || type === 'recovery' || type === 'magiclink') {
             setNeedsPassword(true);
             setLoading(false);
@@ -45,15 +46,45 @@ export default function AuthCallbackPage() {
         }
       }
 
-      // Si no hay token o no necesita contraseña, ir al login
+      // Intentar con query params (algunos clientes de email modifican el hash)
+      if (search) {
+        const params = new URLSearchParams(search);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        const type = params.get('type');
+
+        if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (error) {
+            setError('El enlace ha caducado. Pide al administrador que reenvíe la invitación.');
+            setLoading(false);
+            return;
+          }
+
+          if (type === 'invite' || type === 'recovery' || type === 'magiclink') {
+            setNeedsPassword(true);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
+      // Comprobar si ya hay sesión activa
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setNeedsPassword(true);
         setLoading(false);
-      } else {
-        router.push('/login');
+        return;
       }
+
+      setError('Enlace inválido o caducado. Pide al administrador que reenvíe la invitación.');
+      setLoading(false);
     }
+
     handleAuth();
   }, []);
 
@@ -75,12 +106,13 @@ export default function AuthCallbackPage() {
     });
 
     if (updateError) {
-      setError(updateError.message);
+      setError(updateError.message === 'Auth session missing!'
+        ? 'La sesión ha expirado. Pide al administrador que reenvíe la invitación.'
+        : updateError.message);
       setSaving(false);
       return;
     }
 
-    // Cerrar sesión para que entre limpio por login
     await supabase.auth.signOut();
     setDone(true);
     setSaving(false);
@@ -104,6 +136,22 @@ export default function AuthCallbackPage() {
           <button onClick={() => router.push('/login')}
             className="w-full py-3 bg-green-500 hover:bg-green-400 rounded-xl font-semibold text-sm">
             Ir a iniciar sesión
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !needsPassword) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-sm space-y-6 text-center">
+          <div style={{ fontSize: 48 }}>⚠️</div>
+          <h1 className="text-xl font-bold">Enlace inválido</h1>
+          <p className="text-gray-400 text-sm">{error}</p>
+          <button onClick={() => router.push('/login')}
+            className="w-full py-3 bg-gray-700 hover:bg-gray-600 rounded-xl font-semibold text-sm">
+            Ir al login
           </button>
         </div>
       </div>
