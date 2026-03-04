@@ -534,6 +534,7 @@ export default function Dashboard() {
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
                               <span style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.4, wordBreak: 'break-word' as const, flex: 1 }}>
                                 {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
+                                {isAdmin && cita.profesionales?.nombre && <span style={{ fontSize: 10, color: '#fff', opacity: 0.7, display: 'block', marginTop: 1 }}>{cita.profesionales.nombre}</span>}
                                 {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && <span style={{ marginLeft: 4, fontSize: 11 }}>{clientRiskCache[cita.cliente_id].icon}</span>}
                               </span>
                             </div>
