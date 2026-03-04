@@ -653,13 +653,28 @@ export default function Dashboard() {
                       cells.push(
                         <div key={`cell-${si}-${di}`} style={{ gridColumn: di + 2, gridRow: spanSlots > 1 ? `${rowIdx} / span ${spanSlots}` : `${rowIdx}`, background: working ? C.surface : 'rgba(15,23,42,0.25)', borderBottom: `1px solid ${isHour ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.06)'}`, borderLeft: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`, borderRight: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`, position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: cita ? 'center' : 'flex-start', boxSizing: 'border-box' as const, overflow: 'hidden' }}>
                           {cita && (
-                            <div onClick={() => setSelectedCita(cita)} style={{ position: 'absolute', inset: 0, background: `${citaColor(cita.estado)}33`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 4, padding: '8px 10px', cursor: 'pointer', boxShadow: `0 1px 3px ${citaColor(cita.estado)}33`, boxSizing: 'border-box' as const, display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' }}>
-                              <span style={{ fontSize: 12, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.35, wordBreak: 'break-word' as const, display: 'block' }}>
+                            <div onClick={() => setSelectedCita(cita)} style={{ position: 'absolute', inset: 0, background: `${citaColor(cita.estado)}22`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 4, padding: '6px 8px', cursor: 'pointer', boxSizing: 'border-box' as const, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden' }}>
+                              <p style={{ fontSize: 11, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, textTransform: 'uppercase' as const, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
                                 {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
-                                {isAdmin && cita.profesionales?.nombre && <span style={{ fontSize: 10, color: '#fff', opacity: 0.7, display: 'block', marginTop: 1 }}>{cita.profesionales.nombre}</span>}
                                 {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && <span style={{ marginLeft: 3, fontSize: 9 }}>{clientRiskCache[cita.cliente_id].icon}</span>}
-                              </span>
-                              {(() => { const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || ''; const notas = cita.notas || ''; const linea2 = svc && notas ? `${svc} — ${notas}` : svc || notas; return linea2 ? <span style={{ fontSize: 11, fontWeight: 400, color: '#FFFFFF', opacity: 0.85, lineHeight: 1.35, wordBreak: 'break-word' as const, display: 'block', marginTop: 2 }}>{linea2}</span> : null; })()}
+                              </p>
+                              {(() => {
+                                const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
+                                const notas = cita.notas || '';
+                                const linea2 = svc && notas ? `${svc} — ${notas}` : svc || notas;
+                                const empNombre = cita.profesionales?.nombre?.split(' ')[0] || '';
+                                return (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, overflow: 'hidden' }}>
+                                    {linea2 && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{linea2}</span>}
+                                    {isAdmin && empNombre && (
+                                      <>
+                                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: cita.profesionales?.color || C.green, flexShrink: 0 }}/>
+                                        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.85)', fontWeight: 600, whiteSpace: 'nowrap' as const, flexShrink: 0 }}>{empNombre}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           )}
                           {!cita && <div onClick={() => openModal(day, slot)} style={{ position: 'absolute', inset: 0, cursor: 'pointer' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.greenBg; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }} />}
