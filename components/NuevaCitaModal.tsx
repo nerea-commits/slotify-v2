@@ -257,11 +257,11 @@ export default function NuevaCitaModal({
 
   return (
     <div
-      style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', zIndex:50, display:'flex', alignItems:'flex-end', justifyContent:'center' }}
+      style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', zIndex:50, display:'flex', alignItems:'center', justifyContent:'center' }}
       onClick={onClose}
     >
       <div
-        style={{ background:'#111827', borderRadius:'20px 20px 0 0', padding:24, width:'100%', maxWidth:500, maxHeight:'92vh', overflow:'auto', paddingBottom:32 }}
+        style={{ background:'#111827', borderRadius:20, padding:24, width:'100%', maxWidth:500, maxHeight:'92vh', overflow:'auto', paddingBottom:32 }}
         onClick={e => e.stopPropagation()}
       >
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
