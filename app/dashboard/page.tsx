@@ -67,6 +67,7 @@ export default function Dashboard() {
   const [currentMinutes, setCurrentMinutes] = useState(-1);
   const [activeSection, setActiveSection] = useState<string>('agenda');
   const [estadosCita, setEstadosCita] = useState<any[]>([]);
+  const [miniCalMonth, setMiniCalMonth] = useState(new Date());
   const [anotaciones, setAnotaciones] = useState<any[]>([]);
 const [anotacionModal, setAnotacionModal] = useState<{ open: boolean; date: Date | null }>({ open: false, date: null });
 const [anotacionTexto, setAnotacionTexto] = useState('');
