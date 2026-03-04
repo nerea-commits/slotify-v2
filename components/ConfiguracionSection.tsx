@@ -119,6 +119,7 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
   const [mostrarImporte, setMostrarImporte] = useState(empresa?.mostrar_importe || false);
   const [sector, setSector] = useState(empresa?.sector || '');
   const [cif, setCif] = useState(empresa?.cif || '');
+  const [logoUrl, setLogoUrl] = useState(empresa?.logo_url || '');
   const [logoUploading, setLogoUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
