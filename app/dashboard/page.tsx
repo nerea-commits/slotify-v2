@@ -199,7 +199,26 @@ export default function Dashboard() {
     let q = supabase.from('citas')
       .select('*, clientes(nombre, telefono), servicios(nombre), profesionales(nombre, color)')
       .eq('empresa_id', eid)
-      function parseDiasLaborables(raw: any): number[] {
+      .lte('hora_inicio', `${toDS(to)}T23:59:59`);
+    if (!admin && pid) q = q.eq('profesional_id', pid);
+    const { data, error } = await q.order('hora_inicio');
+    if (error) console.error('loadAllCitas error:', error);
+    const citas = data || [];
+    setAllCitas(citas);
+    loadClientRisks(citas);
+  }
+
+  const scheduleStart = empresa?.horario_inicio || '09:00';
+  const scheduleEnd = empresa?.horario_fin || '18:00';
+  const startMin = timeToMinutes(scheduleStart);
+  const endMin = timeToMinutes(scheduleEnd);
+  const visibleSlots = ALL_SLOTS.filter(s => {
+    const m = timeToMinutes(s);
+    return m >= startMin && m < endMin;
+  });
+  const totalSlots = visibleSlots.length;
+
+  function parseDiasLaborables(raw: any): number[] {
   const fallback = [1, 2, 3, 4, 5];
   const nombreToNum: Record<string, number> = {
     'lunes': 1, 'martes': 2, 'miercoles': 3, 'miércoles': 3,
@@ -229,50 +248,6 @@ export default function Dashboard() {
   }
   return fallback;
 }
-      .lte('hora_inicio', `${toDS(to)}T23:59:59`);
-    if (!admin && pid) q = q.eq('profesional_id', pid);
-    const { data, error } = await q.order('hora_inicio');
-    if (error) console.error('loadAllCitas error:', error);
-    const citas = data || [];
-    setAllCitas(citas);
-    loadClientRisks(citas);
-  }
-
-  const scheduleStart = empresa?.horario_inicio || '09:00';
-  const scheduleEnd = empresa?.horario_fin || '18:00';
-  const startMin = timeToMinutes(scheduleStart);
-  const endMin = timeToMinutes(scheduleEnd);
-  const visibleSlots = ALL_SLOTS.filter(s => {
-    const m = timeToMinutes(s);
-    return m >= startMin && m < endMin;
-  });
-  const totalSlots = visibleSlots.length;
-
-  function parseDiasLaborables(raw: any): number[] {
-    const fallback = [1, 2, 3, 4, 5];
-    if (!raw) return fallback;
-    if (Array.isArray(raw)) {
-      if (raw.length === 0) return fallback;
-      const nums = raw.map((x: any) => {
-        if (typeof x === 'number') return x;
-        if (typeof x === 'string') return Number(x);
-        if (typeof x === 'object' && x !== null) {
-          const val = x.value ?? x.day ?? x.id ?? Object.values(x)[0];
-          return Number(val);
-        }
-        return NaN;
-      }).filter((n: number) => !isNaN(n) && n >= 1 && n <= 7);
-      return nums.length > 0 ? nums : fallback;
-    }
-    if (typeof raw === 'string') {
-      const cleaned = raw.replace(/[{}\[\]\s]/g, '');
-      if (!cleaned) return fallback;
-      const nums = cleaned.split(',').map(Number).filter(n => !isNaN(n) && n >= 1 && n <= 7);
-      return nums.length > 0 ? nums : fallback;
-    }
-    return fallback;
-  }
-
   const diasLaborables = parseDiasLaborables(empresa?.dias_laborables);
 
   function isWorkingDay(d: Date): boolean {
