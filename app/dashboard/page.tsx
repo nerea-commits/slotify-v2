@@ -715,7 +715,7 @@ const [anotacionLoading, setAnotacionLoading] = useState(false);
               })()}
                             </div>
                           )}
-                          {!cita && <div onClick={() => openModal(day, slot)} style={{ position: 'absolute', inset: 0, cursor: 'pointer' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.greenBg; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }} />}
+                          {!cita && <div onClick={() => working ? openModal(day, slot) : setAnotacionModal({ open: true, date: day })} style={{ position: 'absolute', inset: 0, cursor: working ? 'pointer' : 'default' }} onMouseEnter={e => { if (working) (e.currentTarget as HTMLElement).style.background = C.greenBg; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }} />}
                           {isNowSlot && <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', pointerEvents: 'none', zIndex: 20 }}><div style={{ width: 6, height: 6, borderRadius: '50%', background: C.red, boxShadow: '0 0 5px rgba(239,68,68,0.8)', flexShrink: 0 }} /><div style={{ flex: 1, height: 2, background: C.red, opacity: 0.8 }} /></div>}
                         </div>
                       );
