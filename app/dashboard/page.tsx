@@ -559,7 +559,7 @@ export default function Dashboard() {
               })()}
             </div>
           </div>
-          <button onClick={() => openModal(selectedDate, '')} style={{ position:'fixed', bottom:80, right:20, width:56, height:56, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 20px rgba(0,0,0,0.4)', zIndex:50, background: C.green, border:'none', cursor:'pointer' }}>
+          <button onClick={() => openModal(selectedDate, '')} style={{ position:'fixed', bottom:32, right:32, width:56, height:56, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 20px rgba(34,197,94,0.45)', zIndex:50, background: C.green, border:'none', cursor:'pointer' }}>
             <Plus className="w-6 h-6 text-white" />
           </button>
         </>)}
@@ -652,7 +652,7 @@ export default function Dashboard() {
                       const alturaBloque = spanSlots * WEEK_SLOT_H;
                       const isNowSlot = today && (() => { const m = timeToMinutes(slot); return currentMinutes >= m && currentMinutes < m + 30; })();
                       cells.push(
-                        <div key={`cell-${si}-${di}`} style={{ gridColumn: di + 2, gridRow: spanSlots > 1 ? `${rowIdx} / span ${spanSlots}` : `${rowIdx}`, background: working ? C.surface : 'rgba(15,23,42,0.25)', borderBottom: `1px solid ${isHour ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.06)'}`, borderLeft: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`, borderRight: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`, position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: cita ? 'center' : 'flex-start', boxSizing: 'border-box' as const, overflow: 'hidden' }}>
+                        <div key={`cell-${si}-${di}`} style={{ gridColumn: di + 2, gridRow: spanSlots > 1 ? `${rowIdx} / span ${spanSlots}` : `${rowIdx}`, background: working ? C.surface : 'rgba(15,23,42,0.25)', borderBottom: `1px solid ${isHour ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.06)'}`, borderLeft: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`, borderRight: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`, position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: cita ? 'center' : 'flex-start', boxSizing: 'border-box' as const, overflow: 'visible' }}>
                           {cita && (
                             <div onClick={() => setSelectedCita(cita)} style={{ position: 'absolute', inset: 0, background: `${citaColor(cita.estado)}22`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 4, padding: '6px 8px', cursor: 'pointer', boxSizing: 'border-box' as const, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden' }}>
                               <p style={{ fontSize: 11, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, textTransform: 'uppercase' as const, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
