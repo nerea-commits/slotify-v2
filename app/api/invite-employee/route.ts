@@ -41,6 +41,33 @@ export async function POST(req: Request) {
         await new Promise(r => setTimeout(r, 2000))
       }
 
+      // Si el usuario ya confirmó su cuenta, enviar reset de contraseña
+      const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
+      const existingUser = existingUsers?.users?.find(u => u.email === email)
+
+      if (existingUser) {
+        // Restaurar auth_user_id si se perdió
+        if (!existingProf.auth_user_id) {
+          await supabaseAdmin
+            .from('profesionales')
+            .update({ auth_user_id: existingUser.id })
+            .eq('id', existingProf.id)
+        }
+
+        const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
+          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://slotify-v2-vxnx.vercel.app'}/auth/callback`,
+        })
+
+        if (resetError) {
+          return NextResponse.json({ error: resetError.message }, { status: 400 })
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: 'Email de acceso reenviado',
+        })
+      }
+
       const { data: newUserData, error: inviteError } =
         await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
           data: { nombre, rol: rol || 'empleado', empresa_id },
