@@ -30,18 +30,29 @@ export async function POST(req: Request) {
       .maybeSingle()
 
     if (existingProf) {
-      // Ya existe — solo reenviar email sin crear nada nuevo
-      const { error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'recovery',
-        email,
-        options: {
-          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://slotify-v2-vxnx.vercel.app'}/auth/callback`,
-        }
-      })
-
-      if (linkError) {
-        return NextResponse.json({ error: linkError.message }, { status: 400 })
+      // Ya existe — borrar de auth y reinvitar para que llegue el email
+      if (existingProf.auth_user_id) {
+        await supabaseAdmin.auth.admin.deleteUser(existingProf.auth_user_id)
+        await supabaseAdmin
+          .from('profesionales')
+          .update({ auth_user_id: null })
+          .eq('id', existingProf.id)
       }
+
+      const { data: newUserData, error: inviteError } =
+        await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+          data: { nombre, rol: rol || 'empleado', empresa_id },
+          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://slotify-v2-vxnx.vercel.app'}/auth/callback`,
+        })
+
+      if (inviteError || !newUserData.user) {
+        return NextResponse.json({ error: inviteError?.message }, { status: 400 })
+      }
+
+      await supabaseAdmin
+        .from('profesionales')
+        .update({ auth_user_id: newUserData.user.id })
+        .eq('id', existingProf.id)
 
       return NextResponse.json({
         success: true,
