@@ -117,7 +117,8 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
   const [timezone, setTimezone] = useState(empresa?.timezone || 'Europe/Madrid');
   const [moneda, setMoneda] = useState(empresa?.moneda || 'EUR');
   const [mostrarImporte, setMostrarImporte] = useState(empresa?.mostrar_importe || false);
-  const [logoUrl, setLogoUrl] = useState(empresa?.logo_url || '');
+  const [sector, setSector] = useState(empresa?.sector || '');
+  const [cif, setCif] = useState(empresa?.cif || '');
   const [logoUploading, setLogoUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -137,7 +138,8 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
         telefono: telefono.trim() || null,
         email: email.trim() || null,
         direccion: direccion.trim() || null,
-        logo_url: finalLogoUrl || null,
+        sector: sector.trim() || null,
+        cif: cif.trim() || null,
       })
       .eq('id', empresa.id)
       .select();
@@ -206,6 +208,11 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
       </div>
 
       <div style={{ display:'flex', flexDirection:'column' as const, gap:6 }}><p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Dirección</p><Input value={direccion} onChange={setDireccion} placeholder="Calle, ciudad..."/></div>
+
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+        <div style={{ display:'flex', flexDirection:'column' as const, gap:6 }}><p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Sector</p><Input value={sector} onChange={setSector} placeholder="Ej: Peluquería, Estética..."/></div>
+        <div style={{ display:'flex', flexDirection:'column' as const, gap:6 }}><p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>CIF</p><Input value={cif} onChange={setCif} placeholder="B12345678"/></div>
+      </div>
 
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
         <div style={{ display:'flex', flexDirection:'column' as const, gap:6 }}>
