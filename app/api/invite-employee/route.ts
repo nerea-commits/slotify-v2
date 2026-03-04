@@ -37,6 +37,8 @@ export async function POST(req: Request) {
           .from('profesionales')
           .update({ auth_user_id: null })
           .eq('id', existingProf.id)
+        // Esperar a que Supabase libere el email
+        await new Promise(r => setTimeout(r, 2000))
       }
 
       const { data: newUserData, error: inviteError } =
