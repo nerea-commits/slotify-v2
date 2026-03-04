@@ -621,6 +621,59 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
     showToast('Empleado eliminado');
   }
 
+  const [expandedEmp, setExpandedEmp] = useState<string | null>(null);
+  const [empHorarios, setEmpHorarios] = useState<Record<string, any>>({});
+  const [savingHorario, setSavingHorario] = useState<string | null>(null);
+
+  async function loadHorario(empId: string) {
+    const { data } = await supabase
+      .from('profesionales')
+      .select('horario_apertura, horario_cierre, pausa_activa, horario_pausa_inicio, horario_pausa_fin, dias_laborables')
+      .eq('id', empId)
+      .single();
+    if (data) {
+      setEmpHorarios(prev => ({ ...prev, [empId]: {
+        apertura: data.horario_apertura || empresa?.horario_inicio || '09:00',
+        cierre: data.horario_cierre || empresa?.horario_fin || '19:00',
+        pausaActiva: data.pausa_activa || false,
+        pausaInicio: data.horario_pausa_inicio || empresa?.horario_pausa_inicio || '14:00',
+        pausaFin: data.horario_pausa_fin || empresa?.horario_pausa_fin || '16:00',
+        dias: data.dias_laborables || empresa?.dias_laborables || [1,2,3,4,5],
+      }}));
+    }
+  }
+
+  async function saveHorario(empId: string) {
+    setSavingHorario(empId);
+    const h = empHorarios[empId];
+    await supabase.from('profesionales').update({
+      horario_apertura: h.apertura,
+      horario_cierre: h.cierre,
+      pausa_activa: h.pausaActiva,
+      horario_pausa_inicio: h.pausaActiva ? h.pausaInicio : null,
+      horario_pausa_fin: h.pausaActiva ? h.pausaFin : null,
+      dias_laborables: h.dias,
+    }).eq('id', empId);
+    setSavingHorario(null);
+    showToast('Horario guardado');
+  }
+
+  function toggleEmp(empId: string) {
+    if (expandedEmp === empId) {
+      setExpandedEmp(null);
+    } else {
+      setExpandedEmp(empId);
+      if (!empHorarios[empId]) loadHorario(empId);
+    }
+  }
+
+  function updateHorario(empId: string, key: string, value: any) {
+    setEmpHorarios(prev => ({ ...prev, [empId]: { ...prev[empId], [key]: value } }));
+  }
+
+  const DIAS_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  const DIAS_IDX2 = [1, 2, 3, 4, 5, 6, 0];
+
   const rolColor = (rol: string) => rol === 'admin' || rol === 'owner' ? '#A855F7' : C.textMid;
   const rolLabel = (rol: string) => rol === 'owner' ? 'Propietario' : rol === 'admin' ? 'Admin' : 'Empleado';
 
@@ -664,6 +717,11 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
                 {/* Actions */}
                 {!isMe && (
                   <div style={{ display:'flex', gap:4, flexShrink:0 }}>
+                    {/* Horario */}
+                    <button onClick={() => toggleEmp(emp.id)} title="Configurar horario"
+                      style={{ padding:'5px 8px', borderRadius:7, border:`1px solid ${expandedEmp === emp.id ? C.green + '66' : C.border}`, background: expandedEmp === emp.id ? C.greenDim : 'transparent', cursor:'pointer', color: expandedEmp === emp.id ? C.green : C.textDim, fontSize:11, fontWeight:600, display:'flex', alignItems:'center', gap:4 }}>
+                      <Clock size={12}/> Horario
+                    </button>
                    {/* Reenviar invitación */}
                     {(
                       <button onClick={() => reenviarInvitacion(emp)} title="Reenviar invitación"
@@ -699,7 +757,88 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
                     )}
                   </div>
                 )}
-              </div>
+             </div>
+
+              {/* Panel horario expandible */}
+              {expandedEmp === emp.id && empHorarios[emp.id] && (
+                <div style={{ padding:'14px', borderTop:`1px solid ${C.border}`, background: C.panel }}>
+                  <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase', marginBottom:12 }}>Horario de {emp.nombre}</p>
+                  
+                  {/* Apertura / Cierre */}
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+                    <div>
+                      <p style={{ fontSize:11, color: C.textMid, marginBottom:5 }}>Apertura</p>
+                      <input type="time" value={empHorarios[emp.id].apertura}
+                        onChange={e => updateHorario(emp.id, 'apertura', e.target.value)}
+                        style={{ width:'100%', padding:'8px 10px', background: C.panelAlt, border:`1px solid ${C.border}`, borderRadius:8, color: C.text, fontSize:13, outline:'none', boxSizing:'border-box' }}/>
+                    </div>
+                    <div>
+                      <p style={{ fontSize:11, color: C.textMid, marginBottom:5 }}>Cierre</p>
+                      <input type="time" value={empHorarios[emp.id].cierre}
+                        onChange={e => updateHorario(emp.id, 'cierre', e.target.value)}
+                        style={{ width:'100%', padding:'8px 10px', background: C.panelAlt, border:`1px solid ${C.border}`, borderRadius:8, color: C.text, fontSize:13, outline:'none', boxSizing:'border-box' }}/>
+                    </div>
+                  </div>
+
+                  {/* Turno partido */}
+                  <div style={{ background: C.panelAlt, borderRadius:10, overflow:'hidden', marginBottom:10, border: empHorarios[emp.id].pausaActiva ? `1px solid ${C.green}33` : `1px solid ${C.border}` }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 12px', cursor:'pointer' }}
+                      onClick={() => updateHorario(emp.id, 'pausaActiva', !empHorarios[emp.id].pausaActiva)}>
+                      <div>
+                        <p style={{ fontSize:12, fontWeight:600, color: C.text }}>Turno partido</p>
+                        <p style={{ fontSize:10, color: C.textDim }}>
+                          {empHorarios[emp.id].pausaActiva
+                            ? `Pausa de ${empHorarios[emp.id].pausaInicio} a ${empHorarios[emp.id].pausaFin}`
+                            : 'Activa si tiene pausa al mediodía'}
+                        </p>
+                      </div>
+                      <div style={{ width:36, height:20, borderRadius:10, background: empHorarios[emp.id].pausaActiva ? C.green : C.border, position:'relative', transition:'background 0.2s' }}>
+                        <div style={{ position:'absolute', top:2, left: empHorarios[emp.id].pausaActiva ? 18 : 2, width:16, height:16, borderRadius:8, background:'#fff', transition:'left 0.2s' }}/>
+                      </div>
+                    </div>
+                    {empHorarios[emp.id].pausaActiva && (
+                      <div style={{ padding:'0 12px 12px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                        <div>
+                          <p style={{ fontSize:11, color: C.textMid, marginBottom:5 }}>Inicio pausa</p>
+                          <input type="time" value={empHorarios[emp.id].pausaInicio}
+                            onChange={e => updateHorario(emp.id, 'pausaInicio', e.target.value)}
+                            style={{ width:'100%', padding:'8px 10px', background: C.panel, border:`1px solid ${C.border}`, borderRadius:8, color: C.text, fontSize:13, outline:'none', boxSizing:'border-box' }}/>
+                        </div>
+                        <div>
+                          <p style={{ fontSize:11, color: C.textMid, marginBottom:5 }}>Fin pausa</p>
+                          <input type="time" value={empHorarios[emp.id].pausaFin}
+                            onChange={e => updateHorario(emp.id, 'pausaFin', e.target.value)}
+                            style={{ width:'100%', padding:'8px 10px', background: C.panel, border:`1px solid ${C.border}`, borderRadius:8, color: C.text, fontSize:13, outline:'none', boxSizing:'border-box' }}/>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Días laborables */}
+                  <p style={{ fontSize:11, color: C.textDim, fontWeight:700, letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>Días laborables</p>
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:4, marginBottom:12 }}>
+                    {DIAS_LABELS.map((d, i) => {
+                      const idx = DIAS_IDX2[i];
+                      const active = (empHorarios[emp.id].dias || []).includes(idx);
+                      return (
+                        <button key={d} onClick={() => {
+                          const dias = empHorarios[emp.id].dias || [];
+                          updateHorario(emp.id, 'dias', active ? dias.filter((x: number) => x !== idx) : [...dias, idx]);
+                        }}
+                          style={{ padding:'8px 2px', borderRadius:8, border:'none', cursor:'pointer', background: active ? C.greenDim : C.panelAlt, outline: active ? `2px solid ${C.green}55` : 'none', transition:'all 0.12s' }}>
+                          <span style={{ fontSize:10, fontWeight:700, color: active ? C.green : C.textDim }}>{d}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button onClick={() => saveHorario(emp.id)} disabled={savingHorario === emp.id}
+                    style={{ display:'flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'none', background: C.green, color:'#fff', cursor:'pointer', fontSize:12, fontWeight:700, opacity: savingHorario === emp.id ? 0.7 : 1 }}>
+                    <Check size={13}/> {savingHorario === emp.id ? 'Guardando...' : 'Guardar horario'}
+                  </button>
+                </div>
+              )}
+            </div>
             );
           })}
         </div>
