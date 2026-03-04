@@ -659,23 +659,38 @@ export default function Dashboard() {
                                 {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
                                 {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && <span style={{ marginLeft: 3, fontSize: 9 }}>{clientRiskCache[cita.cliente_id].icon}</span>}
                               </p>
-                              {alturaBloque >= 44 && (() => {
-                                const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
-                                const notas = cita.notas || '';
-                                const linea2 = svc && notas ? `${svc} — ${notas}` : svc || notas;
-                                const empNombre = cita.profesionales?.nombre?.split(' ')[0] || '';
-                                return (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, overflow: 'hidden' }}>
-                                    {linea2 && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{linea2}</span>}
-                                    {isAdmin && empNombre && (
-                                      <>
-                                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: cita.profesionales?.color || C.green, flexShrink: 0 }}/>
-                                        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.85)', fontWeight: 600, whiteSpace: 'nowrap' as const, flexShrink: 0 }}>{empNombre}</span>
-                                      </>
-                                    )}
-                                  </div>
-                                );
-                              })()}
+                              {(() => {
+                const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
+                const notas = cita.notas || '';
+                const linea2 = svc && notas ? `${svc} — ${notas}` : svc || notas;
+                const empNombre = cita.profesionales?.nombre?.split(' ')[0] || '';
+                const expandido = alturaBloque >= 80;
+                if (expandido) {
+                  return (
+                    <>
+                      {linea2 && <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', lineHeight: 1.3, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{linea2}</p>}
+                      {isAdmin && empNombre && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: cita.profesionales?.color || C.green, flexShrink: 0 }}/>
+                          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.85)', fontWeight: 600, whiteSpace: 'nowrap' as const }}>{empNombre}</span>
+                        </div>
+                      )}
+                    </>
+                  );
+                } else {
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, overflow: 'hidden' }}>
+                      {linea2 && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{linea2}</span>}
+                      {isAdmin && empNombre && (
+                        <>
+                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: cita.profesionales?.color || C.green, flexShrink: 0 }}/>
+                          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.85)', fontWeight: 600, whiteSpace: 'nowrap' as const, flexShrink: 0 }}>{empNombre}</span>
+                        </>
+                      )}
+                    </div>
+                  );
+                }
+              })()}
                             </div>
                           )}
                           {!cita && <div onClick={() => openModal(day, slot)} style={{ position: 'absolute', inset: 0, cursor: 'pointer' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.greenBg; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }} />}
