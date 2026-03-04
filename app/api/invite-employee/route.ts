@@ -53,8 +53,9 @@ export async function POST(req: Request) {
               rol: rol || 'empleado',
               empresa_id,
               auth_user_id: existingUser.id,
-              activo: true,
-            })
+          activo: true,
+          email,
+        })
 
           if (profError) {
             return NextResponse.json({ error: profError.message }, { status: 400 })
