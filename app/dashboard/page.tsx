@@ -659,7 +659,7 @@ export default function Dashboard() {
                                 {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
                                 {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && <span style={{ marginLeft: 3, fontSize: 9 }}>{clientRiskCache[cita.cliente_id].icon}</span>}
                               </p>
-                              {alturaBloque >= 60 && (() => {
+                              {alturaBloque >= 44 && (() => {
                                 const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
                                 const notas = cita.notas || '';
                                 const linea2 = svc && notas ? `${svc} — ${notas}` : svc || notas;
