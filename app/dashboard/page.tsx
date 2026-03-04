@@ -197,7 +197,7 @@ export default function Dashboard() {
     const from = new Date(ref.getFullYear(), ref.getMonth() - 1, 1);
     const to = new Date(ref.getFullYear(), ref.getMonth() + 2, 0);
     let q = supabase.from('citas')
-      .select('*, clientes(nombre, telefono), servicios(nombre)')
+      .select('*, clientes(nombre, telefono), servicios(nombre), profesionales(nombre, color)')
       .eq('empresa_id', eid)
       .gte('hora_inicio', `${toDS(from)}T00:00:00`)
       .lte('hora_inicio', `${toDS(to)}T23:59:59`);
