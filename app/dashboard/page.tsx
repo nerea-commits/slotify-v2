@@ -649,6 +649,7 @@ export default function Dashboard() {
                       const cita = citaAtSlot[si];
                       if (coveredSlots.has(si) && !cita) return;
                       const spanSlots = cita ? (citaSpans[si] || 1) : 1;
+                      const alturaBloque = spanSlots * WEEK_SLOT_H;
                       const isNowSlot = today && (() => { const m = timeToMinutes(slot); return currentMinutes >= m && currentMinutes < m + 30; })();
                       cells.push(
                         <div key={`cell-${si}-${di}`} style={{ gridColumn: di + 2, gridRow: spanSlots > 1 ? `${rowIdx} / span ${spanSlots}` : `${rowIdx}`, background: working ? C.surface : 'rgba(15,23,42,0.25)', borderBottom: `1px solid ${isHour ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.06)'}`, borderLeft: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`, borderRight: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`, position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: cita ? 'center' : 'flex-start', boxSizing: 'border-box' as const, overflow: 'hidden' }}>
@@ -658,7 +659,7 @@ export default function Dashboard() {
                                 {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
                                 {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && <span style={{ marginLeft: 3, fontSize: 9 }}>{clientRiskCache[cita.cliente_id].icon}</span>}
                               </p>
-                              {(() => {
+                              {alturaBloque >= 60 && (() => {
                                 const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
                                 const notas = cita.notas || '';
                                 const linea2 = svc && notas ? `${svc} — ${notas}` : svc || notas;
