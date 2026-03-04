@@ -67,7 +67,10 @@ export default function Dashboard() {
   const [currentMinutes, setCurrentMinutes] = useState(-1);
   const [activeSection, setActiveSection] = useState<string>('agenda');
   const [estadosCita, setEstadosCita] = useState<any[]>([]);
-  const [miniCalMonth, setMiniCalMonth] = useState(new Date());
+  const [anotaciones, setAnotaciones] = useState<any[]>([]);
+const [anotacionModal, setAnotacionModal] = useState<{ open: boolean; date: Date | null }>({ open: false, date: null });
+const [anotacionTexto, setAnotacionTexto] = useState('');
+const [anotacionLoading, setAnotacionLoading] = useState(false);
 
   // Edit form state
   const [editServicio, setEditServicio] = useState('');
@@ -206,6 +209,19 @@ export default function Dashboard() {
     const citas = data || [];
     setAllCitas(citas);
     loadClientRisks(citas);
+    // Cargar anotaciones del rango visible
+    const eid2 = empresaIdRef.current;
+    const pid2 = profesionalIdRef.current;
+    if (eid2) {
+      let aq = supabase.from('anotaciones')
+        .select('*')
+        .eq('empresa_id', eid2)
+        .gte('fecha', toDS(from))
+        .lte('fecha', toDS(to));
+      if (!isAdminRef.current && pid2) aq = aq.eq('profesional_id', pid2);
+      const { data: aData } = await aq;
+      setAnotaciones(aData || []);
+    }
   }
 
   const scheduleStart = empresa?.horario_inicio || '09:00';
@@ -635,6 +651,7 @@ export default function Dashboard() {
                         <div style={{ fontSize: 9, fontWeight: 700, color: C.textSec, letterSpacing: 0.8 }}>{weekDayNames[di]}</div>
                         <div style={{ fontSize: 15, fontWeight: 700, color: today ? C.green : C.text }}>{day.getDate()}</div>
                         {today && <div style={{ fontSize: 7, color: C.green, fontWeight: 700 }}>HOY</div>}
+{!isWorkingDay(day) && <div style={{ fontSize: 7, color: C.textSec, fontWeight: 700, letterSpacing: 0.5 }}>NO LABORABLE</div>}
                       </div>
                     );
                   });
