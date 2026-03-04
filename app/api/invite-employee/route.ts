@@ -80,8 +80,9 @@ export async function POST(req: Request) {
         rol: rol || 'empleado',
         empresa_id,
         auth_user_id: userId,
-        activo: true,
-      })
+          activo: true,
+          email,
+        })
 
     if (profError) {
       await supabaseAdmin.auth.admin.deleteUser(userId)
