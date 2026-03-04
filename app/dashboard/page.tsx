@@ -912,6 +912,28 @@ const [anotacionLoading, setAnotacionLoading] = useState(false);
 
       </>)}
 
+        {anotacionModal.open && (
+  <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setAnotacionModal({ open: false, date: null })}>
+    <div style={{ background: C.surface, borderRadius: 20, padding: 24, width: '100%', maxWidth: 380 }} onClick={e => e.stopPropagation()}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: C.text }}>Anotación interna</h3>
+          <p style={{ fontSize: 12, color: C.textSec, marginTop: 2 }}>
+            {anotacionModal.date?.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </p>
+        </div>
+        <button onClick={() => setAnotacionModal({ open: false, date: null })} style={{ background: 'none', border: 'none', color: C.textSec, cursor: 'pointer' }}><X className="w-5 h-5" /></button>
+      </div>
+      <textarea value={anotacionTexto} onChange={e => setAnotacionTexto(e.target.value)} rows={4} autoFocus
+        style={{ width: '100%', background: C.surfaceAlt, border: 'none', borderRadius: 12, padding: '10px 14px', color: C.text, fontSize: 14, outline: 'none', resize: 'none', boxSizing: 'border-box' as const }}
+        placeholder="Escribe una nota para este día..." />
+      <button onClick={guardarAnotacion} disabled={anotacionLoading || !anotacionTexto.trim()}
+        style={{ marginTop: 12, width: '100%', padding: '10px 0', borderRadius: 12, background: C.green, border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: anotacionLoading || !anotacionTexto.trim() ? 0.5 : 1 }}>
+        {anotacionLoading ? 'Guardando...' : 'Guardar anotación'}
+      </button>
+    </div>
+  </div>
+)}
       <NuevaCitaModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
