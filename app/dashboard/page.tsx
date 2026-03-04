@@ -199,7 +199,36 @@ export default function Dashboard() {
     let q = supabase.from('citas')
       .select('*, clientes(nombre, telefono), servicios(nombre), profesionales(nombre, color)')
       .eq('empresa_id', eid)
-      .gte('hora_inicio', `${toDS(from)}T00:00:00`)
+      function parseDiasLaborables(raw: any): number[] {
+  const fallback = [1, 2, 3, 4, 5];
+  const nombreToNum: Record<string, number> = {
+    'lunes': 1, 'martes': 2, 'miercoles': 3, 'miércoles': 3,
+    'jueves': 4, 'viernes': 5, 'sabado': 6, 'sábado': 6, 'domingo': 7
+  };
+  if (!raw) return fallback;
+  if (Array.isArray(raw)) {
+    if (raw.length === 0) return fallback;
+    const nums = raw.map((x: any) => {
+      const val = typeof x === 'string' ? x.trim().toLowerCase() : String(x);
+      if (nombreToNum[val] !== undefined) return nombreToNum[val];
+      const n = Number(val);
+      return (!isNaN(n) && n >= 1 && n <= 7) ? n : NaN;
+    }).filter((n: number) => !isNaN(n));
+    return nums.length > 0 ? nums : fallback;
+  }
+  if (typeof raw === 'string') {
+    const cleaned = raw.replace(/[{}\[\]\s"]/g, '');
+    if (!cleaned) return fallback;
+    const nums = cleaned.split(',').map(x => {
+      const v = x.trim().toLowerCase();
+      if (nombreToNum[v] !== undefined) return nombreToNum[v];
+      const n = Number(v);
+      return (!isNaN(n) && n >= 1 && n <= 7) ? n : NaN;
+    }).filter(n => !isNaN(n));
+    return nums.length > 0 ? nums : fallback;
+  }
+  return fallback;
+}
       .lte('hora_inicio', `${toDS(to)}T23:59:59`);
     if (!admin && pid) q = q.eq('profesional_id', pid);
     const { data, error } = await q.order('hora_inicio');
