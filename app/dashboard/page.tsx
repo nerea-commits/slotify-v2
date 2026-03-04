@@ -530,15 +530,18 @@ export default function Dashboard() {
                       </div>
                       <div style={{ flex: 1, borderBottom: `1px solid ${isHour ? C.surfaceAlt : 'rgba(36,50,71,0.4)'}`, minHeight: MIN_H, position: 'relative' }}>
                         {cita ? (
-                          <div onClick={() => setSelectedCita(cita)} style={{ background: `${citaColor(cita.estado)}33`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 10, padding: '10px 14px', margin: '3px 8px', cursor: 'pointer', boxShadow: `0 1px 4px ${citaColor(cita.estado)}33`, boxSizing: 'border-box' as const }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
-                              <span style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.4, wordBreak: 'break-word' as const, flex: 1 }}>
-                                {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
-                                {isAdmin && cita.profesionales?.nombre && <span style={{ fontSize: 10, color: '#fff', opacity: 0.7, display: 'block', marginTop: 1 }}>{cita.profesionales.nombre}</span>}
-                                {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && <span style={{ marginLeft: 4, fontSize: 11 }}>{clientRiskCache[cita.cliente_id].icon}</span>}
-                              </span>
-                            </div>
-                            {(() => { const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || ''; const notas = cita.notas || ''; const linea2 = svc && notas ? `${svc} — ${notas}` : svc || notas; return linea2 ? <div style={{ fontSize: 13, fontWeight: 400, color: '#FFFFFF', opacity: 0.85, lineHeight: 1.4, wordBreak: 'break-word' as const, marginTop: 3 }}>{linea2}</div> : null; })()}
+                          <div onClick={() => setSelectedCita(cita)} style={{ background: `${citaColor(cita.estado)}22`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 10, padding: '10px 14px', margin: '3px 8px', cursor: 'pointer', boxSizing: 'border-box' as const }}>
+                            <p style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, letterSpacing: 0.2, textTransform: 'uppercase' as const }}>
+                              {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
+                              {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && <span style={{ marginLeft: 4, fontSize: 11 }}>{clientRiskCache[cita.cliente_id].icon}</span>}
+                            </p>
+                            {(() => { const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || ''; const notas = cita.notas || ''; const linea2 = svc && notas ? `${svc} — ${notas}` : svc || notas; return linea2 ? <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 1.3, marginTop: 2 }}>{linea2}</p> : null; })()}
+                            {isAdmin && cita.profesionales?.nombre && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
+                                <div style={{ width: 8, height: 8, borderRadius: '50%', background: cita.profesionales?.color || C.green, flexShrink: 0 }}/>
+                                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>{cita.profesionales.nombre}</span>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <div onClick={() => openModal(selectedDate, slot)} style={{ position: 'absolute', inset: 0, cursor: 'pointer' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.greenBg; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }} />
