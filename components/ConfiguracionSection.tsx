@@ -334,12 +334,14 @@ function TabHorario({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
         </div>
       </div>
 
-      {/* Pausa */}
-      <div style={{ background: C.panelAlt, borderRadius:12, overflow:'hidden' }}>
+     {/* Pausa */}
+      <div style={{ background: C.panelAlt, borderRadius:12, overflow:'hidden', border: pausaActiva ? `1px solid ${C.green}33` : `1px solid ${C.border}` }}>
         <label style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', cursor:'pointer' }}>
           <div>
-            <p style={{ fontSize:13, fontWeight:600, color: C.text }}>Pausa / descanso</p>
-            <p style={{ fontSize:11, color: C.textDim }}>Bloquea un rango intermedio</p>
+            <p style={{ fontSize:13, fontWeight:600, color: C.text }}>Turno partido</p>
+            <p style={{ fontSize:11, color: C.textDim }}>
+              {pausaActiva ? `Pausa de ${pausaInicio} a ${pausaFin}` : 'Activa si cierras a mediodía'}
+            </p>
           </div>
           <div style={{ width:40, height:22, borderRadius:11, background: pausaActiva ? C.green : C.border, position:'relative', transition:'background 0.2s', cursor:'pointer' }}
             onClick={() => setPausaActiva((prev: boolean) => !prev)}>
