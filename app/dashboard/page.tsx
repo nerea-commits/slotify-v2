@@ -707,7 +707,7 @@ export default function Dashboard() {
                 })()}
               </div>
             </div>
-            <button onClick={() => openModal()} style={{ position: 'fixed', bottom: 'calc(80px + env(safe-area-inset-bottom))', right: 16, width: 56, height: 56, borderRadius: '50%', background: C.green, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 4px 20px rgba(34,197,94,0.45)`, zIndex: 35 }}>
+            <button onClick={() => openModal()} style={{ position: 'fixed', bottom: 32, right: 32, width: 56, height: 56, borderRadius: '50%', background: C.green, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 4px 20px rgba(34,197,94,0.45)`, zIndex: 35 }}>
               <Plus className="w-6 h-6 text-white" />
             </button>
           </div>
@@ -756,7 +756,7 @@ export default function Dashboard() {
                 })}
               </div>
             </div>
-            <button onClick={() => openModal()} style={{ position: 'fixed', bottom: 'calc(80px + env(safe-area-inset-bottom))', right: 16, width: 56, height: 56, borderRadius: '50%', background: C.green, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 4px 20px rgba(34,197,94,0.45)`, zIndex: 35 }}>
+            <button onClick={() => openModal()} style={{ position: 'fixed', bottom: 32, right: 32, width: 56, height: 56, borderRadius: '50%', background: C.green, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 4px 20px rgba(34,197,94,0.45)`, zIndex: 35 }}>
               <Plus className="w-6 h-6 text-white" />
             </button>
           </div>
