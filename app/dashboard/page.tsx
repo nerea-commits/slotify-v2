@@ -877,42 +877,29 @@ export default function Dashboard() {
                           {today && <div style={{ fontSize: 7, color: C.green, fontWeight: 700 }}>HOY</div>}
                           {!working && dayAnotaciones.length > 0 && <div style={{ fontSize: 7, color: C.yellow, fontWeight: 700 }}>● {dayAnotaciones.length}</div>}
                           {dayCompanyClosures.length > 0 && <div style={{ fontSize: 7, fontWeight: 700, color: '#EF4444' }}>⛔ CIERRE</div>}
+                          {/* ── CAMBIO 3: bloque elegante de ausencia dentro del header, sin tocar el grid de citas ── */}
+                          {(() => {
+                            const empAbs = absenceBlocksForDate(day);
+                            if (!empAbs.length) return null;
+                            return (
+                              <div style={{
+                                marginTop: 3,
+                                padding: '2px 5px',
+                                borderRadius: 5,
+                                background: 'rgba(245,158,11,0.15)',
+                                borderLeft: '2px solid rgba(245,158,11,0.6)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 3,
+                                maxWidth: '92%',
+                              }}>
+                                <span style={{ fontSize: 9 }}>{empAbs[0].icon}</span>
+                                <span style={{ fontSize: 8, fontWeight: 700, color: '#F59E0B', whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>{empAbs[0].label}</span>
+                              </div>
+                            );
+                          })()}
                         </div>
                       );
-
-                      // ── CAMBIO 3: bloque elegante de ausencia en la primera franja (gridRow 2) ──
-                      const dayEmpAbsences = absenceBlocksForDate(day);
-                      if (dayEmpAbsences.length > 0) {
-                        cells.push(
-                          <div key={`abs-row-${di}`} style={{
-                            gridColumn: di + 2,
-                            gridRow: 2,
-                            zIndex: 9,
-                            pointerEvents: 'none',
-                            display: 'flex',
-                            alignItems: 'flex-start',
-                            padding: '4px 4px 0',
-                            boxSizing: 'border-box' as const,
-                          }}>
-                            <div style={{
-                              width: '100%',
-                              padding: '5px 7px',
-                              borderRadius: 7,
-                              background: 'rgba(245,158,11,0.12)',
-                              borderLeft: '3px solid rgba(245,158,11,0.55)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 5,
-                            }}>
-                              <span style={{ fontSize: 12, flexShrink: 0 }}>{dayEmpAbsences[0].icon}</span>
-                              <div style={{ minWidth: 0 }}>
-                                <p style={{ fontSize: 10, fontWeight: 700, color: '#F59E0B', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{dayEmpAbsences[0].label}</p>
-                                <p style={{ fontSize: 9, color: C.textSec, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{dayEmpAbsences[0].name}</p>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }
                     });
 
                     visibleSlots.forEach((slot, si) => {
