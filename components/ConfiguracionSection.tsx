@@ -47,6 +47,65 @@ const MONEDAS = [
 const BUFFERS = [0, 5, 10, 15];
 const DURACIONES_DEF = [15, 20, 30, 45, 60, 90, 120];
 
+// Definición de permisos disponibles
+const PERMISOS_DEF = [
+  {
+    key: 'ver_agenda_todos',
+    label: 'Ver agenda de todos',
+    desc: 'Puede ver las citas de todos los empleados',
+  },
+  {
+    key: 'gestionar_citas_todos',
+    label: 'Gestionar citas de todos',
+    desc: 'Puede crear, editar y cancelar citas de cualquier empleado',
+  },
+  {
+    key: 'gestionar_clientes',
+    label: 'Gestionar clientes',
+    desc: 'Acceso completo a todos los clientes, no solo los suyos',
+  },
+  {
+    key: 'editar_servicios',
+    label: 'Editar servicios',
+    desc: 'Puede crear, editar y eliminar servicios',
+  },
+  {
+    key: 'ver_estadisticas',
+    label: 'Ver estadísticas propias',
+    desc: 'Acceso a su panel de estadísticas personales',
+  },
+];
+
+function defaultPermisos(): Record<string, boolean> {
+  return Object.fromEntries(PERMISOS_DEF.map(p => [p.key, false]));
+}
+
+function parsePermisos(raw: any): Record<string, boolean> {
+  const def = defaultPermisos();
+  if (!raw || typeof raw !== 'object') return def;
+  return { ...def, ...raw };
+}
+
+function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div
+      onClick={() => onChange(!value)}
+      style={{
+        width: 36, height: 20, borderRadius: 10,
+        background: value ? C.green : 'rgba(148,163,184,0.2)',
+        position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0,
+      }}
+    >
+      <div style={{
+        position: 'absolute', top: 2,
+        left: value ? 18 : 2,
+        width: 16, height: 16, borderRadius: 8,
+        background: '#fff', transition: 'left 0.2s',
+      }} />
+    </div>
+  );
+}
+
 function Input({ value, onChange, placeholder, type = 'text', disabled }: {
   value: string; onChange: (v: string) => void; placeholder?: string; type?: string; disabled?: boolean;
 }) {
@@ -146,7 +205,6 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
       .select();
 
     setLoading(false);
-    console.log('[CONFIG SAVE] empresa.id:', empresa.id, 'error:', e1, 'data:', d1);
 
     if (e1) { setError(`Error Supabase: ${e1.message} (code: ${e1.code})`); return; }
     if (!d1 || d1.length === 0) { setError('RLS bloqueó el guardado.'); return; }
@@ -162,7 +220,6 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
         <Input value={nombre} onChange={setNombre} placeholder="Mi negocio"/>
       </div>
 
-      {/* Logo */}
       <div style={{ display:'flex', flexDirection:'column' as const, gap:8 }}>
         <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:4 }}>Logo</p>
         <div style={{ display:'flex', alignItems:'center', gap:14 }}>
@@ -462,8 +519,11 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const [toast, setToast] = useState('');
   const [expandedEmp, setExpandedEmp] = useState<string | null>(null);
+  const [expandedTab, setExpandedTab] = useState<Record<string, 'horario' | 'permisos'>>({});
   const [empHorarios, setEmpHorarios] = useState<Record<string, any>>({});
+  const [empPermisos, setEmpPermisos] = useState<Record<string, Record<string, boolean>>>({});
   const [savingHorario, setSavingHorario] = useState<string | null>(null);
+  const [savingPermisos, setSavingPermisos] = useState<string | null>(null);
 
   const DIAS_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
   const DIAS_IDX2 = [1, 2, 3, 4, 5, 6, 0];
@@ -497,6 +557,15 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
     }
   }
 
+  async function loadPermisos(empId: string) {
+    const { data } = await supabase
+      .from('profesionales')
+      .select('permisos')
+      .eq('id', empId)
+      .single();
+    setEmpPermisos(prev => ({ ...prev, [empId]: parsePermisos(data?.permisos) }));
+  }
+
   async function saveHorario(empId: string) {
     setSavingHorario(empId);
     const h = empHorarios[empId];
@@ -512,17 +581,32 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
     showToast('Horario guardado');
   }
 
-  function toggleEmp(empId: string) {
-    if (expandedEmp === empId) {
+  async function savePermisos(empId: string) {
+    setSavingPermisos(empId);
+    await supabase.from('profesionales').update({ permisos: empPermisos[empId] }).eq('id', empId);
+    setEmpleados(prev => prev.map(e => e.id === empId ? { ...e, permisos: empPermisos[empId] } : e));
+    setSavingPermisos(null);
+    showToast('Permisos guardados');
+  }
+
+  function toggleEmp(empId: string, tab: 'horario' | 'permisos') {
+    const currentTab = expandedTab[empId];
+    if (expandedEmp === empId && currentTab === tab) {
       setExpandedEmp(null);
     } else {
       setExpandedEmp(empId);
-      if (!empHorarios[empId]) loadHorario(empId);
+      setExpandedTab(prev => ({ ...prev, [empId]: tab }));
+      if (tab === 'horario' && !empHorarios[empId]) loadHorario(empId);
+      if (tab === 'permisos' && !empPermisos[empId]) loadPermisos(empId);
     }
   }
 
   function updateHorario(empId: string, key: string, value: any) {
     setEmpHorarios(prev => ({ ...prev, [empId]: { ...prev[empId], [key]: value } }));
+  }
+
+  function updatePermiso(empId: string, key: string, value: boolean) {
+    setEmpPermisos(prev => ({ ...prev, [empId]: { ...prev[empId], [key]: value } }));
   }
 
   async function invitar() {
@@ -601,17 +685,18 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
         <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
           {empleados.map(emp => {
             const isMe = emp.id === profesionalActual?.id;
+            const isExpanded = expandedEmp === emp.id;
+            const currentTab = expandedTab[emp.id] || 'horario';
+
             return (
               <div key={emp.id} style={{ borderRadius:12, overflow:'hidden', border: isMe ? `1px solid ${C.green}33` : `1px solid ${C.border}`, opacity: emp.activo ? 1 : 0.55 }}>
 
                 {/* Fila principal */}
                 <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background: C.panelAlt }}>
-                  {/* Avatar */}
                   <div style={{ width:36, height:36, borderRadius:9, background: emp.color || C.panelAlt, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color:'#fff', flexShrink:0, border:`1px solid ${C.border}` }}>
                     {emp.nombre?.[0]?.toUpperCase() || '?'}
                   </div>
 
-                  {/* Info */}
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                       <p style={{ fontSize:13, fontWeight:600, color: C.text, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{emp.nombre}</p>
@@ -624,14 +709,17 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
                     </div>
                   </div>
 
-                  {/* Actions */}
                   {!isMe && (
-                    <div style={{ display:'flex', gap:4, flexShrink:0 }}>
-                      <button onClick={() => toggleEmp(emp.id)} title="Configurar horario"
-                        style={{ padding:'5px 8px', borderRadius:7, border:`1px solid ${expandedEmp === emp.id ? C.green+'66' : C.border}`, background: expandedEmp === emp.id ? C.greenDim : 'transparent', cursor:'pointer', color: expandedEmp === emp.id ? C.green : C.textDim, fontSize:11, fontWeight:600, display:'flex', alignItems:'center', gap:4 }}>
+                    <div style={{ display:'flex', gap:4, flexShrink:0, flexWrap:'wrap' as const }}>
+                      <button onClick={() => toggleEmp(emp.id, 'horario')}
+                        style={{ padding:'5px 8px', borderRadius:7, border:`1px solid ${isExpanded && currentTab === 'horario' ? C.green+'66' : C.border}`, background: isExpanded && currentTab === 'horario' ? C.greenDim : 'transparent', cursor:'pointer', color: isExpanded && currentTab === 'horario' ? C.green : C.textDim, fontSize:11, fontWeight:600, display:'flex', alignItems:'center', gap:4 }}>
                         <Clock size={12}/> Horario
                       </button>
-                      <button onClick={() => reenviarInvitacion(emp)} title="Reenviar invitación"
+                      <button onClick={() => toggleEmp(emp.id, 'permisos')}
+                        style={{ padding:'5px 8px', borderRadius:7, border:`1px solid ${isExpanded && currentTab === 'permisos' ? C.green+'66' : C.border}`, background: isExpanded && currentTab === 'permisos' ? C.greenDim : 'transparent', cursor:'pointer', color: isExpanded && currentTab === 'permisos' ? C.green : C.textDim, fontSize:11, fontWeight:600, display:'flex', alignItems:'center', gap:4 }}>
+                        <Shield size={12}/> Permisos
+                      </button>
+                      <button onClick={() => reenviarInvitacion(emp)}
                         style={{ padding:'5px 8px', borderRadius:7, border:`1px solid ${C.border}`, background:'transparent', cursor:'pointer', color: C.amber, fontSize:11, fontWeight:600, display:'flex', alignItems:'center', gap:4 }}>
                         <Mail size={12}/> Reenviar
                       </button>
@@ -659,8 +747,8 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
                   )}
                 </div>
 
-                {/* Panel horario expandible */}
-                {expandedEmp === emp.id && empHorarios[emp.id] && (
+                {/* Panel expandible: Horario */}
+                {isExpanded && currentTab === 'horario' && empHorarios[emp.id] && (
                   <div style={{ padding:'14px', borderTop:`1px solid ${C.border}`, background: C.panel }}>
                     <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:12 }}>Horario de {emp.nombre}</p>
 
@@ -724,6 +812,36 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
                     <button onClick={() => saveHorario(emp.id)} disabled={savingHorario === emp.id}
                       style={{ display:'flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'none', background: C.green, color:'#fff', cursor:'pointer', fontSize:12, fontWeight:700, opacity: savingHorario === emp.id ? 0.7 : 1 }}>
                       <Check size={13}/> {savingHorario === emp.id ? 'Guardando...' : 'Guardar horario'}
+                    </button>
+                  </div>
+                )}
+
+                {/* Panel expandible: Permisos */}
+                {isExpanded && currentTab === 'permisos' && empPermisos[emp.id] && (
+                  <div style={{ padding:'14px', borderTop:`1px solid ${C.border}`, background: C.panel }}>
+                    <div style={{ marginBottom:14 }}>
+                      <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const }}>Permisos de {emp.nombre}</p>
+                      <p style={{ fontSize:11, color: C.textDim, marginTop:3 }}>Ver y gestionar agenda propia siempre están activos</p>
+                    </div>
+
+                    <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:14 }}>
+                      {PERMISOS_DEF.map(p => (
+                        <div key={p.key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 12px', background: C.panelAlt, borderRadius:10, gap:12 }}>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <p style={{ fontSize:13, fontWeight:600, color: C.text }}>{p.label}</p>
+                            <p style={{ fontSize:11, color: C.textDim, marginTop:2 }}>{p.desc}</p>
+                          </div>
+                          <Toggle
+                            value={empPermisos[emp.id][p.key] || false}
+                            onChange={v => updatePermiso(emp.id, p.key, v)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    <button onClick={() => savePermisos(emp.id)} disabled={savingPermisos === emp.id}
+                      style={{ display:'flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'none', background: C.green, color:'#fff', cursor:'pointer', fontSize:12, fontWeight:700, opacity: savingPermisos === emp.id ? 0.7 : 1 }}>
+                      <Check size={13}/> {savingPermisos === emp.id ? 'Guardando...' : 'Guardar permisos'}
                     </button>
                   </div>
                 )}
