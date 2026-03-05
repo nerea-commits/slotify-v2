@@ -1,6 +1,6 @@
 'use client';
 
-import { Calendar, Users, Scissors, BarChart3, Bell, Settings, LogOut, UserCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Users, Scissors, BarChart3, Bell, Settings, LogOut, UserCircle, ChevronLeft, ChevronRight, Palmtree } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 interface SidebarProps {
@@ -30,6 +30,8 @@ export default function Sidebar({
     { id: 'clientes',     label: 'Clientes',    icon: Users     },
     // Servicios: siempre visible (solo lectura si no tiene permiso editar_servicios)
     { id: 'servicios',    label: 'Servicios',   icon: Scissors  },
+    // Ausencias: solo admin
+    ...(isAdmin ? [{ id: 'ausencias', label: 'Ausencias', icon: Palmtree }] : []),
     // Estadísticas: solo si es admin o tiene permiso ver_estadisticas
     ...(isAdmin || permisos.ver_estadisticas ? [{ id: 'estadisticas', label: 'Estadísticas', icon: BarChart3 }] : []),
   ];
