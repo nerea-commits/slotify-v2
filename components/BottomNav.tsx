@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar, Users, BarChart3, MoreHorizontal, Scissors, Bell, Settings, X, LogOut, UserCircle } from 'lucide-react';
+import { Calendar, Users, BarChart3, MoreHorizontal, Scissors, Bell, Settings, X, LogOut, UserCircle, Palmtree } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 interface BottomNavProps {
@@ -17,6 +17,10 @@ export default function BottomNav({ activeSection, onNavigate, isAdmin, permisos
   const masItems = [
     // Servicios: siempre visible
     { id: 'servicios',      label: 'Servicios',      icon: Scissors  },
+    // Ausencias: solo admin
+    ...(isAdmin ? [
+      { id: 'ausencias',      label: 'Ausencias',      icon: Palmtree  },
+    ] : []),
     // Notificaciones y configuración: solo admin
     ...(isAdmin ? [
       { id: 'notificaciones', label: 'Notificaciones', icon: Bell      },
