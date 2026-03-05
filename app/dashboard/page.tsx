@@ -977,7 +977,7 @@ export default function Dashboard() {
                     });
 
                     return (
-                      <div style={{ display: 'grid', gridTemplateColumns: `42px repeat(7, 1fr)`, gridTemplateRows: `44px repeat(${visibleSlots.length}, ${WEEK_SLOT_H}px)`, columnGap: '4px', rowGap: 0 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: `42px repeat(7, 1fr)`, gridTemplateRows: `auto repeat(${visibleSlots.length}, ${WEEK_SLOT_H}px)`, columnGap: '4px', rowGap: 0 }}>
                         {cells}
                       </div>
                     );
