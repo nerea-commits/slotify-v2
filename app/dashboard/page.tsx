@@ -68,6 +68,7 @@ export default function Dashboard() {
   const [activeSection, setActiveSection] = useState<string>('agenda');
   const [estadosCita, setEstadosCita] = useState<any[]>([]);
   const [miniCalMonth, setMiniCalMonth] = useState(new Date());
+  const [permisos, setPermisos] = useState<Record<string, boolean>>({});
   const [anotaciones, setAnotaciones] = useState<any[]>([]);
   const [anotacionModal, setAnotacionModal] = useState<{ open: boolean; date: Date | null }>({ open: false, date: null });
   const [anotacionTexto, setAnotacionTexto] = useState('');
@@ -149,6 +150,12 @@ export default function Dashboard() {
         const isAdm = r === 'admin' || r === 'owner';
         setIsAdmin(isAdm);
         isAdminRef.current = isAdm;
+
+        // Cargar permisos del profesional
+        if (!isAdm) {
+          const permsRaw = prof.permisos || {};
+          setPermisos(typeof permsRaw === 'object' ? permsRaw : {});
+        }
 
         supabase.from('empresas').select('*').eq('id', prof.empresa_id).single()
           .then(({ data }) => { if (data) setEmpresa(data); });
@@ -469,6 +476,7 @@ export default function Dashboard() {
         empresaLogo={empresa?.logo_url || ''}
         colorPrimario={empresa?.color_primario || '#22C55E'}
         isAdmin={isAdmin}
+        permisos={permisos}
         onNavigate={setActiveSection}
         activeSection={activeSection}
       />
@@ -527,7 +535,7 @@ export default function Dashboard() {
         {activeSection !== 'agenda' && (
           <div className="flex-1 overflow-y-auto" style={{ background: C.bg }}>
             {activeSection === 'clientes' && <ClientesSection empresaId={empresa?.id || ''} />}
-            {activeSection === 'servicios' && <ServiciosSection empresaId={empresa?.id || ''} />}
+            {activeSection === 'servicios' && <ServiciosSection empresaId={empresa?.id || ''} canEdit={isAdmin || !!permisos.editar_servicios} />}
             {activeSection === 'estadisticas' && <EstadisticasSection empresaId={empresa?.id || ''} />}
             {activeSection === 'notificaciones' && <NotificacionesSection empresaId={empresa?.id || ''} />}
             {activeSection === 'configuracion' && empresa && <ConfiguracionSection empresa={empresa} profesional={profesional} onEmpresaUpdated={(data: any) => setEmpresa((prev: any) => ({ ...prev, ...data }))} />}
@@ -1019,6 +1027,7 @@ export default function Dashboard() {
         activeSection={activeSection}
         onNavigate={setActiveSection}
         isAdmin={isAdmin}
+        permisos={permisos}
       />
 
       <style>{`
