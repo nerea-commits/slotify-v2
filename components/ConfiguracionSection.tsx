@@ -597,7 +597,7 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
       setExpandedEmp(empId);
       setExpandedTab(prev => ({ ...prev, [empId]: tab }));
       if (tab === 'horario' && !empHorarios[empId]) loadHorario(empId);
-      if (tab === 'permisos' && !empPermisos[empId]) loadPermisos(empId);
+      if (tab === 'permisos') loadPermisos(empId); // siempre recarga desde Supabase
     }
   }
 
