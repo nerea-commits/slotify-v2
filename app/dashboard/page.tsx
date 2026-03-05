@@ -76,6 +76,14 @@ export default function Dashboard() {
   const [anotacionTexto, setAnotacionTexto] = useState('');
   const [anotacionLoading, setAnotacionLoading] = useState(false);
 
+  // ── CAMBIO 4: state para el aviso de ausencia al crear cita ──
+  const [absenceWarning, setAbsenceWarning] = useState<{
+    open: boolean;
+    date: Date | null;
+    time: string;
+    absInfo: { icon: string; label: string; range: string } | null;
+  } | null>(null);
+
   // Edit form state
   const [editServicio, setEditServicio] = useState('');
   const [editNotas, setEditNotas] = useState('');
@@ -153,7 +161,6 @@ export default function Dashboard() {
         setIsAdmin(isAdm);
         isAdminRef.current = isAdm;
 
-        // Cargar permisos del profesional
         if (!isAdm) {
           const permsRaw = prof.permisos || {};
           setPermisos(typeof permsRaw === 'object' ? permsRaw : {});
@@ -218,7 +225,6 @@ export default function Dashboard() {
     setAllCitas(citas);
     loadClientRisks(citas);
 
-    // Cargar anotaciones del rango visible
     let aq = supabase.from('anotaciones')
       .select('*')
       .eq('empresa_id', eid)
@@ -228,7 +234,6 @@ export default function Dashboard() {
     const { data: aData } = await aq;
     setAnotaciones(aData || []);
 
-    // Cargar ausencias del rango visible
     let absQ = supabase.from('absences')
       .select('*, profesionales(nombre)')
       .eq('empresa_id', eid)
@@ -295,7 +300,6 @@ export default function Dashboard() {
     return anotaciones.filter(a => a.fecha === toDS(d));
   }
 
-  // ── Ausencias: helpers ──
   function absencesForDate(d: Date): any[] {
     const dayStart = `${toDS(d)}T00:00:00`;
     const dayEnd = `${toDS(d)}T23:59:59`;
@@ -312,13 +316,10 @@ export default function Dashboard() {
       if (abs.status === 'rejected') continue;
       const absStartDate = rawDate(abs.start_dt);
       const absEndDate = rawDate(abs.end_dt);
-      // Check if this absence touches this day
       if (ds < absStartDate || ds > absEndDate) {
-        // Could still touch if end is on this day
         if (abs.start_dt > `${ds}T23:59:59` || abs.end_dt < `${ds}T00:00:00`) continue;
       }
       if (abs.all_day) return abs;
-      // Partial: check time overlap on this specific day
       const absStartMin = (ds === absStartDate) ? rawTimeMin(abs.start_dt) : 0;
       const absEndMin = (ds === rawDate(abs.end_dt)) ? rawTimeMin(abs.end_dt) : 24 * 60;
       if (slotMin < absEndMin && slotEnd > absStartMin) return abs;
@@ -328,7 +329,7 @@ export default function Dashboard() {
 
   function absenceBannersForDate(d: Date): { icon: string; text: string; variant: 'warning' | 'danger' }[] {
     return absencesForDate(d)
-      .filter(abs => abs.scope === 'company') // Only company closures get banners now
+      .filter(abs => abs.scope === 'company')
       .map((abs: any) => {
         const startStr = new Date(abs.start_dt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
         const endStr = new Date(abs.end_dt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
@@ -340,10 +341,9 @@ export default function Dashboard() {
       });
   }
 
-  // Absence blocks to render as "event cards" in the calendar
   function absenceBlocksForDate(d: Date): { icon: string; label: string; name: string; scope: string; status: string }[] {
     return absencesForDate(d)
-      .filter(abs => abs.scope === 'employee') // Employee absences show as elegant blocks
+      .filter(abs => abs.scope === 'employee')
       .map((abs: any) => {
         const typeLabels: Record<string, string> = { vacation: 'Vacaciones', sick: 'Baja médica', personal: 'Personal', other: 'Ausencia' };
         const typeIcons: Record<string, string> = { vacation: '🌴', sick: '🏥', personal: '👤', other: '📌' };
@@ -357,16 +357,14 @@ export default function Dashboard() {
       });
   }
 
-  // Active absence status for the top bar (current professional)
+  // ── CAMBIO 1: activeAbsenceStatus sin cambios, se usa diferente en el render ──
   function activeAbsenceStatus(): { icon: string; label: string; range: string } | null {
     const today = new Date();
     const todayStr = today.toISOString();
-    // Check absences that are active NOW or in the visible date range
     const visibleDateStr = toDS(selectedDate);
     for (const abs of absences) {
       if (abs.scope !== 'employee') continue;
       if (abs.status === 'rejected') continue;
-      // Check if it covers today or the selected date
       const absStart = new Date(abs.start_dt);
       const absEnd = new Date(abs.end_dt);
       const coversSelected = abs.start_dt <= `${visibleDateStr}T23:59:59` && abs.end_dt >= `${visibleDateStr}T00:00:00`;
@@ -536,9 +534,40 @@ export default function Dashboard() {
     loadAllCitas();
   }
 
+  // ── CAMBIO 4: openModal intercepta ausencias de empleado ──
   function openModal(date?: Date, time?: string) {
-    setPreselectedDate(date ? new Date(date) : null);
-    setPreselectedTime(time || '');
+    const targetDate = date ? new Date(date) : selectedDate;
+    const targetTime = time || '';
+
+    const dateStr = toDS(targetDate);
+    const empAbsence = absences.find(abs =>
+      abs.scope === 'employee' &&
+      abs.status !== 'rejected' &&
+      abs.start_dt <= `${dateStr}T23:59:59` &&
+      abs.end_dt >= `${dateStr}T00:00:00`
+    );
+
+    if (empAbsence) {
+      const typeLabels: Record<string, string> = { vacation: 'De vacaciones', sick: 'De baja médica', personal: 'Ausencia personal', other: 'Ausente' };
+      const typeIcons: Record<string, string> = { vacation: '🌴', sick: '🏥', personal: '👤', other: '📌' };
+      const startStr = new Date(empAbsence.start_dt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+      const endStr = new Date(empAbsence.end_dt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+      const empName = empAbsence.profesionales?.nombre?.split(' ')[0] || 'El empleado';
+      setAbsenceWarning({
+        open: true,
+        date: targetDate,
+        time: targetTime,
+        absInfo: {
+          icon: typeIcons[empAbsence.type] || '📌',
+          label: `${empName} está ${(typeLabels[empAbsence.type] || 'ausente').toLowerCase()}`,
+          range: `${startStr} – ${endStr}`,
+        },
+      });
+      return;
+    }
+
+    setPreselectedDate(targetDate);
+    setPreselectedTime(targetTime);
     setModalOpen(true);
   }
 
@@ -589,6 +618,7 @@ export default function Dashboard() {
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }} className="main-content-desktop">
 
+        {/* ── HEADER ── */}
         <div style={{ height: 56, background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}`, display: 'flex', alignItems: 'center', padding: '0 16px', gap: 8, flexShrink: 0 }}>
           <div className="show-mobile-flex" style={{ alignItems: 'center', gap: 8, marginRight: 8 }}>
             <div style={{ width: 28, height: 28, borderRadius: 7, background: C.green, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
@@ -627,24 +657,22 @@ export default function Dashboard() {
 
           <div style={{ flex: 1 }} />
 
+          {/* ── CAMBIO 1: badge de ausencia inline junto al nombre del profesional ── */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {/* Absence status indicator */}
-            {activeSection === 'agenda' && (() => {
-              const absStatus = activeAbsenceStatus();
-              if (!absStatus) return null;
-              return (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 8, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)' }}>
-                  <span style={{ fontSize: 13 }}>{absStatus.icon}</span>
-                  <div>
-                    <p style={{ fontSize: 11, fontWeight: 600, color: '#F59E0B', lineHeight: 1.2 }}>{absStatus.label}</p>
-                    <p style={{ fontSize: 9, color: '#94A3B8', lineHeight: 1.2 }}>{absStatus.range}</p>
-                  </div>
-                </div>
-              );
-            })()}
             <div style={{ textAlign: 'right' }} className="hidden-mobile">
               <p style={{ fontSize: 12, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>{profesional?.nombre || ''}</p>
-              <p style={{ fontSize: 10, color: C.textSec, lineHeight: 1.2 }}>{isAdmin ? 'Admin' : 'Empleado'}</p>
+              {activeSection === 'agenda' && (() => {
+                const absStatus = activeAbsenceStatus();
+                if (!absStatus) return <p style={{ fontSize: 10, color: C.textSec, lineHeight: 1.2 }}>{isAdmin ? 'Admin' : 'Empleado'}</p>;
+                return (
+                  <p style={{ fontSize: 10, color: '#F59E0B', lineHeight: 1.2, fontWeight: 600 }}>
+                    {absStatus.icon} {absStatus.label} · {absStatus.range}
+                  </p>
+                );
+              })()}
+              {activeSection !== 'agenda' && (
+                <p style={{ fontSize: 10, color: C.textSec, lineHeight: 1.2 }}>{isAdmin ? 'Admin' : 'Empleado'}</p>
+              )}
             </div>
             <div style={{ width: 30, height: 30, borderRadius: 8, background: C.green, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff' }}>
               {profesional?.nombre?.[0]?.toUpperCase() || '?'}
@@ -665,10 +693,11 @@ export default function Dashboard() {
 
         {activeSection === 'agenda' && (<>
 
+          {/* ── VISTA DÍA ── */}
           {view === 'day' && (<>
             <div className="flex-1 overflow-y-auto" style={{ paddingTop: 8, paddingBottom: 80 }}>
               <div style={{ paddingLeft: 16, paddingRight: 16 }}>
-                {/* Absence banners — only company closures */}
+                {/* Banners cierre empresa */}
                 {absenceBannersForDate(selectedDate).map((b, i) => (
                   <div key={`abs-banner-${i}`} style={{
                     padding: '8px 12px', borderRadius: 8, marginBottom: 6, fontSize: 12, fontWeight: 600,
@@ -679,7 +708,7 @@ export default function Dashboard() {
                     {b.icon} {b.text}
                   </div>
                 ))}
-                {/* Absence event blocks — elegant cards for employee absences */}
+                {/* Bloques elegantes de ausencia de empleado en vista día */}
                 {absenceBlocksForDate(selectedDate).map((block, i) => (
                   <div key={`abs-block-${i}`} style={{
                     display: 'flex', alignItems: 'center', gap: 10,
@@ -726,38 +755,39 @@ export default function Dashboard() {
                         </div>
                         {(() => {
                           const slotAbsence = isSlotInAbsence(slot, selectedDate);
+                          // ── CAMBIO 2: sin rayado para ausencias de empresa en vista día ──
                           const absOverlay = (slotAbsence && slotAbsence.scope === 'company') ? {
-                            background: 'repeating-linear-gradient(135deg, rgba(239,68,68,0.06) 0px, rgba(239,68,68,0.06) 3px, transparent 3px, transparent 8px)',
+                            background: 'rgba(239,68,68,0.05)',
                             borderLeftColor: 'rgba(239,68,68,0.3)',
                             borderLeftWidth: '2px',
                             borderLeftStyle: 'solid' as const,
                           } : null;
                           return (
-                        <div style={{ flex: 1, borderBottom: `1px solid ${isHour ? C.surfaceAlt : 'rgba(36,50,71,0.4)'}`, minHeight: MIN_H, position: 'relative', ...(absOverlay ? { background: absOverlay.background, borderLeft: `${absOverlay.borderLeftWidth} ${absOverlay.borderLeftStyle} ${absOverlay.borderLeftColor}` } : {}) }}>
-                          {cita ? (
-                            <div onClick={() => setSelectedCita(cita)} style={{ background: `${citaColor(cita.estado)}22`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 10, padding: '10px 14px', margin: '3px 8px', cursor: 'pointer', boxSizing: 'border-box' as const }}>
-                              <p style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, letterSpacing: 0.2, textTransform: 'uppercase' as const }}>
-                                {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
-                                {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && <span style={{ marginLeft: 4, fontSize: 11 }}>{clientRiskCache[cita.cliente_id].icon}</span>}
-                              </p>
-                              {(() => { const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || ''; const notas = cita.notas || ''; const linea2 = svc && notas ? `${svc} — ${notas}` : svc || notas; return linea2 ? <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 1.3, marginTop: 2 }}>{linea2}</p> : null; })()}
-                              {isAdmin && cita.profesionales?.nombre && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
-                                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: cita.profesionales?.color || C.green, flexShrink: 0 }} />
-                                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>{cita.profesionales.nombre}</span>
+                            <div style={{ flex: 1, borderBottom: `1px solid ${isHour ? C.surfaceAlt : 'rgba(36,50,71,0.4)'}`, minHeight: MIN_H, position: 'relative', ...(absOverlay ? { background: absOverlay.background, borderLeft: `${absOverlay.borderLeftWidth} ${absOverlay.borderLeftStyle} ${absOverlay.borderLeftColor}` } : {}) }}>
+                              {cita ? (
+                                <div onClick={() => setSelectedCita(cita)} style={{ background: `${citaColor(cita.estado)}22`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 10, padding: '10px 14px', margin: '3px 8px', cursor: 'pointer', boxSizing: 'border-box' as const }}>
+                                  <p style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, letterSpacing: 0.2, textTransform: 'uppercase' as const }}>
+                                    {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
+                                    {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && <span style={{ marginLeft: 4, fontSize: 11 }}>{clientRiskCache[cita.cliente_id].icon}</span>}
+                                  </p>
+                                  {(() => { const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || ''; const notas = cita.notas || ''; const linea2 = svc && notas ? `${svc} — ${notas}` : svc || notas; return linea2 ? <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 1.3, marginTop: 2 }}>{linea2}</p> : null; })()}
+                                  {isAdmin && cita.profesionales?.nombre && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
+                                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: cita.profesionales?.color || C.green, flexShrink: 0 }} />
+                                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>{cita.profesionales.nombre}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div onClick={() => openModal(selectedDate, slot)} style={{ position: 'absolute', inset: 0, cursor: 'pointer' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.greenBg; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }} />
+                              )}
+                              {nowSlotIdx === si && (
+                                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', pointerEvents: 'none', zIndex: 20 }}>
+                                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.red, boxShadow: '0 0 6px rgba(239,68,68,0.8)', flexShrink: 0 }} />
+                                  <div style={{ flex: 1, height: 2, background: C.red, opacity: 0.85 }} />
                                 </div>
                               )}
                             </div>
-                          ) : (
-                            <div onClick={() => openModal(selectedDate, slot)} style={{ position: 'absolute', inset: 0, cursor: 'pointer' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.greenBg; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }} />
-                          )}
-                          {nowSlotIdx === si && (
-                            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', pointerEvents: 'none', zIndex: 20 }}>
-                              <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.red, boxShadow: '0 0 6px rgba(239,68,68,0.8)', flexShrink: 0 }} />
-                              <div style={{ flex: 1, height: 2, background: C.red, opacity: 0.85 }} />
-                            </div>
-                          )}
-                        </div>
                           );
                         })()}
                       </div>
@@ -771,6 +801,7 @@ export default function Dashboard() {
             </button>
           </>)}
 
+          {/* ── VISTA SEMANA ── */}
           {view === 'week' && (
             <div className="flex-1 flex overflow-hidden" style={{ minHeight: 0 }}>
               <div style={{ width: 196, flexShrink: 0, borderRight: `1px solid ${C.surfaceAlt}`, background: C.surface, padding: '16px 10px', display: 'flex', flexDirection: 'column', gap: 0, overflowY: 'auto' }}>
@@ -829,8 +860,10 @@ export default function Dashboard() {
                       });
                       return { citaAtSlot, citaSpans, coveredSlots, dayCitas };
                     });
+
                     const cells: React.ReactNode[] = [];
                     cells.push(<div key="th-time" style={{ gridColumn: 1, gridRow: 1, minHeight: 44 }} />);
+
                     weekDays.forEach((day, di) => {
                       const today = isToday(day);
                       const working = isWorkingDay(day);
@@ -846,7 +879,42 @@ export default function Dashboard() {
                           {dayCompanyClosures.length > 0 && <div style={{ fontSize: 7, fontWeight: 700, color: '#EF4444' }}>⛔ CIERRE</div>}
                         </div>
                       );
+
+                      // ── CAMBIO 3: bloque elegante de ausencia en la primera franja (gridRow 2) ──
+                      const dayEmpAbsences = absenceBlocksForDate(day);
+                      if (dayEmpAbsences.length > 0) {
+                        cells.push(
+                          <div key={`abs-row-${di}`} style={{
+                            gridColumn: di + 2,
+                            gridRow: 2,
+                            zIndex: 9,
+                            pointerEvents: 'none',
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            padding: '4px 4px 0',
+                            boxSizing: 'border-box' as const,
+                          }}>
+                            <div style={{
+                              width: '100%',
+                              padding: '5px 7px',
+                              borderRadius: 7,
+                              background: 'rgba(245,158,11,0.12)',
+                              borderLeft: '3px solid rgba(245,158,11,0.55)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 5,
+                            }}>
+                              <span style={{ fontSize: 12, flexShrink: 0 }}>{dayEmpAbsences[0].icon}</span>
+                              <div style={{ minWidth: 0 }}>
+                                <p style={{ fontSize: 10, fontWeight: 700, color: '#F59E0B', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{dayEmpAbsences[0].label}</p>
+                                <p style={{ fontSize: 9, color: C.textSec, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{dayEmpAbsences[0].name}</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
                     });
+
                     visibleSlots.forEach((slot, si) => {
                       const rowIdx = si + 2;
                       const isHour = slot.endsWith(':00');
@@ -866,22 +934,14 @@ export default function Dashboard() {
                         const isNowSlot = today && (() => { const m = timeToMinutes(slot); return currentMinutes >= m && currentMinutes < m + 30; })();
                         const weekSlotAbsence = isSlotInAbsence(slot, day);
                         const isCompanyClosure = weekSlotAbsence && weekSlotAbsence.scope === 'company';
+
+                        // ── CAMBIO 2: sin rayado, fondos limpios ──
                         const weekCellBg = isCompanyClosure
-                          ? 'repeating-linear-gradient(135deg, rgba(239,68,68,0.08) 0px, rgba(239,68,68,0.08) 3px, rgba(30,41,59,0.5) 3px, rgba(30,41,59,0.5) 8px)'
-                          : (working ? C.surface : `repeating-linear-gradient(45deg, rgba(15,23,42,0.6) 0px, rgba(15,23,42,0.6) 4px, rgba(30,41,59,0.3) 4px, rgba(30,41,59,0.3) 10px)`);
-                        // Show absence event block in first visible slot of the day
-                        const dayAbsBlocks = si === 0 ? absenceBlocksForDate(day) : [];
+                          ? 'rgba(239,68,68,0.05)'
+                          : (working ? C.surface : 'rgba(15,23,42,0.35)');
+
                         cells.push(
                           <div key={`cell-${si}-${di}`} style={{ gridColumn: di + 2, gridRow: spanSlots > 1 ? `${rowIdx} / span ${spanSlots}` : `${rowIdx}`, background: weekCellBg, borderBottom: `1px solid ${isHour ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.06)'}`, borderLeft: `1px solid ${today ? C.green + '55' : isCompanyClosure ? 'rgba(239,68,68,0.25)' : 'rgba(148,163,184,0.12)'}`, borderRight: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`, position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: cita ? 'center' : 'flex-start', boxSizing: 'border-box' as const, overflow: 'visible' }}>
-                            {/* Absence event block */}
-                            {!cita && dayAbsBlocks.length > 0 && (
-                              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 6px', pointerEvents: 'none', zIndex: 5 }}>
-                                <div style={{ width: '100%', padding: '4px 6px', borderRadius: 6, background: 'rgba(245,158,11,0.1)', borderLeft: '2px solid rgba(245,158,11,0.4)', display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden' }}>
-                                  <span style={{ fontSize: 10, flexShrink: 0 }}>{dayAbsBlocks[0].icon}</span>
-                                  <span style={{ fontSize: 9, fontWeight: 600, color: '#F59E0B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dayAbsBlocks[0].label}</span>
-                                </div>
-                              </div>
-                            )}
                             {cita && (
                               <div onClick={() => setSelectedCita(cita)} style={{ position: 'absolute', inset: 0, background: `${citaColor(cita.estado)}22`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 4, padding: '6px 8px', cursor: 'pointer', boxSizing: 'border-box' as const, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden' }}>
                                 <p style={{ fontSize: 11, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, textTransform: 'uppercase' as const, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
@@ -928,6 +988,7 @@ export default function Dashboard() {
                         );
                       });
                     });
+
                     return (
                       <div style={{ display: 'grid', gridTemplateColumns: `42px repeat(7, 1fr)`, gridTemplateRows: `44px repeat(${visibleSlots.length}, ${WEEK_SLOT_H}px)`, columnGap: '4px', rowGap: 0 }}>
                         {cells}
@@ -942,6 +1003,7 @@ export default function Dashboard() {
             </div>
           )}
 
+          {/* ── VISTA MES ── */}
           {view === 'month' && (
             <div className="flex-1 overflow-y-auto" style={{ padding: '20px 16px 80px' }}>
               <div style={{ background: C.surface, borderRadius: 16, padding: 20, maxWidth: 1100, margin: '0 auto' }}>
@@ -998,7 +1060,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* MODAL DETALLE CITA */}
+          {/* ── MODAL DETALLE CITA ── */}
           {selectedCita && (
             <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setSelectedCita(null)}>
               <div style={{ background: C.surface, borderRadius: 20, padding: 24, width: '100%', maxWidth: 400 }} onClick={e => e.stopPropagation()}>
@@ -1041,7 +1103,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* MODAL EDITAR CITA */}
+          {/* ── MODAL EDITAR CITA ── */}
           {editingCita && (
             <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setEditingCita(null)}>
               <div style={{ background: C.surface, borderRadius: 20, padding: 24, width: '100%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
@@ -1118,11 +1180,10 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* MODAL ANOTACIÓN */}
+          {/* ── MODAL ANOTACIÓN ── */}
           {anotacionModal.open && (
             <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => { setAnotacionModal({ open: false, date: null }); setAnotacionTexto(''); }}>
               <div style={{ background: C.surface, borderRadius: 20, padding: 24, width: '100%', maxWidth: 400, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
-
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexShrink: 0 }}>
                   <div>
                     <h3 style={{ fontSize: 16, fontWeight: 700, color: C.text }}>Notas internas</h3>
@@ -1134,7 +1195,6 @@ export default function Dashboard() {
                     <X className="w-5 h-5" />
                   </button>
                 </div>
-
                 {anotacionModal.date && anotacionesForDate(anotacionModal.date).length > 0 && (
                   <div style={{ overflowY: 'auto', marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0, maxHeight: 240 }}>
                     {anotacionesForDate(anotacionModal.date).map((a: any) => (
@@ -1153,11 +1213,9 @@ export default function Dashboard() {
                     ))}
                   </div>
                 )}
-
                 {anotacionModal.date && anotacionesForDate(anotacionModal.date).length > 0 && (
                   <div style={{ height: 1, background: C.surfaceAlt, marginBottom: 16, flexShrink: 0 }} />
                 )}
-
                 <textarea
                   value={anotacionTexto}
                   onChange={e => setAnotacionTexto(e.target.value)}
@@ -1185,6 +1243,72 @@ export default function Dashboard() {
                 >
                   {anotacionLoading ? 'Guardando...' : 'Añadir nota'}
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── CAMBIO 4: MODAL AVISO AUSENCIA ── */}
+          {absenceWarning?.open && (
+            <div className="fixed inset-0 flex items-center justify-center z-50 p-4"
+              style={{ background: 'rgba(0,0,0,0.7)' }}
+              onClick={() => setAbsenceWarning(null)}>
+              <div style={{ background: C.surface, borderRadius: 20, padding: 24, width: '100%', maxWidth: 360 }}
+                onClick={e => e.stopPropagation()}>
+                <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                  <div style={{ fontSize: 32, marginBottom: 8 }}>{absenceWarning.absInfo?.icon}</div>
+                  <p style={{ fontSize: 15, fontWeight: 700, color: C.text, lineHeight: 1.4 }}>
+                    {absenceWarning.absInfo?.label}
+                  </p>
+                  <p style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>
+                    {absenceWarning.absInfo?.range}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <button
+                    onClick={() => {
+                      setAbsenceWarning(null);
+                      setActiveSection('configuracion');
+                    }}
+                    style={{ width: '100%', padding: '11px 0', borderRadius: 12, background: C.surfaceAlt, border: 'none', color: C.text, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                    Cambiar empleado
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (absenceWarning.date) {
+                        let nextDay = new Date(absenceWarning.date);
+                        for (let i = 0; i < 30; i++) {
+                          nextDay.setDate(nextDay.getDate() + 1);
+                          const ds = toDS(nextDay);
+                          const stillAbsent = absences.some(abs =>
+                            abs.scope === 'employee' &&
+                            abs.status !== 'rejected' &&
+                            abs.start_dt <= `${ds}T23:59:59` &&
+                            abs.end_dt >= `${ds}T00:00:00`
+                          );
+                          if (!stillAbsent && isWorkingDay(nextDay)) {
+                            setAbsenceWarning(null);
+                            setSelectedDate(nextDay);
+                            setView('day');
+                            return;
+                          }
+                        }
+                      }
+                      setAbsenceWarning(null);
+                    }}
+                    style={{ width: '100%', padding: '11px 0', borderRadius: 12, background: C.surfaceAlt, border: 'none', color: C.text, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                    Buscar siguiente hueco
+                  </button>
+                  <button
+                    onClick={() => {
+                      setAbsenceWarning(null);
+                      setPreselectedDate(absenceWarning.date);
+                      setPreselectedTime(absenceWarning.time);
+                      setModalOpen(true);
+                    }}
+                    style={{ width: '100%', padding: '11px 0', borderRadius: 12, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', color: '#EF4444', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                    Crear igualmente
+                  </button>
+                </div>
               </div>
             </div>
           )}
