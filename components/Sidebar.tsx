@@ -3,18 +3,6 @@
 import { Calendar, Users, Scissors, BarChart3, Bell, Settings, LogOut, UserCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-const NAV_ITEMS = [
-  { id: 'agenda',       label: 'Agenda',        icon: Calendar  },
-  { id: 'clientes',     label: 'Clientes',       icon: Users     },
-  { id: 'servicios',    label: 'Servicios',      icon: Scissors  },
-  { id: 'estadisticas', label: 'Estadísticas',   icon: BarChart3 },
-];
-
-const SYSTEM_ITEMS = [
-  { id: 'notificaciones', label: 'Notificaciones', icon: Bell     },
-  { id: 'configuracion',  label: 'Configuración',  icon: Settings },
-];
-
 interface SidebarProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
@@ -23,6 +11,7 @@ interface SidebarProps {
   empresaLogo?: string;
   colorPrimario?: string;
   isAdmin: boolean;
+  permisos?: Record<string, boolean>;
   onNavigate: (section: string) => void;
   activeSection: string;
 }
@@ -30,11 +19,25 @@ interface SidebarProps {
 export default function Sidebar({
   collapsed, onToggleCollapse,
   empresaNombre, profesionalNombre, empresaLogo, colorPrimario,
-  isAdmin, onNavigate, activeSection,
+  isAdmin, permisos = {}, onNavigate, activeSection,
 }: SidebarProps) {
   const accent = colorPrimario || '#22C55E';
-  const navItems = NAV_ITEMS.filter(i => i.id === 'agenda' || isAdmin);
-  const sysItems = isAdmin ? SYSTEM_ITEMS : [];
+
+  // Secciones visibles según rol y permisos
+  const navItems = [
+    { id: 'agenda',       label: 'Agenda',      icon: Calendar  },
+    // Clientes: siempre visible (empleado ve los suyos, admin/con permiso ve todos)
+    { id: 'clientes',     label: 'Clientes',    icon: Users     },
+    // Servicios: siempre visible (solo lectura si no tiene permiso editar_servicios)
+    { id: 'servicios',    label: 'Servicios',   icon: Scissors  },
+    // Estadísticas: solo si es admin o tiene permiso ver_estadisticas
+    ...(isAdmin || permisos.ver_estadisticas ? [{ id: 'estadisticas', label: 'Estadísticas', icon: BarChart3 }] : []),
+  ];
+
+  const sysItems = isAdmin ? [
+    { id: 'notificaciones', label: 'Notificaciones', icon: Bell     },
+    { id: 'configuracion',  label: 'Configuración',  icon: Settings },
+  ] : [];
 
   function logout() {
     supabase.auth.signOut().then(() => {
@@ -118,7 +121,6 @@ export default function Sidebar({
             </p>
           </div>
         )}
-
       </div>
 
       {/* NAV */}
