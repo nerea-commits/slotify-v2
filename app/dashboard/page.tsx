@@ -535,7 +535,7 @@ export default function Dashboard() {
         {activeSection !== 'agenda' && (
           <div className="flex-1 overflow-y-auto" style={{ background: C.bg }}>
             {activeSection === 'clientes' && <ClientesSection empresaId={empresa?.id || ''} />}
-            {activeSection === 'servicios' && <ServiciosSection empresaId={empresa?.id || ''} canEdit={isAdmin || !!permisos.editar_servicios} />}
+            {activeSection === 'servicios' && <ServiciosSection empresaId={empresa?.id || ''} {...({canEdit: isAdmin || !!permisos.editar_servicios} as any)} />}
             {activeSection === 'estadisticas' && <EstadisticasSection empresaId={empresa?.id || ''} />}
             {activeSection === 'notificaciones' && <NotificacionesSection empresaId={empresa?.id || ''} />}
             {activeSection === 'configuracion' && empresa && <ConfiguracionSection empresa={empresa} profesional={profesional} onEmpresaUpdated={(data: any) => setEmpresa((prev: any) => ({ ...prev, ...data }))} />}
