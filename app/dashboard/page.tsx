@@ -870,8 +870,13 @@ export default function Dashboard() {
                       const dayAnotaciones = anotacionesForDate(day);
                       const dayCompanyClosures = absencesForDate(day).filter(a => a.scope === 'company');
                       cells.push(
-                        <div key={`th-${di}`} onClick={() => working ? goToDay(day) : setAnotacionModal({ open: true, date: day })}
-                          style={{ gridColumn: di + 2, gridRow: 1, minHeight: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: today ? 'rgba(34,197,94,0.2)' : dayCompanyClosures.length > 0 ? 'rgba(239,68,68,0.1)' : working ? C.surfaceAlt : 'rgba(15,23,42,0.4)', borderRadius: '10px 10px 0 0', borderTop: today ? `1px solid ${C.green}55` : dayCompanyClosures.length > 0 ? '1px solid rgba(239,68,68,0.25)' : `1px solid rgba(148,163,184,0.12)`, borderLeft: today ? `1px solid ${C.green}55` : `1px solid rgba(148,163,184,0.12)`, borderRight: today ? `1px solid ${C.green}55` : `1px solid rgba(148,163,184,0.12)`, borderBottom: `1px solid rgba(148,163,184,0.08)`, cursor: 'pointer' }}>
+                        <div key={`th-${di}`} onClick={() => {
+                            const hasEmpAbsence = absenceBlocksForDate(day).length > 0;
+                            if (hasEmpAbsence) { openModal(day); }
+                            else if (working) { goToDay(day); }
+                            else { setAnotacionModal({ open: true, date: day }); }
+                          }}
+                          style={{ gridColumn: di + 2, gridRow: 1, height: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: today ? 'rgba(34,197,94,0.2)' : dayCompanyClosures.length > 0 ? 'rgba(239,68,68,0.1)' : working ? C.surfaceAlt : 'rgba(15,23,42,0.4)', borderRadius: '10px 10px 0 0', borderTop: today ? `1px solid ${C.green}55` : dayCompanyClosures.length > 0 ? '1px solid rgba(239,68,68,0.25)' : `1px solid rgba(148,163,184,0.12)`, borderLeft: today ? `1px solid ${C.green}55` : `1px solid rgba(148,163,184,0.12)`, borderRight: today ? `1px solid ${C.green}55` : `1px solid rgba(148,163,184,0.12)`, borderBottom: `1px solid rgba(148,163,184,0.08)`, cursor: 'pointer' }}>
                           <div style={{ fontSize: 9, fontWeight: 700, color: working ? C.textSec : 'rgba(148,163,184,0.5)', letterSpacing: 0.8 }}>{weekDayNames[di]}</div>
                           <div style={{ fontSize: 15, fontWeight: 700, color: today ? C.green : dayCompanyClosures.length > 0 ? '#EF4444' : working ? C.text : 'rgba(241,245,249,0.3)' }}>{day.getDate()}</div>
                           {today && <div style={{ fontSize: 7, color: C.green, fontWeight: 700 }}>HOY</div>}
@@ -893,8 +898,8 @@ export default function Dashboard() {
                                 gap: 3,
                                 maxWidth: '92%',
                               }}>
-                                <span style={{ fontSize: 9 }}>{empAbs[0].icon}</span>
-                                <span style={{ fontSize: 8, fontWeight: 700, color: '#F59E0B', whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>{empAbs[0].label}</span>
+                                <span style={{ fontSize: 9, flexShrink: 0 }}>{empAbs[0].icon}</span>
+                                <span style={{ fontSize: 8, fontWeight: 700, color: '#F59E0B', whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>{empAbs[0].label} · {empAbs[0].name}</span>
                               </div>
                             );
                           })()}
@@ -977,7 +982,7 @@ export default function Dashboard() {
                     });
 
                     return (
-                      <div style={{ display: 'grid', gridTemplateColumns: `42px repeat(7, 1fr)`, gridTemplateRows: `auto repeat(${visibleSlots.length}, ${WEEK_SLOT_H}px)`, columnGap: '4px', rowGap: 0 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: `42px repeat(7, 1fr)`, gridTemplateRows: `44px repeat(${visibleSlots.length}, ${WEEK_SLOT_H}px)`, columnGap: '4px', rowGap: 0 }}>
                         {cells}
                       </div>
                     );
