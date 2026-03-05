@@ -11,6 +11,7 @@ import ServiciosSection from '@/components/ServiciosSection';
 import ConfiguracionSection from '@/components/ConfiguracionSection';
 import NotificacionesSection from '@/components/NotificacionesSection';
 import EstadisticasSection from '@/components/EstadisticasSection';
+import AusenciasSection from '@/components/AusenciasSection';
 import { calcularFiabilidad, getRiskIndicator } from '@/lib/fiabilidad';
 
 const ALL_SLOTS = Array.from({ length: 48 }, (_, i) => {
@@ -599,6 +600,7 @@ export default function Dashboard() {
             {activeSection === 'clientes' && <ClientesSection empresaId={empresa?.id || ''} />}
             {activeSection === 'servicios' && <ServiciosSection empresaId={empresa?.id || ''} {...({canEdit: isAdmin || !!permisos.editar_servicios} as any)} />}
             {activeSection === 'estadisticas' && <EstadisticasSection empresaId={empresa?.id || ''} />}
+            {activeSection === 'ausencias' && <AusenciasSection empresaId={empresa?.id || ''} isAdmin={isAdmin} />}
             {activeSection === 'notificaciones' && <NotificacionesSection empresaId={empresa?.id || ''} />}
             {activeSection === 'configuracion' && empresa && <ConfiguracionSection empresa={empresa} profesional={profesional} onEmpresaUpdated={(data: any) => setEmpresa((prev: any) => ({ ...prev, ...data }))} />}
           </div>
