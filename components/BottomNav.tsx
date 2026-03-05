@@ -8,17 +8,23 @@ interface BottomNavProps {
   activeSection: string;
   onNavigate: (section: string) => void;
   isAdmin: boolean;
+  permisos?: Record<string, boolean>;
 }
 
-const MAS_ITEMS = [
-  { id: 'servicios',      label: 'Servicios',      icon: Scissors  },
-  { id: 'notificaciones', label: 'Notificaciones', icon: Bell      },
-  { id: 'configuracion',  label: 'Configuración',  icon: Settings  },
-];
-
-export default function BottomNav({ activeSection, onNavigate, isAdmin }: BottomNavProps) {
+export default function BottomNav({ activeSection, onNavigate, isAdmin, permisos = {} }: BottomNavProps) {
   const [masOpen, setMasOpen] = useState(false);
-  const isMasSection = MAS_ITEMS.some(i => i.id === activeSection);
+
+  const masItems = [
+    // Servicios: siempre visible
+    { id: 'servicios',      label: 'Servicios',      icon: Scissors  },
+    // Notificaciones y configuración: solo admin
+    ...(isAdmin ? [
+      { id: 'notificaciones', label: 'Notificaciones', icon: Bell      },
+      { id: 'configuracion',  label: 'Configuración',  icon: Settings  },
+    ] : []),
+  ];
+
+  const isMasSection = masItems.some(i => i.id === activeSection);
 
   function logout() {
     supabase.auth.signOut().then(() => {
@@ -29,12 +35,15 @@ export default function BottomNav({ activeSection, onNavigate, isAdmin }: Bottom
     });
   }
 
+  // Estadísticas: solo si admin o tiene permiso ver_estadisticas
+  const showEstadisticas = isAdmin || !!permisos.ver_estadisticas;
+
   const PRIMARY = [
     { id: 'agenda',       label: 'Agenda',    icon: Calendar  },
-    { id: 'clientes',     label: 'Clientes',  icon: Users,    adminOnly: true },
-    { id: 'estadisticas', label: 'Stats',     icon: BarChart3, adminOnly: true },
+    { id: 'clientes',     label: 'Clientes',  icon: Users     },
+    ...(showEstadisticas ? [{ id: 'estadisticas', label: 'Stats', icon: BarChart3 }] : []),
     { id: 'mas',          label: 'Más',       icon: MoreHorizontal },
-  ].filter((i: any) => !i.adminOnly || isAdmin);
+  ];
 
   return (
     <>
@@ -43,7 +52,7 @@ export default function BottomNav({ activeSection, onNavigate, isAdmin }: Bottom
           .bottom-nav-bar { display: none !important; }
         }
       `}</style>
-      {/* Sheet overlay */}
+
       {masOpen && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 48 }}
@@ -63,7 +72,6 @@ export default function BottomNav({ activeSection, onNavigate, isAdmin }: Bottom
         transition: 'bottom 0.28s cubic-bezier(0.4,0,0.2,1)',
         boxShadow: '0 -8px 32px rgba(0,0,0,0.5)',
       }}>
-        {/* Handle */}
         <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(148,163,184,0.2)' }} />
         </div>
@@ -74,7 +82,7 @@ export default function BottomNav({ activeSection, onNavigate, isAdmin }: Bottom
           </button>
         </div>
 
-        {MAS_ITEMS.filter(() => isAdmin).map(item => {
+        {masItems.map(item => {
           const active = activeSection === item.id;
           const Icon = item.icon;
           return (
