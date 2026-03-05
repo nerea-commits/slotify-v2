@@ -328,19 +328,62 @@ export default function Dashboard() {
 
   function absenceBannersForDate(d: Date): { icon: string; text: string; variant: 'warning' | 'danger' }[] {
     return absencesForDate(d)
-      .filter(abs => abs.all_day || abs.scope === 'company')
+      .filter(abs => abs.scope === 'company') // Only company closures get banners now
       .map((abs: any) => {
-        const name = abs.scope === 'company' ? 'CIERRE EMPRESA' : (abs.profesionales?.nombre || 'Empleado');
-        const typeLabels: Record<string, string> = { vacation: 'Vacaciones', sick: 'Baja', personal: 'Personal', closure: 'Cierre', other: 'Ausencia' };
-        const typeLabel = typeLabels[abs.type] || abs.type;
         const startStr = new Date(abs.start_dt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
         const endStr = new Date(abs.end_dt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
         return {
-          icon: abs.scope === 'company' ? '⛔' : '🌴',
-          text: `${name} — ${typeLabel} (${startStr} → ${endStr})${abs.note ? ` · ${abs.note}` : ''}`,
-          variant: (abs.scope === 'company' ? 'danger' : 'warning') as 'warning' | 'danger',
+          icon: '⛔',
+          text: `CIERRE EMPRESA (${startStr} → ${endStr})${abs.note ? ` · ${abs.note}` : ''}`,
+          variant: 'danger' as const,
         };
       });
+  }
+
+  // Absence blocks to render as "event cards" in the calendar
+  function absenceBlocksForDate(d: Date): { icon: string; label: string; name: string; scope: string; status: string }[] {
+    return absencesForDate(d)
+      .filter(abs => abs.scope === 'employee') // Employee absences show as elegant blocks
+      .map((abs: any) => {
+        const typeLabels: Record<string, string> = { vacation: 'Vacaciones', sick: 'Baja médica', personal: 'Personal', other: 'Ausencia' };
+        const typeIcons: Record<string, string> = { vacation: '🌴', sick: '🏥', personal: '👤', other: '📌' };
+        return {
+          icon: typeIcons[abs.type] || '📌',
+          label: typeLabels[abs.type] || abs.type,
+          name: abs.profesionales?.nombre?.split(' ')[0] || 'Empleado',
+          scope: abs.scope,
+          status: abs.status,
+        };
+      });
+  }
+
+  // Active absence status for the top bar (current professional)
+  function activeAbsenceStatus(): { icon: string; label: string; range: string } | null {
+    const today = new Date();
+    const todayStr = today.toISOString();
+    // Check absences that are active NOW or in the visible date range
+    const visibleDateStr = toDS(selectedDate);
+    for (const abs of absences) {
+      if (abs.scope !== 'employee') continue;
+      if (abs.status === 'rejected') continue;
+      // Check if it covers today or the selected date
+      const absStart = new Date(abs.start_dt);
+      const absEnd = new Date(abs.end_dt);
+      const coversSelected = abs.start_dt <= `${visibleDateStr}T23:59:59` && abs.end_dt >= `${visibleDateStr}T00:00:00`;
+      const coversToday = abs.start_dt <= todayStr && abs.end_dt >= todayStr;
+      if (coversSelected || coversToday) {
+        const typeLabels: Record<string, string> = { vacation: 'De vacaciones', sick: 'De baja médica', personal: 'Ausencia personal', other: 'Ausente' };
+        const typeIcons: Record<string, string> = { vacation: '🌴', sick: '🏥', personal: '👤', other: '📌' };
+        const startStr = absStart.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+        const endStr = absEnd.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+        return {
+          icon: typeIcons[abs.type] || '📌',
+          label: typeLabels[abs.type] || 'Ausente',
+          range: `${startStr} – ${endStr}`,
+        };
+      }
+    }
+    return null;
   }
 
   async function guardarAnotacion() {
@@ -585,6 +628,20 @@ export default function Dashboard() {
           <div style={{ flex: 1 }} />
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Absence status indicator */}
+            {activeSection === 'agenda' && (() => {
+              const absStatus = activeAbsenceStatus();
+              if (!absStatus) return null;
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 8, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                  <span style={{ fontSize: 13 }}>{absStatus.icon}</span>
+                  <div>
+                    <p style={{ fontSize: 11, fontWeight: 600, color: '#F59E0B', lineHeight: 1.2 }}>{absStatus.label}</p>
+                    <p style={{ fontSize: 9, color: '#94A3B8', lineHeight: 1.2 }}>{absStatus.range}</p>
+                  </div>
+                </div>
+              );
+            })()}
             <div style={{ textAlign: 'right' }} className="hidden-mobile">
               <p style={{ fontSize: 12, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>{profesional?.nombre || ''}</p>
               <p style={{ fontSize: 10, color: C.textSec, lineHeight: 1.2 }}>{isAdmin ? 'Admin' : 'Empleado'}</p>
@@ -611,15 +668,33 @@ export default function Dashboard() {
           {view === 'day' && (<>
             <div className="flex-1 overflow-y-auto" style={{ paddingTop: 8, paddingBottom: 80 }}>
               <div style={{ paddingLeft: 16, paddingRight: 16 }}>
-                {/* Absence banners */}
+                {/* Absence banners — only company closures */}
                 {absenceBannersForDate(selectedDate).map((b, i) => (
                   <div key={`abs-banner-${i}`} style={{
                     padding: '8px 12px', borderRadius: 8, marginBottom: 6, fontSize: 12, fontWeight: 600,
-                    background: b.variant === 'danger' ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.12)',
-                    border: `1px solid ${b.variant === 'danger' ? 'rgba(239,68,68,0.25)' : 'rgba(245,158,11,0.25)'}`,
-                    color: b.variant === 'danger' ? '#EF4444' : '#F59E0B',
+                    background: 'rgba(239,68,68,0.12)',
+                    border: '1px solid rgba(239,68,68,0.25)',
+                    color: '#EF4444',
                   }}>
                     {b.icon} {b.text}
+                  </div>
+                ))}
+                {/* Absence event blocks — elegant cards for employee absences */}
+                {absenceBlocksForDate(selectedDate).map((block, i) => (
+                  <div key={`abs-block-${i}`} style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 14px', borderRadius: 10, marginBottom: 6,
+                    background: 'rgba(245,158,11,0.08)',
+                    borderLeft: '3px solid rgba(245,158,11,0.5)',
+                  }}>
+                    <span style={{ fontSize: 18 }}>{block.icon}</span>
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: '#F59E0B', lineHeight: 1.3 }}>{block.label}</p>
+                      <p style={{ fontSize: 11, color: C.textSec, lineHeight: 1.3 }}>{block.name}</p>
+                    </div>
+                    {block.status === 'pending' && (
+                      <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: 'rgba(245,158,11,0.15)', color: '#F59E0B', marginLeft: 'auto' }}>Pendiente</span>
+                    )}
                   </div>
                 ))}
                 {(() => {
@@ -651,13 +726,11 @@ export default function Dashboard() {
                         </div>
                         {(() => {
                           const slotAbsence = isSlotInAbsence(slot, selectedDate);
-                          const absOverlay = slotAbsence ? {
-                            background: slotAbsence.scope === 'company'
-                              ? 'repeating-linear-gradient(135deg, rgba(239,68,68,0.06) 0px, rgba(239,68,68,0.06) 3px, transparent 3px, transparent 8px)'
-                              : 'repeating-linear-gradient(135deg, rgba(245,158,11,0.06) 0px, rgba(245,158,11,0.06) 3px, transparent 3px, transparent 8px)',
-                            borderLeftColor: slotAbsence.scope === 'company' ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)',
+                          const absOverlay = (slotAbsence && slotAbsence.scope === 'company') ? {
+                            background: 'repeating-linear-gradient(135deg, rgba(239,68,68,0.06) 0px, rgba(239,68,68,0.06) 3px, transparent 3px, transparent 8px)',
+                            borderLeftColor: 'rgba(239,68,68,0.3)',
                             borderLeftWidth: '2px',
-                            borderLeftStyle: slotAbsence.status === 'pending' ? 'dashed' as const : 'solid' as const,
+                            borderLeftStyle: 'solid' as const,
                           } : null;
                           return (
                         <div style={{ flex: 1, borderBottom: `1px solid ${isHour ? C.surfaceAlt : 'rgba(36,50,71,0.4)'}`, minHeight: MIN_H, position: 'relative', ...(absOverlay ? { background: absOverlay.background, borderLeft: `${absOverlay.borderLeftWidth} ${absOverlay.borderLeftStyle} ${absOverlay.borderLeftColor}` } : {}) }}>
@@ -762,15 +835,15 @@ export default function Dashboard() {
                       const today = isToday(day);
                       const working = isWorkingDay(day);
                       const dayAnotaciones = anotacionesForDate(day);
-                      const dayAbsBanners = absenceBannersForDate(day);
+                      const dayCompanyClosures = absencesForDate(day).filter(a => a.scope === 'company');
                       cells.push(
                         <div key={`th-${di}`} onClick={() => working ? goToDay(day) : setAnotacionModal({ open: true, date: day })}
-                          style={{ gridColumn: di + 2, gridRow: 1, height: dayAbsBanners.length > 0 ? 56 : 44, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: today ? 'rgba(34,197,94,0.2)' : working ? C.surfaceAlt : 'rgba(15,23,42,0.4)', borderRadius: '10px 10px 0 0', borderTop: today ? `1px solid ${C.green}55` : `1px solid rgba(148,163,184,0.12)`, borderLeft: today ? `1px solid ${C.green}55` : `1px solid rgba(148,163,184,0.12)`, borderRight: today ? `1px solid ${C.green}55` : `1px solid rgba(148,163,184,0.12)`, borderBottom: `1px solid rgba(148,163,184,0.08)`, cursor: 'pointer' }}>
+                          style={{ gridColumn: di + 2, gridRow: 1, height: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: today ? 'rgba(34,197,94,0.2)' : dayCompanyClosures.length > 0 ? 'rgba(239,68,68,0.1)' : working ? C.surfaceAlt : 'rgba(15,23,42,0.4)', borderRadius: '10px 10px 0 0', borderTop: today ? `1px solid ${C.green}55` : dayCompanyClosures.length > 0 ? '1px solid rgba(239,68,68,0.25)' : `1px solid rgba(148,163,184,0.12)`, borderLeft: today ? `1px solid ${C.green}55` : `1px solid rgba(148,163,184,0.12)`, borderRight: today ? `1px solid ${C.green}55` : `1px solid rgba(148,163,184,0.12)`, borderBottom: `1px solid rgba(148,163,184,0.08)`, cursor: 'pointer' }}>
                           <div style={{ fontSize: 9, fontWeight: 700, color: working ? C.textSec : 'rgba(148,163,184,0.5)', letterSpacing: 0.8 }}>{weekDayNames[di]}</div>
-                          <div style={{ fontSize: 15, fontWeight: 700, color: today ? C.green : working ? C.text : 'rgba(241,245,249,0.3)' }}>{day.getDate()}</div>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: today ? C.green : dayCompanyClosures.length > 0 ? '#EF4444' : working ? C.text : 'rgba(241,245,249,0.3)' }}>{day.getDate()}</div>
                           {today && <div style={{ fontSize: 7, color: C.green, fontWeight: 700 }}>HOY</div>}
                           {!working && dayAnotaciones.length > 0 && <div style={{ fontSize: 7, color: C.yellow, fontWeight: 700 }}>● {dayAnotaciones.length}</div>}
-                          {dayAbsBanners.length > 0 && <div style={{ fontSize: 7, fontWeight: 700, color: dayAbsBanners[0].variant === 'danger' ? '#EF4444' : '#F59E0B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', padding: '0 2px' }}>{dayAbsBanners[0].icon} {dayAbsBanners.length > 1 ? `${dayAbsBanners.length} ausencias` : (absencesForDate(day).find(a => a.all_day)?.profesionales?.nombre?.split(' ')[0] || 'Ausencia')}</div>}
+                          {dayCompanyClosures.length > 0 && <div style={{ fontSize: 7, fontWeight: 700, color: '#EF4444' }}>⛔ CIERRE</div>}
                         </div>
                       );
                     });
@@ -792,13 +865,23 @@ export default function Dashboard() {
                         const alturaBloque = spanSlots * WEEK_SLOT_H;
                         const isNowSlot = today && (() => { const m = timeToMinutes(slot); return currentMinutes >= m && currentMinutes < m + 30; })();
                         const weekSlotAbsence = isSlotInAbsence(slot, day);
-                        const weekCellBg = weekSlotAbsence
-                          ? (weekSlotAbsence.scope === 'company'
-                            ? 'repeating-linear-gradient(135deg, rgba(239,68,68,0.08) 0px, rgba(239,68,68,0.08) 3px, rgba(30,41,59,0.5) 3px, rgba(30,41,59,0.5) 8px)'
-                            : 'repeating-linear-gradient(135deg, rgba(245,158,11,0.08) 0px, rgba(245,158,11,0.08) 3px, rgba(30,41,59,0.5) 3px, rgba(30,41,59,0.5) 8px)')
+                        const isCompanyClosure = weekSlotAbsence && weekSlotAbsence.scope === 'company';
+                        const weekCellBg = isCompanyClosure
+                          ? 'repeating-linear-gradient(135deg, rgba(239,68,68,0.08) 0px, rgba(239,68,68,0.08) 3px, rgba(30,41,59,0.5) 3px, rgba(30,41,59,0.5) 8px)'
                           : (working ? C.surface : `repeating-linear-gradient(45deg, rgba(15,23,42,0.6) 0px, rgba(15,23,42,0.6) 4px, rgba(30,41,59,0.3) 4px, rgba(30,41,59,0.3) 10px)`);
+                        // Show absence event block in first visible slot of the day
+                        const dayAbsBlocks = si === 0 ? absenceBlocksForDate(day) : [];
                         cells.push(
-                          <div key={`cell-${si}-${di}`} style={{ gridColumn: di + 2, gridRow: spanSlots > 1 ? `${rowIdx} / span ${spanSlots}` : `${rowIdx}`, background: weekCellBg, borderBottom: `1px solid ${isHour ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.06)'}`, borderLeft: `1px solid ${today ? C.green + '55' : weekSlotAbsence ? (weekSlotAbsence.scope === 'company' ? 'rgba(239,68,68,0.25)' : 'rgba(245,158,11,0.25)') : 'rgba(148,163,184,0.12)'}`, borderRight: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`, position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: cita ? 'center' : 'flex-start', boxSizing: 'border-box' as const, overflow: 'visible' }}>
+                          <div key={`cell-${si}-${di}`} style={{ gridColumn: di + 2, gridRow: spanSlots > 1 ? `${rowIdx} / span ${spanSlots}` : `${rowIdx}`, background: weekCellBg, borderBottom: `1px solid ${isHour ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.06)'}`, borderLeft: `1px solid ${today ? C.green + '55' : isCompanyClosure ? 'rgba(239,68,68,0.25)' : 'rgba(148,163,184,0.12)'}`, borderRight: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`, position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: cita ? 'center' : 'flex-start', boxSizing: 'border-box' as const, overflow: 'visible' }}>
+                            {/* Absence event block */}
+                            {!cita && dayAbsBlocks.length > 0 && (
+                              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 6px', pointerEvents: 'none', zIndex: 5 }}>
+                                <div style={{ width: '100%', padding: '4px 6px', borderRadius: 6, background: 'rgba(245,158,11,0.1)', borderLeft: '2px solid rgba(245,158,11,0.4)', display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden' }}>
+                                  <span style={{ fontSize: 10, flexShrink: 0 }}>{dayAbsBlocks[0].icon}</span>
+                                  <span style={{ fontSize: 9, fontWeight: 600, color: '#F59E0B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dayAbsBlocks[0].label}</span>
+                                </div>
+                              </div>
+                            )}
                             {cita && (
                               <div onClick={() => setSelectedCita(cita)} style={{ position: 'absolute', inset: 0, background: `${citaColor(cita.estado)}22`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 4, padding: '6px 8px', cursor: 'pointer', boxSizing: 'border-box' as const, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden' }}>
                                 <p style={{ fontSize: 11, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, textTransform: 'uppercase' as const, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
