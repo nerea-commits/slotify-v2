@@ -1184,17 +1184,21 @@ export default function Dashboard() {
 
           {/* ── VISTA MES ── */}
           {view === 'month' && (
-            <div className="flex-1 overflow-y-auto" style={{ padding: '20px 16px 80px' }}>
-              <div style={{ background: C.surface, borderRadius: 16, padding: 20, maxWidth: 1100, margin: '0 auto' }}>
-                <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
-                  <button onClick={() => changeMonth(-1)} className="p-2" style={{ color: C.textSec }}><ChevronLeft className="w-5 h-5" /></button>
-                  <h2 className="font-semibold capitalize" style={{ fontSize: 18 }}>{formatMonth(selectedDate)}</h2>
-                  <button onClick={() => changeMonth(1)} className="p-2" style={{ color: C.textSec }}><ChevronRight className="w-5 h-5" /></button>
+            <div className="flex-1 overflow-y-auto" style={{ padding: isMobile ? '10px 8px 80px' : '20px 16px 80px' }}>
+              <div style={{ background: C.surface, borderRadius: isMobile ? 12 : 16, padding: isMobile ? 12 : 20, maxWidth: 1100, margin: '0 auto' }}>
+                {!isMobile && (
+                  <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
+                    <button onClick={() => changeMonth(-1)} className="p-2" style={{ color: C.textSec }}><ChevronLeft className="w-5 h-5" /></button>
+                    <h2 className="font-semibold capitalize" style={{ fontSize: 18 }}>{formatMonth(selectedDate)}</h2>
+                    <button onClick={() => changeMonth(1)} className="p-2" style={{ color: C.textSec }}><ChevronRight className="w-5 h-5" /></button>
+                  </div>
+                )}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: isMobile ? 0 : 6, marginBottom: isMobile ? 2 : 6 }}>
+                  {(isMobile ? ['L', 'M', 'X', 'J', 'V', 'S', 'D'] : weekDayNames).map(d => (
+                    <div key={d} style={{ textAlign: 'center', fontSize: isMobile ? 11 : 12, color: C.textSec, fontWeight: 600, padding: isMobile ? '6px 0' : '4px 0' }}>{d}</div>
+                  ))}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, marginBottom: 6 }}>
-                  {weekDayNames.map(d => <div key={d} className="text-center text-xs font-medium" style={{ color: C.textSec, padding: '4px 0' }}>{d}</div>)}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: isMobile ? 2 : 6 }}>
                   {getMonthDays().map((day, i) => {
                     if (!day) return <div key={`e${i}`} />;
                     const today = isToday(day);
@@ -1203,6 +1207,36 @@ export default function Dashboard() {
                     const av = working ? getAvailability(free) : null;
                     const citasCount = activeCitasForDate(day).length;
                     const dayAnotaciones = anotacionesForDate(day);
+
+                    if (isMobile) {
+                      return (
+                        <div key={i} onClick={() => working ? goToDay(day) : setAnotacionModal({ open: true, date: day })}
+                          style={{
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                            padding: '8px 2px', borderRadius: 8, cursor: 'pointer', minHeight: 48,
+                            background: today ? `${C.green}20` : 'transparent',
+                            border: today ? `1.5px solid ${C.green}` : '1.5px solid transparent',
+                            opacity: working ? 1 : 0.35,
+                          }}>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: today ? C.green : C.text, lineHeight: 1 }}>{day.getDate()}</span>
+                          <div style={{ display: 'flex', gap: 3, marginTop: 5, minHeight: 6 }}>
+                            {working && citasCount > 0 && (
+                              <div style={{ width: 5, height: 5, borderRadius: '50%', background: av?.color || C.green }} />
+                            )}
+                            {working && citasCount > 2 && (
+                              <div style={{ width: 5, height: 5, borderRadius: '50%', background: av?.color || C.green, opacity: 0.5 }} />
+                            )}
+                            {!working && dayAnotaciones.length > 0 && (
+                              <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.yellow }} />
+                            )}
+                          </div>
+                          {working && citasCount > 0 && (
+                            <span style={{ fontSize: 8, color: C.textSec, marginTop: 2 }}>{citasCount}</span>
+                          )}
+                        </div>
+                      );
+                    }
+
                     return (
                       <div key={i} onClick={() => working ? goToDay(day) : setAnotacionModal({ open: true, date: day })} className="cursor-pointer"
                         style={{ background: working ? C.surfaceAlt : 'rgba(15,23,42,0.5)', borderRadius: 10, padding: '8px', minHeight: 72, border: today ? `2px solid ${C.green}` : '2px solid transparent', opacity: working ? 1 : 0.5, display: 'flex', flexDirection: 'column' }}
@@ -1233,7 +1267,7 @@ export default function Dashboard() {
                   })}
                 </div>
               </div>
-              <button onClick={() => openModal()} style={{ position: 'fixed', bottom: 32, right: 32, width: 56, height: 56, borderRadius: '50%', background: C.green, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 4px 20px rgba(34,197,94,0.45)`, zIndex: 35 }}>
+              <button onClick={() => openModal()} style={{ position: 'fixed', bottom: isMobile ? 72 : 32, right: isMobile ? 16 : 32, width: isMobile ? 50 : 56, height: isMobile ? 50 : 56, borderRadius: '50%', background: C.green, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 4px 20px rgba(34,197,94,0.45)`, zIndex: 35 }}>
                 <Plus className="w-6 h-6 text-white" />
               </button>
             </div>
