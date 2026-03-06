@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, X, Check, Trash2, Copy, Clock, GripVertical, ToggleLeft, ToggleRight, Edit2, Upload, Download, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Plus, X, Check, Trash2, Copy, Clock, GripVertical, ToggleLeft, ToggleRight, Edit2, Upload, Download, AlertTriangle, CheckCircle2, MoreVertical } from 'lucide-react';
 
 const C = {
   bg: '#0B0F1A', panel: '#111827', panelAlt: '#1A2332',
@@ -302,7 +302,7 @@ function ModalServicio({ editando, form, setForm, guardando, error, onGuardar, o
               </div>
               <div>
                 <label style={{ fontSize:11, color: C.textMid, fontWeight:700, letterSpacing:0.8, display:'block', marginBottom:7, textTransform:'uppercase' }}>Color</label>
-                <div style={{ display:'flex', gap:5 }}>
+                <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
                   {COLORS.map(col => <button key={col} onClick={() => setForm(p => ({ ...p, color: col }))} style={{ width:26, height:26, borderRadius:8, border:'none', cursor:'pointer', background: col, outline: form.color===col ? `2px solid ${col}` : 'none', outlineOffset:2, transform: form.color===col ? 'scale(1.15)' : 'scale(1)', transition:'all 0.12s' }}/>)}
                 </div>
               </div>
@@ -315,6 +315,53 @@ function ModalServicio({ editando, form, setForm, guardando, error, onGuardar, o
         </div>
       </div>
     </>
+  );
+}
+
+// ── MOBILE ACTION SHEET ────────────────────────────────────────────────
+function ActionSheet({ servicio, onEdit, onDuplicate, onToggle, onDelete, onCerrar }: {
+  servicio: Servicio;
+  onEdit: () => void;
+  onDuplicate: () => void;
+  onToggle: () => void;
+  onDelete: () => void;
+  onCerrar: () => void;
+}) {
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:60, display:'flex', alignItems:'flex-end', justifyContent:'center' }} onClick={onCerrar}>
+      <div style={{ background:'#111827', borderRadius:'20px 20px 0 0', padding:'20px 16px 36px', width:'100%', maxWidth:'100%' }} onClick={e => e.stopPropagation()}>
+        {/* Título */}
+        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16, paddingBottom:14, borderBottom:'1px solid rgba(148,163,184,0.07)' }}>
+          <div style={{ width:10, height:10, borderRadius:3, background: servicio.color, flexShrink:0 }}/>
+          <div>
+            <p style={{ fontSize:14, fontWeight:700, color:C.text }}>{servicio.nombre}</p>
+            <p style={{ fontSize:11, color:C.textDim }}>{fmtDuracion(servicio.duracion_minutos)}{servicio.precio ? ` · ${servicio.precio}€` : ''}</p>
+          </div>
+        </div>
+        <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+          <button onClick={() => { onEdit(); onCerrar(); }}
+            style={{ width:'100%', display:'flex', alignItems:'center', gap:14, padding:'13px 16px', borderRadius:12, border:'none', background:'transparent', color:C.text, cursor:'pointer', fontSize:14, fontWeight:500, textAlign:'left' }}>
+            <Edit2 size={17} style={{ color:C.textMid }}/> Editar
+          </button>
+          <button onClick={() => { onDuplicate(); onCerrar(); }}
+            style={{ width:'100%', display:'flex', alignItems:'center', gap:14, padding:'13px 16px', borderRadius:12, border:'none', background:'transparent', color:C.text, cursor:'pointer', fontSize:14, fontWeight:500, textAlign:'left' }}>
+            <Copy size={17} style={{ color:C.textMid }}/> Duplicar
+          </button>
+          <button onClick={() => { onToggle(); onCerrar(); }}
+            style={{ width:'100%', display:'flex', alignItems:'center', gap:14, padding:'13px 16px', borderRadius:12, border:'none', background:'transparent', color:C.text, cursor:'pointer', fontSize:14, fontWeight:500, textAlign:'left' }}>
+            {servicio.activo
+              ? <ToggleRight size={17} style={{ color:C.green }}/> 
+              : <ToggleLeft size={17} style={{ color:C.textMid }}/>}
+            {servicio.activo ? 'Desactivar' : 'Activar'}
+          </button>
+          <div style={{ height:1, background:'rgba(148,163,184,0.07)', margin:'4px 0' }}/>
+          <button onClick={() => { onDelete(); onCerrar(); }}
+            style={{ width:'100%', display:'flex', alignItems:'center', gap:14, padding:'13px 16px', borderRadius:12, border:'none', background:'rgba(239,68,68,0.08)', color:C.red, cursor:'pointer', fontSize:14, fontWeight:600, textAlign:'left' }}>
+            <Trash2 size={17}/> Eliminar
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -332,6 +379,15 @@ export default function ServiciosSection({ empresaId, canEdit = true }: { empres
   const [dragItem, setDragItem] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [toast, setToast] = useState('');
+  const [actionSheet, setActionSheet] = useState<Servicio | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   useEffect(() => { if (empresaId) load(); }, [empresaId]);
 
@@ -416,9 +472,9 @@ export default function ServiciosSection({ empresaId, canEdit = true }: { empres
     <div style={{ background: C.bg, minHeight:'100vh', color: C.text, paddingBottom:80 }}>
 
       {/* Header */}
-      <div style={{ background: C.panel, borderBottom:`1px solid ${C.border}`, padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
+      <div style={{ background: C.panel, borderBottom:`1px solid ${C.border}`, padding: isMobile ? '12px 14px' : '16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
         <div>
-          <h2 style={{ fontSize:18, fontWeight:700 }}>Servicios</h2>
+          <h2 style={{ fontSize: isMobile ? 17 : 18, fontWeight:700 }}>Servicios</h2>
           <p style={{ fontSize:12, color: C.textMid, marginTop:2 }}>
             {activos.length} activo{activos.length !== 1 ? 's' : ''}
             {inactivos.length > 0 && ` · ${inactivos.length} inactivo${inactivos.length !== 1 ? 's' : ''}`}
@@ -427,20 +483,27 @@ export default function ServiciosSection({ empresaId, canEdit = true }: { empres
         </div>
         {canEdit && (
           <div style={{ display:'flex', gap:8 }}>
-            <button onClick={() => setImportOpen(true)}
-              style={{ background:'transparent', color: C.textMid, border:`1px solid ${C.border}`, borderRadius:12, padding:'9px 14px', cursor:'pointer', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:6 }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(148,163,184,0.25)'; (e.currentTarget as HTMLElement).style.color = C.text; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = C.border; (e.currentTarget as HTMLElement).style.color = C.textMid; }}>
-              <Upload size={13}/> Importar
-            </button>
-            <button onClick={openNew} style={{ background: C.green, color:'#fff', border:'none', borderRadius:12, padding:'10px 16px', cursor:'pointer', fontSize:13, fontWeight:700, display:'flex', alignItems:'center', gap:6 }}>
+            {/* En móvil, ocultar "Importar" y añadirlo dentro de un menú o dejarlo solo el botón nuevo */}
+            {!isMobile && (
+              <button onClick={() => setImportOpen(true)}
+                style={{ background:'transparent', color: C.textMid, border:`1px solid ${C.border}`, borderRadius:12, padding:'9px 14px', cursor:'pointer', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:6 }}>
+                <Upload size={13}/> Importar
+              </button>
+            )}
+            {isMobile && (
+              <button onClick={() => setImportOpen(true)}
+                style={{ background:'transparent', color: C.textMid, border:`1px solid ${C.border}`, borderRadius:10, padding:'9px 10px', cursor:'pointer', display:'flex', alignItems:'center' }}>
+                <Upload size={16}/>
+              </button>
+            )}
+            <button onClick={openNew} style={{ background: C.green, color:'#fff', border:'none', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '9px 14px' : '10px 16px', cursor:'pointer', fontSize:13, fontWeight:700, display:'flex', alignItems:'center', gap:6 }}>
               <Plus size={15}/> Nuevo
             </button>
           </div>
         )}
       </div>
 
-      <div style={{ padding:'16px 16px 0', maxWidth:640, margin:'0 auto' }}>
+      <div style={{ padding: isMobile ? '12px 12px 0' : '16px 16px 0', maxWidth:640, margin:'0 auto' }}>
         {servicios.length === 0 ? (
           <div style={{ textAlign:'center', padding:'60px 20px' }}>
             <div style={{ fontSize:48, marginBottom:16 }}>✂️</div>
@@ -453,57 +516,77 @@ export default function ServiciosSection({ empresaId, canEdit = true }: { empres
             <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
               {activos.map(s => (
                 <div key={s.id}
-                  draggable={canEdit}
-                  onDragStart={() => canEdit && onDragStart(s.id)}
-                  onDragOver={e => canEdit && onDragOver(e, s.id)}
-                  onDrop={() => canEdit && onDrop(s.id)}
+                  draggable={canEdit && !isMobile}
+                  onDragStart={() => canEdit && !isMobile && onDragStart(s.id)}
+                  onDragOver={e => canEdit && !isMobile && onDragOver(e, s.id)}
+                  onDrop={() => canEdit && !isMobile && onDrop(s.id)}
                   onDragEnd={() => { setDragItem(null); setDragOver(null); }}
-                  style={{ background: C.panel, border:`1px solid ${dragOver===s.id ? C.green+'44' : C.border}`, borderRadius:14, padding:'12px 14px', display:'flex', alignItems:'center', gap:12, opacity: dragItem===s.id ? 0.5 : 1, transition:'all 0.12s', cursor:'default' }}>
-                  {canEdit && <div style={{ color: C.textDim, cursor:'grab', flexShrink:0, display:'flex', alignItems:'center' }}><GripVertical size={14}/></div>}
+                  style={{ background: C.panel, border:`1px solid ${dragOver===s.id ? C.green+'44' : C.border}`, borderRadius:14, padding: isMobile ? '12px 12px' : '12px 14px', display:'flex', alignItems:'center', gap:10, opacity: dragItem===s.id ? 0.5 : 1, transition:'all 0.12s', cursor:'default' }}>
+
+                  {/* Grip solo en desktop */}
+                  {canEdit && !isMobile && <div style={{ color: C.textDim, cursor:'grab', flexShrink:0, display:'flex', alignItems:'center' }}><GripVertical size={14}/></div>}
+
                   <div style={{ width:10, height:10, borderRadius:3, background: s.color||C.green, flexShrink:0 }}/>
                   <div style={{ flex:1, minWidth:0 }}>
-                    <p style={{ fontSize:14, fontWeight:600, color: C.text, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.nombre}</p>
-                    <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:2 }}>
+                    <p style={{ fontSize: isMobile ? 13 : 14, fontWeight:600, color: C.text, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.nombre}</p>
+                    <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:2 }}>
                       <span style={{ fontSize:11, color: C.textMid, display:'flex', alignItems:'center', gap:3 }}><Clock size={10}/> {fmtDuracion(s.duracion_minutos)}</span>
-                      {s.precio != null && s.precio > 0 && <span style={{ fontSize:11, color: C.green, fontWeight:600 }}>{s.precio}€</span>}
+                      {s.precio != null && s.precio > 0 && <span style={{ fontSize:11, color: C.green, fontWeight:700 }}>{s.precio}€</span>}
                     </div>
                   </div>
+
+                  {/* Acciones: móvil = botón "..." → action sheet | desktop = botones individuales */}
                   {canEdit && (
-                    <div style={{ display:'flex', alignItems:'center', gap:4, flexShrink:0 }}>
-                      <button onClick={() => openEdit(s)} title="Editar" style={{ background:'none', border:'none', cursor:'pointer', color: C.textDim, padding:6, borderRadius:7, display:'flex' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.panelAlt; (e.currentTarget as HTMLElement).style.color = C.text; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none'; (e.currentTarget as HTMLElement).style.color = C.textDim; }}><Edit2 size={13}/></button>
-                      <button onClick={() => duplicar(s)} title="Duplicar" style={{ background:'none', border:'none', cursor:'pointer', color: C.textDim, padding:6, borderRadius:7, display:'flex' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.panelAlt; (e.currentTarget as HTMLElement).style.color = C.text; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none'; (e.currentTarget as HTMLElement).style.color = C.textDim; }}><Copy size={13}/></button>
-                      <button onClick={() => toggleActivo(s)} title="Desactivar" style={{ background:'none', border:'none', cursor:'pointer', color: C.green, padding:6, borderRadius:7, display:'flex' }}><ToggleRight size={17}/></button>
-                      {confirmDelete === s.id ? (
-                        <div style={{ display:'flex', gap:4, alignItems:'center' }}>
-                          <button onClick={() => eliminar(s.id)} style={{ padding:'4px 8px', borderRadius:6, border:'none', background: C.red, color:'#fff', cursor:'pointer', fontSize:11, fontWeight:700 }}>Eliminar</button>
-                          <button onClick={() => setConfirmDelete(null)} style={{ padding:'4px 8px', borderRadius:6, border:'none', background: C.panelAlt, color: C.textMid, cursor:'pointer', fontSize:11 }}>No</button>
-                        </div>
-                      ) : (
-                        <button onClick={() => setConfirmDelete(s.id)} title="Eliminar" style={{ background:'none', border:'none', cursor:'pointer', color: C.textDim, padding:6, borderRadius:7, display:'flex' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = C.red; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = C.textDim; }}><Trash2 size={13}/></button>
-                      )}
-                    </div>
+                    isMobile ? (
+                      <button onClick={() => setActionSheet(s)}
+                        style={{ background:'none', border:'none', cursor:'pointer', color: C.textMid, padding:'6px 4px', borderRadius:8, display:'flex', alignItems:'center', flexShrink:0 }}>
+                        <MoreVertical size={18}/>
+                      </button>
+                    ) : (
+                      <div style={{ display:'flex', alignItems:'center', gap:2, flexShrink:0 }}>
+                        <button onClick={() => openEdit(s)} title="Editar" style={{ background:'none', border:'none', cursor:'pointer', color: C.textDim, padding:6, borderRadius:7, display:'flex' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.panelAlt; (e.currentTarget as HTMLElement).style.color = C.text; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none'; (e.currentTarget as HTMLElement).style.color = C.textDim; }}><Edit2 size={13}/></button>
+                        <button onClick={() => duplicar(s)} title="Duplicar" style={{ background:'none', border:'none', cursor:'pointer', color: C.textDim, padding:6, borderRadius:7, display:'flex' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.panelAlt; (e.currentTarget as HTMLElement).style.color = C.text; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none'; (e.currentTarget as HTMLElement).style.color = C.textDim; }}><Copy size={13}/></button>
+                        <button onClick={() => toggleActivo(s)} title="Desactivar" style={{ background:'none', border:'none', cursor:'pointer', color: C.green, padding:6, borderRadius:7, display:'flex' }}><ToggleRight size={17}/></button>
+                        {confirmDelete === s.id ? (
+                          <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+                            <button onClick={() => eliminar(s.id)} style={{ padding:'4px 8px', borderRadius:6, border:'none', background: C.red, color:'#fff', cursor:'pointer', fontSize:11, fontWeight:700 }}>Eliminar</button>
+                            <button onClick={() => setConfirmDelete(null)} style={{ padding:'4px 8px', borderRadius:6, border:'none', background: C.panelAlt, color: C.textMid, cursor:'pointer', fontSize:11 }}>No</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setConfirmDelete(s.id)} title="Eliminar" style={{ background:'none', border:'none', cursor:'pointer', color: C.textDim, padding:6, borderRadius:7, display:'flex' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = C.red; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = C.textDim; }}><Trash2 size={13}/></button>
+                        )}
+                      </div>
+                    )
                   )}
                 </div>
               ))}
             </div>
+
             {inactivos.length > 0 && (
               <div style={{ marginTop:20 }}>
                 <p style={{ fontSize:10, color: C.textDim, fontWeight:700, letterSpacing:1.2, textTransform:'uppercase', marginBottom:8, paddingLeft:4 }}>Inactivos</p>
                 <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                   {inactivos.map(s => (
-                    <div key={s.id} style={{ background: C.panel, border:`1px solid ${C.border}`, borderRadius:14, padding:'10px 14px', display:'flex', alignItems:'center', gap:12, opacity:0.55 }}>
+                    <div key={s.id} style={{ background: C.panel, border:`1px solid ${C.border}`, borderRadius:14, padding: isMobile ? '10px 12px' : '10px 14px', display:'flex', alignItems:'center', gap:10, opacity:0.55 }}>
                       <div style={{ width:10, height:10, borderRadius:3, background: s.color||C.textDim, flexShrink:0 }}/>
                       <div style={{ flex:1, minWidth:0 }}>
                         <p style={{ fontSize:13, color: C.textMid, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.nombre}</p>
                         <span style={{ fontSize:11, color: C.textDim }}>{fmtDuracion(s.duracion_minutos)}</span>
                       </div>
                       {canEdit && (
-                        <>
-                          <button onClick={() => toggleActivo(s)} title="Activar" style={{ background:'none', border:'none', cursor:'pointer', color: C.textDim, padding:6, display:'flex' }}><ToggleLeft size={17}/></button>
-                          <button onClick={() => setConfirmDelete(s.id)} title="Eliminar" style={{ background:'none', border:'none', cursor:'pointer', color: C.textDim, padding:6, display:'flex' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = C.red; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = C.textDim; }}>
-                            {confirmDelete === s.id ? <span onClick={() => eliminar(s.id)} style={{ fontSize:11, color: C.red, fontWeight:700 }}>Eliminar</span> : <Trash2 size={13}/>}
+                        isMobile ? (
+                          <button onClick={() => setActionSheet(s)}
+                            style={{ background:'none', border:'none', cursor:'pointer', color: C.textDim, padding:'6px 4px', borderRadius:8, display:'flex', alignItems:'center' }}>
+                            <MoreVertical size={18}/>
                           </button>
-                        </>
+                        ) : (
+                          <>
+                            <button onClick={() => toggleActivo(s)} title="Activar" style={{ background:'none', border:'none', cursor:'pointer', color: C.textDim, padding:6, display:'flex' }}><ToggleLeft size={17}/></button>
+                            <button onClick={() => setConfirmDelete(s.id)} title="Eliminar" style={{ background:'none', border:'none', cursor:'pointer', color: C.textDim, padding:6, display:'flex' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = C.red; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = C.textDim; }}>
+                              {confirmDelete === s.id ? <span onClick={() => eliminar(s.id)} style={{ fontSize:11, color: C.red, fontWeight:700 }}>Eliminar</span> : <Trash2 size={13}/>}
+                            </button>
+                          </>
+                        )
                       )}
                     </div>
                   ))}
@@ -514,11 +597,24 @@ export default function ServiciosSection({ empresaId, canEdit = true }: { empres
         )}
       </div>
 
+      {/* Toast */}
       {toast && (
         <div style={{ position:'fixed', bottom:80, left:'50%', transform:'translateX(-50%)', background:'#1E293B', border:'1px solid rgba(34,197,94,0.3)', borderRadius:12, padding:'12px 20px', zIndex:70, display:'flex', alignItems:'center', gap:10, boxShadow:'0 4px 20px rgba(0,0,0,0.4)', whiteSpace:'nowrap' }}>
           <CheckCircle2 size={16} style={{ color:'#22C55E', flexShrink:0 }}/>
           <p style={{ fontSize:13, color:'#F1F5F9', fontWeight:500 }}>{toast}</p>
         </div>
+      )}
+
+      {/* Action Sheet móvil */}
+      {actionSheet && (
+        <ActionSheet
+          servicio={actionSheet}
+          onEdit={() => openEdit(actionSheet)}
+          onDuplicate={() => duplicar(actionSheet)}
+          onToggle={() => toggleActivo(actionSheet)}
+          onDelete={() => { setConfirmDelete(actionSheet.id); eliminar(actionSheet.id); }}
+          onCerrar={() => setActionSheet(null)}
+        />
       )}
 
       {importOpen && canEdit && <ModalImportar empresaId={empresaId} serviciosExistentes={servicios} onDone={msg => { setImportOpen(false); showToast(msg); load(); }} onCerrar={() => setImportOpen(false)}/>}
