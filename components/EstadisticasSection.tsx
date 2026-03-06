@@ -247,7 +247,7 @@ export default function EstadisticasSection({ empresaId }: { empresaId: string }
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, color: C.text }}>
+    <div style={{ background: C.bg, color: C.text }}>
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
 
       {/* HEADER */}
