@@ -524,11 +524,19 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
   const [empPermisos, setEmpPermisos] = useState<Record<string, Record<string, boolean>>>({});
   const [savingHorario, setSavingHorario] = useState<string | null>(null);
   const [savingPermisos, setSavingPermisos] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   const DIAS_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
   const DIAS_IDX2 = [1, 2, 3, 4, 5, 6, 0];
 
   useEffect(() => { load(); }, [empresa?.id]);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   async function load() {
     setLoading(true);
@@ -597,7 +605,7 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
       setExpandedEmp(empId);
       setExpandedTab(prev => ({ ...prev, [empId]: tab }));
       if (tab === 'horario' && !empHorarios[empId]) loadHorario(empId);
-      if (tab === 'permisos') loadPermisos(empId); // siempre recarga desde Supabase
+      if (tab === 'permisos') loadPermisos(empId);
     }
   }
 
@@ -692,44 +700,54 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
               <div key={emp.id} style={{ borderRadius:12, overflow:'hidden', border: isMe ? `1px solid ${C.green}33` : `1px solid ${C.border}`, opacity: emp.activo ? 1 : 0.55 }}>
 
                 {/* Fila principal */}
-                <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background: C.panelAlt }}>
-                  <div style={{ width:36, height:36, borderRadius:9, background: emp.color || C.panelAlt, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color:'#fff', flexShrink:0, border:`1px solid ${C.border}` }}>
-                    {emp.nombre?.[0]?.toUpperCase() || '?'}
+                <div style={{ display:'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? 0 : 12, padding: isMobile ? 0 : '12px 14px', background: C.panelAlt }}>
+
+                  {/* Avatar + Nombre */}
+                  <div style={{ display:'flex', alignItems:'center', gap:12, padding: isMobile ? '12px 14px' : 0, flex: isMobile ? undefined : 1, minWidth:0 }}>
+                    <div style={{ width:36, height:36, borderRadius:9, background: emp.color || C.panelAlt, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color:'#fff', flexShrink:0, border:`1px solid ${C.border}` }}>
+                      {emp.nombre?.[0]?.toUpperCase() || '?'}
+                    </div>
+
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                        <p style={{ fontSize:13, fontWeight:600, color: C.text, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{emp.nombre}</p>
+                        {isMe && <span style={{ fontSize:9, color: C.green, fontWeight:700, background: C.greenDim, padding:'1px 6px', borderRadius:4 }}>TÚ</span>}
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <span style={{ fontSize:10, color: rolColor(emp.rol), fontWeight:700, textTransform:'uppercase' as const, letterSpacing:0.5 }}>{rolLabel(emp.rol)}</span>
+                        {!isMobile && emp.email && <span style={{ fontSize:11, color: C.textDim, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{emp.email}</span>}
+                        {!emp.activo && <span style={{ fontSize:9, color: C.amber, fontWeight:700 }}>INACTIVO</span>}
+                      </div>
+                    </div>
                   </div>
 
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                      <p style={{ fontSize:13, fontWeight:600, color: C.text, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{emp.nombre}</p>
-                      {isMe && <span style={{ fontSize:9, color: C.green, fontWeight:700, background: C.greenDim, padding:'1px 6px', borderRadius:4 }}>TÚ</span>}
-                    </div>
-                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <span style={{ fontSize:10, color: rolColor(emp.rol), fontWeight:700, textTransform:'uppercase' as const, letterSpacing:0.5 }}>{rolLabel(emp.rol)}</span>
-                      {emp.email && <span style={{ fontSize:11, color: C.textDim, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{emp.email}</span>}
-                      {!emp.activo && <span style={{ fontSize:9, color: C.amber, fontWeight:700 }}>INACTIVO</span>}
-                    </div>
-                  </div>
-
+                  {/* Botones de acción */}
                   {!isMe && (
-                    <div style={{ display:'flex', gap:4, flexShrink:0, flexWrap:'wrap' as const }}>
+                    <div style={{
+                      display:'flex', gap:4, flexWrap:'wrap' as const,
+                      padding: isMobile ? '8px 14px 12px' : 0,
+                      borderTop: isMobile ? `1px solid ${C.border}` : 'none',
+                      flexShrink:0,
+                    }}>
                       <button onClick={() => toggleEmp(emp.id, 'horario')}
-                        style={{ padding:'5px 8px', borderRadius:7, border:`1px solid ${isExpanded && currentTab === 'horario' ? C.green+'66' : C.border}`, background: isExpanded && currentTab === 'horario' ? C.greenDim : 'transparent', cursor:'pointer', color: isExpanded && currentTab === 'horario' ? C.green : C.textDim, fontSize:11, fontWeight:600, display:'flex', alignItems:'center', gap:4 }}>
+                        style={{ padding: isMobile ? '6px 10px' : '5px 8px', borderRadius:7, border:`1px solid ${isExpanded && currentTab === 'horario' ? C.green+'66' : C.border}`, background: isExpanded && currentTab === 'horario' ? C.greenDim : 'transparent', cursor:'pointer', color: isExpanded && currentTab === 'horario' ? C.green : C.textDim, fontSize:11, fontWeight:600, display:'flex', alignItems:'center', gap:4 }}>
                         <Clock size={12}/> Horario
                       </button>
                       <button onClick={() => toggleEmp(emp.id, 'permisos')}
-                        style={{ padding:'5px 8px', borderRadius:7, border:`1px solid ${isExpanded && currentTab === 'permisos' ? C.green+'66' : C.border}`, background: isExpanded && currentTab === 'permisos' ? C.greenDim : 'transparent', cursor:'pointer', color: isExpanded && currentTab === 'permisos' ? C.green : C.textDim, fontSize:11, fontWeight:600, display:'flex', alignItems:'center', gap:4 }}>
+                        style={{ padding: isMobile ? '6px 10px' : '5px 8px', borderRadius:7, border:`1px solid ${isExpanded && currentTab === 'permisos' ? C.green+'66' : C.border}`, background: isExpanded && currentTab === 'permisos' ? C.greenDim : 'transparent', cursor:'pointer', color: isExpanded && currentTab === 'permisos' ? C.green : C.textDim, fontSize:11, fontWeight:600, display:'flex', alignItems:'center', gap:4 }}>
                         <Shield size={12}/> Permisos
                       </button>
                       <button onClick={() => reenviarInvitacion(emp)}
-                        style={{ padding:'5px 8px', borderRadius:7, border:`1px solid ${C.border}`, background:'transparent', cursor:'pointer', color: C.amber, fontSize:11, fontWeight:600, display:'flex', alignItems:'center', gap:4 }}>
+                        style={{ padding: isMobile ? '6px 10px' : '5px 8px', borderRadius:7, border:`1px solid ${C.border}`, background:'transparent', cursor:'pointer', color: C.amber, fontSize:11, fontWeight:600, display:'flex', alignItems:'center', gap:4 }}>
                         <Mail size={12}/> Reenviar
                       </button>
                       <select value={emp.rol} onChange={e => changeRol(emp.id, e.target.value)}
-                        style={{ padding:'5px 8px', background: C.panel, border:`1px solid ${C.border}`, borderRadius:7, color: C.textMid, fontSize:11, cursor:'pointer', outline:'none' }}>
+                        style={{ padding: isMobile ? '6px 10px' : '5px 8px', background: C.panel, border:`1px solid ${C.border}`, borderRadius:7, color: C.textMid, fontSize:11, cursor:'pointer', outline:'none' }}>
                         <option value="empleado">Empleado</option>
                         <option value="admin">Admin</option>
                       </select>
                       <button onClick={() => toggleActivo(emp)}
-                        style={{ padding:'5px 8px', borderRadius:7, border:`1px solid ${C.border}`, background:'transparent', cursor:'pointer', color: emp.activo ? C.green : C.textDim, fontSize:11, fontWeight:600 }}>
+                        style={{ padding: isMobile ? '6px 10px' : '5px 8px', borderRadius:7, border:`1px solid ${C.border}`, background:'transparent', cursor:'pointer', color: emp.activo ? C.green : C.textDim, fontSize:11, fontWeight:600 }}>
                         {emp.activo ? 'Activo' : 'Inactivo'}
                       </button>
                       {confirmDel === emp.id ? (
@@ -739,7 +757,7 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
                         </div>
                       ) : (
                         <button onClick={() => setConfirmDel(emp.id)}
-                          style={{ padding:'5px 8px', borderRadius:7, border:`1px solid ${C.border}`, background:'transparent', cursor:'pointer', color: C.textDim, display:'flex', alignItems:'center' }}>
+                          style={{ padding: isMobile ? '6px 10px' : '5px 8px', borderRadius:7, border:`1px solid ${C.border}`, background:'transparent', cursor:'pointer', color: C.textDim, display:'flex', alignItems:'center' }}>
                           <Trash2 size={13}/>
                         </button>
                       )}
@@ -937,7 +955,7 @@ export default function ConfiguracionSection({
   }
 
   return (
-    <div style={{ background: C.bg, minHeight:'100vh', color: C.text }}>
+    <div style={{ background: C.bg, color: C.text }}>
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
 
       <div style={{ background: C.panel, borderBottom:`1px solid ${C.border}`, padding:'16px 20px', flexShrink:0 }}>
