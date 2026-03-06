@@ -1555,7 +1555,7 @@ export default function Dashboard() {
           .show-mobile-only { display: none !important; }
         }
         @media (max-width: 767px) {
-          .main-content-desktop { margin-left: 0 !important; }
+          .main-content-desktop { margin-left: 0 !important; width: 100% !important; }
           .hidden-mobile { display: none !important; }
           .show-mobile-flex { display: flex !important; }
           .show-mobile-only { display: flex !important; }
