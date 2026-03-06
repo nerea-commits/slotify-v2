@@ -638,9 +638,9 @@ export default function Dashboard() {
         activeSection={activeSection}
       />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }} className="main-content-desktop">
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }} className="main-content-desktop">
         {/* ── HEADER ── */}
-        <div style={{ background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}`, flexShrink: 0, position: 'sticky', top: 0, zIndex: 30 }}>
+        <div style={{ background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}`, flexShrink: 0 }}>
           {/* Fila 1: Logo + Toggle vista + Usuario */}
           <div style={{ height: 52, display: 'flex', alignItems: 'center', padding: '0 14px', gap: 8 }}>
             <div className="show-mobile-flex" style={{ alignItems: 'center', gap: 8, marginRight: 4, flexShrink: 0 }}>
