@@ -96,6 +96,16 @@ export default function Dashboard() {
   // RISK INDICATOR CACHE
   const [clientRiskCache, setClientRiskCache] = useState<Record<string, { show: boolean; color: string; icon: string | null }>>({});
 
+  // ── RESPONSIVE: detección de móvil ──
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    function checkMobile() { setIsMobile(window.innerWidth < 768); }
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   const empresaIdRef = useRef<string | null>(null);
   const profesionalIdRef = useRef<string | null>(null);
   const isAdminRef = useRef(false);
@@ -256,6 +266,9 @@ export default function Dashboard() {
     return m >= startMin && m < endMin;
   });
   const totalSlots = visibleSlots.length;
+
+  // ── Slots de 1h para vista día móvil ──
+  const mobileHourSlots = visibleSlots.filter(s => s.endsWith(':00'));
 
   function parseDiasLaborables(raw: any): number[] {
     const fallback = [1, 2, 3, 4, 5];
@@ -725,8 +738,39 @@ export default function Dashboard() {
 
           {/* ── VISTA DÍA ── */}
           {view === 'day' && (<>
+            {/* ── Tira de días (solo móvil) ── */}
+            {isMobile && (
+              <div style={{ display: 'flex', alignItems: 'stretch', background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}`, padding: '6px 8px', gap: 4, flexShrink: 0 }}>
+                {getWeekDays().map((day, i) => {
+                  const sel = day.toDateString() === selectedDate.toDateString();
+                  const today = isToday(day);
+                  const working = isWorkingDay(day);
+                  const hasCitas = allCitas.some(c => rawDate(c.hora_inicio) === toDS(day) && (c.estado || '').toLowerCase() !== 'cancelada');
+                  return (
+                    <div key={i} onClick={() => setSelectedDate(new Date(day))}
+                      style={{
+                        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                        padding: '6px 0 4px', borderRadius: 10, cursor: 'pointer',
+                        background: sel ? C.green : 'transparent',
+                        opacity: working ? 1 : 0.4,
+                        transition: 'background 0.15s',
+                      }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: sel ? '#fff' : C.textSec, letterSpacing: 0.5 }}>
+                        {weekDayNames[i].charAt(0)}
+                      </span>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: sel ? '#fff' : today ? C.green : C.text, lineHeight: 1 }}>
+                        {day.getDate()}
+                      </span>
+                      {hasCitas && !sel && <div style={{ width: 4, height: 4, borderRadius: '50%', background: today ? C.green : C.textSec, marginTop: 1 }} />}
+                      {!hasCitas && <div style={{ width: 4, height: 4, marginTop: 1 }} />}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             <div className="flex-1 overflow-y-auto" style={{ paddingTop: 8, paddingBottom: 80 }}>
-              <div style={{ paddingLeft: 16, paddingRight: 16 }}>
+              <div style={{ paddingLeft: isMobile ? 8 : 16, paddingRight: isMobile ? 8 : 16 }}>
                 {/* Banners cierre empresa */}
                 {absenceBannersForDate(selectedDate).map((b, i) => (
                   <div key={`abs-banner-${i}`} style={{
@@ -742,22 +786,25 @@ export default function Dashboard() {
                 {absenceBlocksForDate(selectedDate).map((block, i) => (
                   <div key={`abs-block-${i}`} style={{
                     display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '10px 14px', borderRadius: 10, marginBottom: 6,
+                    padding: isMobile ? '8px 10px' : '10px 14px', borderRadius: 10, marginBottom: 6,
                     background: 'rgba(245,158,11,0.08)',
                     borderLeft: '3px solid rgba(245,158,11,0.5)',
                   }}>
-                    <span style={{ fontSize: 18 }}>{block.icon}</span>
-                    <div>
-                      <p style={{ fontSize: 13, fontWeight: 600, color: '#F59E0B', lineHeight: 1.3 }}>{block.label}</p>
-                      <p style={{ fontSize: 11, color: C.textSec, lineHeight: 1.3 }}>{block.name}</p>
+                    <span style={{ fontSize: isMobile ? 15 : 18 }}>{block.icon}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: isMobile ? 12 : 13, fontWeight: 600, color: '#F59E0B', lineHeight: 1.3 }}>{block.label}</p>
+                      <p style={{ fontSize: isMobile ? 10 : 11, color: C.textSec, lineHeight: 1.3 }}>{block.name}</p>
                     </div>
                     {block.status === 'pending' && (
-                      <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: 'rgba(245,158,11,0.15)', color: '#F59E0B', marginLeft: 'auto' }}>Pendiente</span>
+                      <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: 'rgba(245,158,11,0.15)', color: '#F59E0B', flexShrink: 0 }}>Pendiente</span>
                     )}
                   </div>
                 ))}
                 {(() => {
                   const dayCitas = citasForDate(selectedDate);
+                  const slotsToRender = isMobile ? mobileHourSlots : visibleSlots;
+                  const SLOT_DUR = isMobile ? 60 : 30;
+
                   const citaAtSlot: Record<number, any> = {};
                   const citaSpans: Record<number, number> = {};
                   const coveredSlots = new Set<number>();
@@ -765,27 +812,44 @@ export default function Dashboard() {
                     const citaStart = rawTimeMin(cita.hora_inicio);
                     const citaEnd = cita.hora_fin ? rawTimeMin(cita.hora_fin) : citaStart + 30;
                     const dur = Math.max(citaEnd - citaStart, 30);
-                    const slotIdx = visibleSlots.findIndex(s => timeToMinutes(s) === citaStart);
+                    const slotIdx = slotsToRender.findIndex(s => timeToMinutes(s) === (isMobile ? Math.floor(citaStart / 60) * 60 : citaStart));
                     if (slotIdx === -1) return;
-                    const spanSlots = Math.ceil(dur / 30);
-                    citaAtSlot[slotIdx] = cita;
-                    citaSpans[slotIdx] = spanSlots;
-                    for (let i = slotIdx; i < slotIdx + spanSlots; i++) coveredSlots.add(i);
+                    // En móvil, múltiples citas pueden caer en el mismo slot de 1h
+                    if (!citaAtSlot[slotIdx]) {
+                      citaAtSlot[slotIdx] = cita;
+                      const spanSlots = isMobile ? 1 : Math.ceil(dur / 30);
+                      citaSpans[slotIdx] = spanSlots;
+                      for (let i = slotIdx; i < slotIdx + spanSlots; i++) coveredSlots.add(i);
+                    }
                   });
-                  const nowSlotIdx = isToday(selectedDate) ? visibleSlots.findIndex(s => { const m = timeToMinutes(s); return currentMinutes >= m && currentMinutes < m + 30; }) : -1;
-                  return visibleSlots.map((slot, si) => {
-                    if (coveredSlots.has(si) && !citaAtSlot[si]) return null;
-                    const cita = citaAtSlot[si];
+
+                  // Para móvil: agrupar citas por slot horario
+                  const citasPerHourSlot: Record<number, any[]> = {};
+                  if (isMobile) {
+                    dayCitas.forEach(cita => {
+                      const citaStart = rawTimeMin(cita.hora_inicio);
+                      const hourSlotIdx = slotsToRender.findIndex(s => timeToMinutes(s) === Math.floor(citaStart / 60) * 60);
+                      if (hourSlotIdx === -1) return;
+                      if (!citasPerHourSlot[hourSlotIdx]) citasPerHourSlot[hourSlotIdx] = [];
+                      citasPerHourSlot[hourSlotIdx].push(cita);
+                    });
+                  }
+
+                  const nowSlotIdx = isToday(selectedDate) ? slotsToRender.findIndex(s => { const m = timeToMinutes(s); return currentMinutes >= m && currentMinutes < m + SLOT_DUR; }) : -1;
+
+                  return slotsToRender.map((slot, si) => {
+                    if (!isMobile && coveredSlots.has(si) && !citaAtSlot[si]) return null;
                     const isHour = slot.endsWith(':00');
-                    const MIN_H = 50;
+                    const MIN_H = isMobile ? 56 : 50;
+                    const slotCitas = isMobile ? (citasPerHourSlot[si] || []) : (citaAtSlot[si] ? [citaAtSlot[si]] : []);
+
                     return (
-                      <div key={slot} style={{ display: 'flex', minHeight: MIN_H }}>
-                        <div style={{ width: 64, flexShrink: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: 12, paddingTop: 4 }}>
-                          <span style={{ fontSize: 11, color: C.textSec, fontWeight: isHour ? 600 : 400, opacity: isHour ? 1 : 0.4 }}>{slot}</span>
+                      <div key={slot} style={{ display: 'flex', minHeight: slotCitas.length > 0 ? Math.max(MIN_H, slotCitas.length * 52) : MIN_H }}>
+                        <div style={{ width: isMobile ? 44 : 64, flexShrink: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: isMobile ? 8 : 12, paddingTop: 4 }}>
+                          <span style={{ fontSize: isMobile ? 12 : 11, color: C.textSec, fontWeight: 600 }}>{slot}</span>
                         </div>
                         {(() => {
                           const slotAbsence = isSlotInAbsence(slot, selectedDate);
-                          // ── CAMBIO 2: sin rayado para ausencias de empresa en vista día ──
                           const absOverlay = (slotAbsence && slotAbsence.scope === 'company') ? {
                             background: 'rgba(239,68,68,0.05)',
                             borderLeftColor: 'rgba(239,68,68,0.3)',
@@ -793,23 +857,40 @@ export default function Dashboard() {
                             borderLeftStyle: 'solid' as const,
                           } : null;
                           return (
-                            <div style={{ flex: 1, borderBottom: `1px solid ${isHour ? C.surfaceAlt : 'rgba(36,50,71,0.4)'}`, minHeight: MIN_H, position: 'relative', ...(absOverlay ? { background: absOverlay.background, borderLeft: `${absOverlay.borderLeftWidth} ${absOverlay.borderLeftStyle} ${absOverlay.borderLeftColor}` } : {}) }}>
-                              {cita ? (
-                                <div onClick={() => setSelectedCita(cita)} style={{ background: `${citaColor(cita.estado)}22`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 10, padding: '10px 14px', margin: '3px 8px', cursor: 'pointer', boxSizing: 'border-box' as const }}>
-                                  <p style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, letterSpacing: 0.2, textTransform: 'uppercase' as const }}>
-                                    {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
-                                    {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && <span style={{ marginLeft: 4, fontSize: 11 }}>{clientRiskCache[cita.cliente_id].icon}</span>}
-                                  </p>
-                                  {(() => { const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || ''; const notas = cita.notas || ''; const linea2 = svc && notas ? `${svc} — ${notas}` : svc || notas; return linea2 ? <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 1.3, marginTop: 2 }}>{linea2}</p> : null; })()}
-                                  {isAdmin && cita.profesionales?.nombre && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
-                                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: cita.profesionales?.color || C.green, flexShrink: 0 }} />
-                                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>{cita.profesionales.nombre}</span>
+                            <div style={{ flex: 1, borderBottom: `1px solid ${isHour ? C.surfaceAlt : 'rgba(36,50,71,0.4)'}`, minHeight: MIN_H, position: 'relative', display: 'flex', flexDirection: 'column', gap: 3, padding: slotCitas.length > 0 ? '2px 0' : 0, ...(absOverlay ? { background: absOverlay.background, borderLeft: `${absOverlay.borderLeftWidth} ${absOverlay.borderLeftStyle} ${absOverlay.borderLeftColor}` } : {}) }}>
+                              {slotCitas.length > 0 ? (
+                                slotCitas.map(cita => (
+                                  <div key={cita.id} onClick={() => setSelectedCita(cita)} style={{
+                                    background: `${citaColor(cita.estado)}22`,
+                                    borderLeft: `3px solid ${citaColor(cita.estado)}`,
+                                    borderRadius: isMobile ? 8 : 10,
+                                    padding: isMobile ? '8px 10px' : '10px 14px',
+                                    margin: isMobile ? '1px 4px' : '3px 8px',
+                                    cursor: 'pointer',
+                                    boxSizing: 'border-box' as const,
+                                  }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <p style={{ fontSize: isMobile ? 13 : 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, letterSpacing: 0.2, textTransform: 'uppercase' as const, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                                        {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
+                                        {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && <span style={{ marginLeft: 4, fontSize: 11 }}>{clientRiskCache[cita.cliente_id].icon}</span>}
+                                      </p>
+                                      {isMobile && (
+                                        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', flexShrink: 0 }}>
+                                          {cita.hora_inicio?.substring(11, 16)}
+                                        </span>
+                                      )}
                                     </div>
-                                  )}
-                                </div>
+                                    {(() => { const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || ''; const notas = cita.notas || ''; const linea2 = svc && notas ? `${svc} — ${notas}` : svc || notas; return linea2 ? <p style={{ fontSize: isMobile ? 11 : 12, color: 'rgba(255,255,255,0.75)', lineHeight: 1.3, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{linea2}</p> : null; })()}
+                                    {isAdmin && cita.profesionales?.nombre && (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: isMobile ? 3 : 6 }}>
+                                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: cita.profesionales?.color || C.green, flexShrink: 0 }} />
+                                        <span style={{ fontSize: isMobile ? 11 : 12, color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>{cita.profesionales.nombre}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))
                               ) : (
-                                <div onClick={() => openModal(selectedDate, slot)} style={{ position: 'absolute', inset: 0, cursor: 'pointer' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.greenBg; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }} />
+                                <div onClick={() => openModal(selectedDate, slot)} style={{ position: 'absolute', inset: 0, cursor: 'pointer' }} onMouseEnter={e => { if (!isMobile) (e.currentTarget as HTMLElement).style.background = C.greenBg; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }} />
                               )}
                               {nowSlotIdx === si && (
                                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', pointerEvents: 'none', zIndex: 20 }}>
@@ -826,7 +907,7 @@ export default function Dashboard() {
                 })()}
               </div>
             </div>
-            <button onClick={() => openModal(selectedDate, '')} style={{ position: 'fixed', bottom: 32, right: 32, width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 20px rgba(34,197,94,0.45)', zIndex: 50, background: C.green, border: 'none', cursor: 'pointer' }}>
+            <button onClick={() => openModal(selectedDate, '')} style={{ position: 'fixed', bottom: isMobile ? 72 : 32, right: isMobile ? 16 : 32, width: isMobile ? 50 : 56, height: isMobile ? 50 : 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 20px rgba(34,197,94,0.45)', zIndex: 50, background: C.green, border: 'none', cursor: 'pointer' }}>
               <Plus className="w-6 h-6 text-white" />
             </button>
           </>)}
