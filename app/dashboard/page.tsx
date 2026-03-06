@@ -638,8 +638,7 @@ export default function Dashboard() {
         activeSection={activeSection}
       />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }} className="main-content-desktop">
-
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }} className="main-content-desktop">
         {/* ── HEADER ── */}
         <div style={{ background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}`, flexShrink: 0 }}>
           {/* Fila 1: Logo + Toggle vista + Usuario */}
