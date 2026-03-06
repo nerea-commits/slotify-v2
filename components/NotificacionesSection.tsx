@@ -58,6 +58,15 @@ export default function NotificacionesSection({ empresaId }: { empresaId: string
   const [filtro, setFiltro] = useState<Filtro>('todos');
   const [periodoStats, setPeriodoStats] = useState<PeriodoStats>('mes');
   const [marcandoTodas, setMarcandoTodas] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showStats, setShowStats] = useState(false);
+
+  useEffect(() => {
+    function checkMobile() { setIsMobile(window.innerWidth < 768); }
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => { if (empresaId) load(); }, [empresaId]);
 
@@ -90,7 +99,6 @@ export default function NotificacionesSection({ empresaId }: { empresaId: string
   const mesActual = ahora.getMonth();
   const añoActual = ahora.getFullYear();
 
-  // Resumen hoy
   const deHoy = useMemo(() => notifs.filter(n => new Date(n.created_at).toDateString() === ahora.toDateString()), [notifs]);
   const resumenHoy = {
     aceptados:    deHoy.filter(n => n.estado === 'aceptado').length,
@@ -99,7 +107,6 @@ export default function NotificacionesSection({ empresaId }: { empresaId: string
     enviados:     deHoy.filter(n => n.estado === 'enviado').length,
   };
 
-  // Stats mensuales — últimos 6 meses
   const statsMes = useMemo(() => {
     return Array.from({ length: 6 }, (_, i) => {
       const d = new Date(añoActual, mesActual - 5 + i, 1);
@@ -119,7 +126,6 @@ export default function NotificacionesSection({ empresaId }: { empresaId: string
     });
   }, [notifs, mesActual, añoActual]);
 
-  // Stats anuales — últimos 2 años
   const statsAño = useMemo(() => {
     return [añoActual - 1, añoActual].map(año => {
       const del = notifs.filter(n => new Date(n.created_at).getFullYear() === año);
@@ -139,15 +145,14 @@ export default function NotificacionesSection({ empresaId }: { empresaId: string
   const noLeidas = notifs.filter(n => !n.leida).length;
   const filtradas = filtro === 'todos' ? notifs : notifs.filter(n => n.estado === filtro);
 
-  const FILTROS: { key: Filtro; label: string; color: string }[] = [
-    { key: 'todos',         label: 'Todos',         color: C.textMid },
-    { key: 'aceptado',      label: 'Confirmadas',   color: C.green   },
-    { key: 'cancelado',     label: 'Canceladas',    color: C.red     },
-    { key: 'sin_respuesta', label: 'Sin respuesta', color: C.amber   },
-    { key: 'enviado',       label: 'Enviados',      color: C.blue    },
+  const FILTROS: { key: Filtro; label: string; shortLabel: string; color: string }[] = [
+    { key: 'todos',         label: 'Todos',         shortLabel: 'Todo',    color: C.textMid },
+    { key: 'aceptado',      label: 'Confirmadas',   shortLabel: '✓',       color: C.green   },
+    { key: 'cancelado',     label: 'Canceladas',    shortLabel: '✗',       color: C.red     },
+    { key: 'sin_respuesta', label: 'Sin respuesta', shortLabel: '⏳',      color: C.amber   },
+    { key: 'enviado',       label: 'Enviados',      shortLabel: '📤',      color: C.blue    },
   ];
 
-  // Agrupar lista por fecha
   const grupos = useMemo(() => {
     const g: Record<string, any[]> = {};
     filtradas.forEach(n => {
@@ -163,52 +168,61 @@ export default function NotificacionesSection({ empresaId }: { empresaId: string
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
 
       {/* HEADER */}
-      <div style={{ background: C.panel, borderBottom: `1px solid ${C.border}`, padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Notificaciones</h2>
+      <div style={{ background: C.panel, borderBottom: `1px solid ${C.border}`, padding: isMobile ? '12px 14px' : '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h2 style={{ fontSize: isMobile ? 17 : 20, fontWeight: 700, margin: 0 }}>Notificaciones</h2>
             {noLeidas > 0 && (
-              <span style={{ background: C.green, color: '#fff', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>
-                {noLeidas} nuevas
+              <span style={{ background: C.green, color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, flexShrink: 0 }}>
+                {noLeidas}
               </span>
             )}
           </div>
-          <p style={{ fontSize: 12, color: C.textDim, margin: '2px 0 0' }}>Registro de mensajes WhatsApp</p>
+          {!isMobile && <p style={{ fontSize: 12, color: C.textDim, margin: '2px 0 0' }}>Registro de mensajes WhatsApp</p>}
         </div>
         {noLeidas > 0 && (
           <button onClick={marcarTodasLeidas} disabled={marcandoTodas}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.textMid, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: isMobile ? '6px 10px' : '8px 14px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.textMid, cursor: 'pointer', fontSize: isMobile ? 11 : 12, fontWeight: 600, flexShrink: 0, whiteSpace: 'nowrap' }}>
             {marcandoTodas ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCheck size={13} />}
-            Marcar todas leídas
+            {isMobile ? 'Leer todas' : 'Marcar todas leídas'}
           </button>
         )}
       </div>
 
-      <div style={{ padding: '20px 24px' }}>
+      <div style={{ padding: isMobile ? '12px 10px' : '20px 24px' }}>
 
-        {/* TOP GRID: resumen hoy + stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-
-          {/* Resumen hoy */}
-          <div style={{ background: C.panel, borderRadius: 16, padding: 20 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: C.textDim, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>Resumen de hoy</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              {[
-                { label: 'Confirmadas',   value: resumenHoy.aceptados,    color: C.green, bg: C.greenDim },
-                { label: 'Canceladas',    value: resumenHoy.cancelados,   color: C.red,   bg: C.redDim   },
-                { label: 'Sin respuesta', value: resumenHoy.sinRespuesta, color: C.amber, bg: C.amberDim },
-                { label: 'Enviados',      value: resumenHoy.enviados,     color: C.blue,  bg: C.blueDim  },
-              ].map(card => (
-                <div key={card.label} style={{ background: card.bg, border: `1px solid ${card.color}22`, borderRadius: 12, padding: '12px 14px' }}>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: card.color, lineHeight: 1 }}>{card.value}</div>
-                  <div style={{ fontSize: 11, color: card.color, fontWeight: 600, marginTop: 4, opacity: 0.8 }}>{card.label}</div>
-                </div>
-              ))}
+        {/* ── RESUMEN HOY (compacto en móvil, horizontal) ── */}
+        <div style={{ display: 'flex', gap: isMobile ? 6 : 10, marginBottom: isMobile ? 10 : 16, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible' }}>
+          {[
+            { label: 'Confirmadas',   value: resumenHoy.aceptados,    color: C.green, bg: C.greenDim },
+            { label: 'Canceladas',    value: resumenHoy.cancelados,   color: C.red,   bg: C.redDim   },
+            { label: 'Sin respuesta', value: resumenHoy.sinRespuesta, color: C.amber, bg: C.amberDim },
+            { label: 'Enviados',      value: resumenHoy.enviados,     color: C.blue,  bg: C.blueDim  },
+          ].map(card => (
+            <div key={card.label} style={{
+              background: card.bg, border: `1px solid ${card.color}22`, borderRadius: isMobile ? 10 : 12,
+              padding: isMobile ? '8px 12px' : '12px 16px',
+              flex: isMobile ? '0 0 auto' : '1 1 0',
+              minWidth: isMobile ? 80 : 'auto',
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 800, color: card.color, lineHeight: 1 }}>{card.value}</div>
+              <div style={{ fontSize: isMobile ? 9 : 11, color: card.color, fontWeight: 600, marginTop: 3, opacity: 0.8, whiteSpace: 'nowrap' }}>{card.label}</div>
             </div>
-          </div>
+          ))}
+        </div>
 
-          {/* Stats mensuales/anuales */}
-          <div style={{ background: C.panel, borderRadius: 16, padding: 20 }}>
+        {/* ── Stats toggle (colapsable en móvil) ── */}
+        {isMobile && (
+          <button onClick={() => setShowStats(s => !s)}
+            style={{ width: '100%', padding: '8px 0', marginBottom: 10, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 10, color: C.textMid, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <BarChart3 size={14} />
+            {showStats ? 'Ocultar estadísticas' : 'Ver estadísticas'}
+          </button>
+        )}
+
+        {(!isMobile || showStats) && (
+          <div style={{ background: C.panel, borderRadius: isMobile ? 12 : 16, padding: isMobile ? 14 : 20, marginBottom: isMobile ? 12 : 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <p style={{ fontSize: 11, fontWeight: 700, color: C.textDim, letterSpacing: 1, textTransform: 'uppercase', margin: 0 }}>Estadísticas</p>
               <div style={{ display: 'flex', background: C.panelAlt, borderRadius: 8, padding: 3, gap: 2 }}>
@@ -222,13 +236,13 @@ export default function NotificacionesSection({ empresaId }: { empresaId: string
             </div>
 
             {periodoStats === 'mes' ? (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: isMobile ? 4 : 8, alignItems: 'flex-end' }}>
                 {statsMes.map((s, i) => (
                   <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'stretch' }}>
-                      {s.aceptados > 0 && <div style={{ height: Math.max(s.aceptados / maxMes * 80, 4), background: C.green, borderRadius: 3, opacity: 0.85 }} title={`${s.aceptados} confirmadas`} />}
-                      {s.cancelados > 0 && <div style={{ height: Math.max(s.cancelados / maxMes * 80, 4), background: C.red, borderRadius: 3, opacity: 0.85 }} title={`${s.cancelados} canceladas`} />}
-                      {s.sinRespuesta > 0 && <div style={{ height: Math.max(s.sinRespuesta / maxMes * 80, 4), background: C.amber, borderRadius: 3, opacity: 0.85 }} title={`${s.sinRespuesta} sin respuesta`} />}
+                      {s.aceptados > 0 && <div style={{ height: Math.max(s.aceptados / maxMes * 80, 4), background: C.green, borderRadius: 3, opacity: 0.85 }} />}
+                      {s.cancelados > 0 && <div style={{ height: Math.max(s.cancelados / maxMes * 80, 4), background: C.red, borderRadius: 3, opacity: 0.85 }} />}
+                      {s.sinRespuesta > 0 && <div style={{ height: Math.max(s.sinRespuesta / maxMes * 80, 4), background: C.amber, borderRadius: 3, opacity: 0.85 }} />}
                       {s.total === 0 && <div style={{ height: 4, background: C.border, borderRadius: 3 }} />}
                     </div>
                     <span style={{ fontSize: 9, color: C.textDim, textAlign: 'center', fontWeight: 600 }}>{s.label}</span>
@@ -237,17 +251,19 @@ export default function NotificacionesSection({ empresaId }: { empresaId: string
                 ))}
               </div>
             ) : (
-              <div style={{ display: 'flex', gap: 20 }}>
+              <div style={{ display: 'flex', gap: isMobile ? 8 : 20, flexDirection: isMobile ? 'column' : 'row' }}>
                 {statsAño.map((s, i) => (
-                  <div key={i} style={{ flex: 1, background: C.panelAlt, borderRadius: 12, padding: 14 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: C.textMid, marginBottom: 10 }}>{s.label}</div>
-                    <div style={{ fontSize: 28, fontWeight: 800, color: C.text, marginBottom: 12 }}>{s.total}</div>
+                  <div key={i} style={{ flex: 1, background: C.panelAlt, borderRadius: 12, padding: isMobile ? 12 : 14 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: C.textMid }}>{s.label}</span>
+                      <span style={{ fontSize: 20, fontWeight: 800, color: C.text }}>{s.total}</span>
+                    </div>
                     {[
                       { label: 'Confirmadas',   value: s.aceptados,    color: C.green },
                       { label: 'Canceladas',    value: s.cancelados,   color: C.red   },
                       { label: 'Sin respuesta', value: s.sinRespuesta, color: C.amber },
                     ].map(row => (
-                      <div key={row.label} style={{ marginBottom: 8 }}>
+                      <div key={row.label} style={{ marginBottom: 6 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
                           <span style={{ fontSize: 11, color: C.textDim }}>{row.label}</span>
                           <span style={{ fontSize: 11, color: row.color, fontWeight: 700 }}>{row.value}</span>
@@ -260,23 +276,27 @@ export default function NotificacionesSection({ empresaId }: { empresaId: string
               </div>
             )}
           </div>
-        </div>
+        )}
 
         {/* FILTROS */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
-          {FILTROS.map(f => (
-            <button key={f.key} onClick={() => setFiltro(f.key)}
-              style={{
-                padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                background: filtro === f.key ? f.color + '20' : C.panelAlt,
-                color: filtro === f.key ? f.color : C.textMid,
-                outline: filtro === f.key ? `1px solid ${f.color}44` : 'none',
-                transition: 'all 0.12s',
-              }}>
-              {f.label}
-              {f.key !== 'todos' && <span style={{ marginLeft: 5, opacity: 0.7 }}>{notifs.filter(n => n.estado === f.key).length}</span>}
-            </button>
-          ))}
+        <div style={{ display: 'flex', gap: isMobile ? 4 : 6, marginBottom: isMobile ? 10 : 14, overflowX: isMobile ? 'auto' : 'visible', flexWrap: isMobile ? 'nowrap' : 'wrap', paddingBottom: 2 }}>
+          {FILTROS.map(f => {
+            const count = f.key !== 'todos' ? notifs.filter(n => n.estado === f.key).length : 0;
+            return (
+              <button key={f.key} onClick={() => setFiltro(f.key)}
+                style={{
+                  padding: isMobile ? '5px 10px' : '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
+                  fontSize: isMobile ? 11 : 12, fontWeight: 600, flexShrink: 0,
+                  background: filtro === f.key ? f.color + '20' : C.panelAlt,
+                  color: filtro === f.key ? f.color : C.textMid,
+                  outline: filtro === f.key ? `1px solid ${f.color}44` : 'none',
+                  transition: 'all 0.12s', whiteSpace: 'nowrap',
+                }}>
+                {isMobile ? (f.key === 'todos' ? 'Todo' : f.label) : f.label}
+                {count > 0 && <span style={{ marginLeft: 4, opacity: 0.7 }}>{count}</span>}
+              </button>
+            );
+          })}
         </div>
 
         {/* LISTA */}
@@ -285,54 +305,52 @@ export default function NotificacionesSection({ empresaId }: { empresaId: string
             <RefreshCw size={24} style={{ animation: 'spin 1s linear infinite', marginBottom: 8 }} />
           </div>
         ) : filtradas.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 60, background: C.panel, borderRadius: 16 }}>
-            <Bell size={40} style={{ color: C.textDim, marginBottom: 12, opacity: 0.3 }} />
-            <p style={{ color: C.textMid, fontSize: 15 }}>Sin notificaciones</p>
+          <div style={{ textAlign: 'center', padding: isMobile ? 40 : 60, background: C.panel, borderRadius: isMobile ? 12 : 16 }}>
+            <Bell size={32} style={{ color: C.textDim, marginBottom: 10, opacity: 0.3 }} />
+            <p style={{ color: C.textMid, fontSize: 14 }}>Sin notificaciones</p>
             <p style={{ color: C.textDim, fontSize: 12, marginTop: 4 }}>Las notificaciones aparecerán aquí cuando se envíen mensajes</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {Object.entries(grupos).map(([fecha, items]) => (
               <div key={fecha}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: C.textDim, letterSpacing: 0.8, padding: '10px 0 6px', textTransform: 'uppercase' }}>{fecha} · {items.length}</p>
-                <div style={{ background: C.panel, borderRadius: 14, overflow: 'hidden' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: C.textDim, letterSpacing: 0.8, padding: '8px 0 5px', textTransform: 'uppercase' }}>{fecha} · {items.length}</p>
+                <div style={{ background: C.panel, borderRadius: isMobile ? 10 : 14, overflow: 'hidden' }}>
                   {items.map((n, i) => {
                     const cfg = ESTADO_CFG[n.estado] || ESTADO_CFG.enviado;
                     const Icon = cfg.icon;
                     return (
                       <div key={n.id} style={{
-                        display: 'flex', alignItems: 'center', gap: 14,
-                        padding: '13px 18px',
+                        display: 'flex', alignItems: 'flex-start', gap: isMobile ? 10 : 14,
+                        padding: isMobile ? '10px 12px' : '13px 18px',
                         borderBottom: i < items.length - 1 ? `1px solid ${C.border}` : 'none',
                         background: n.leida ? 'transparent' : 'rgba(34,197,94,0.02)',
                       }}>
-                        <div style={{ width: 38, height: 38, borderRadius: 10, background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <Icon size={18} style={{ color: cfg.color }} />
+                        <div style={{ width: isMobile ? 32 : 38, height: isMobile ? 32 : 38, borderRadius: isMobile ? 8 : 10, background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
+                          <Icon size={isMobile ? 15 : 18} style={{ color: cfg.color }} />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 14, fontWeight: n.leida ? 400 : 700, color: C.text }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: isMobile ? 13 : 14, fontWeight: n.leida ? 400 : 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1, minWidth: 0 }}>
                               {n.clientes?.nombre || 'Cliente desconocido'}
                             </span>
                             {!n.leida && <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.green, flexShrink: 0 }} />}
-                            {n.intento === 2 && <span style={{ fontSize: 10, color: C.amber, fontWeight: 700, background: C.amberDim, padding: '1px 6px', borderRadius: 4 }}>2º aviso</span>}
+                            <span style={{ fontSize: 10, color: C.textDim, flexShrink: 0 }}>{fmtHora(n.created_at)}</span>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 3, flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
                             <span style={{ fontSize: 11, color: cfg.color, fontWeight: 600 }}>{cfg.label}</span>
-                            {n.citas?.hora_inicio && <span style={{ fontSize: 11, color: C.textDim, display: 'flex', alignItems: 'center', gap: 3 }}><Calendar size={10} /> Cita {n.citas.hora_inicio.substring(11, 16)}</span>}
-                            {n.clientes?.telefono && <span style={{ fontSize: 11, color: C.textDim, display: 'flex', alignItems: 'center', gap: 3 }}><Phone size={10} /> {n.clientes.telefono}</span>}
+                            {n.intento === 2 && <span style={{ fontSize: 9, color: C.amber, fontWeight: 700, background: C.amberDim, padding: '1px 5px', borderRadius: 4 }}>2º</span>}
+                            {n.citas?.hora_inicio && <span style={{ fontSize: 10, color: C.textDim, display: 'flex', alignItems: 'center', gap: 3 }}><Calendar size={9} /> {n.citas.hora_inicio.substring(11, 16)}</span>}
+                            {!isMobile && n.clientes?.telefono && <span style={{ fontSize: 10, color: C.textDim, display: 'flex', alignItems: 'center', gap: 3 }}><Phone size={9} /> {n.clientes.telefono}</span>}
                           </div>
-                          {n.mensaje && <p style={{ fontSize: 11, color: C.textDim, marginTop: 4, fontStyle: 'italic' }}>"{n.mensaje}"</p>}
+                          {n.mensaje && !isMobile && <p style={{ fontSize: 11, color: C.textDim, marginTop: 4, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>"{n.mensaje}"</p>}
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
-                          <span style={{ fontSize: 11, color: C.textDim }}>{fmtHora(n.created_at)}</span>
-                          {!n.leida && (
-                            <button onClick={() => marcarLeida(n.id)}
-                              style={{ fontSize: 10, color: C.green, background: C.greenDim, border: 'none', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontWeight: 600 }}>
-                              Leída
-                            </button>
-                          )}
-                        </div>
+                        {!n.leida && (
+                          <button onClick={() => marcarLeida(n.id)}
+                            style={{ fontSize: 10, color: C.green, background: C.greenDim, border: 'none', borderRadius: 6, padding: isMobile ? '4px 8px' : '3px 8px', cursor: 'pointer', fontWeight: 600, flexShrink: 0, marginTop: 2 }}>
+                            Leída
+                          </button>
+                        )}
                       </div>
                     );
                   })}
