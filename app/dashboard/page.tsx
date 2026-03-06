@@ -619,65 +619,95 @@ export default function Dashboard() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }} className="main-content-desktop">
 
         {/* ── HEADER ── */}
-        <div style={{ height: 56, background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}`, display: 'flex', alignItems: 'center', padding: '0 16px', gap: 8, flexShrink: 0 }}>
-          <div className="show-mobile-flex" style={{ alignItems: 'center', gap: 8, marginRight: 8 }}>
-            <div style={{ width: 28, height: 28, borderRadius: 7, background: C.green, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
-              {empresa?.nombre?.[0]?.toUpperCase() || '?'}
+        <div style={{ background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}`, flexShrink: 0 }}>
+          {/* Fila 1: Logo + Toggle vista + Usuario */}
+          <div style={{ height: 48, display: 'flex', alignItems: 'center', padding: '0 12px', gap: 8 }}>
+            <div className="show-mobile-flex" style={{ alignItems: 'center', gap: 6, marginRight: 4, flexShrink: 0 }}>
+              <div style={{ width: 26, height: 26, borderRadius: 6, background: C.green, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+                {empresa?.nombre?.[0]?.toUpperCase() || '?'}
+              </div>
+              <p style={{ fontSize: 12, fontWeight: 700, color: C.text, whiteSpace: 'nowrap' }}>{empresa?.nombre || 'Mi negocio'}</p>
             </div>
-            <p style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{empresa?.nombre || 'Mi negocio'}</p>
+
+            {activeSection === 'agenda' && (
+              <div style={{ display: 'flex', gap: 2, background: C.surfaceAlt, borderRadius: 8, padding: 2, flexShrink: 0 }}>
+                {(['day', 'week', 'month'] as ViewMode[]).map(v => (
+                  <button key={v} onClick={() => setView(v)}
+                    style={{ padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: view === v ? 600 : 400, background: view === v ? C.green : 'transparent', color: view === v ? '#fff' : C.textSec, transition: 'all 0.12s' }}>
+                    {v === 'day' ? 'Día' : v === 'week' ? 'Sem' : 'Mes'}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Desktop: navegación fecha en la misma fila */}
+            {activeSection === 'agenda' && (
+              <div className="hidden-mobile" style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 4 }}>
+                <button onClick={() => view === 'day' ? changeDay(-1) : view === 'week' ? changeWeek(-1) : changeMonth(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textSec, padding: 4, borderRadius: 6, display: 'flex' }}>
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <div style={{ textAlign: 'center', minWidth: 130 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>
+                    {view === 'day' ? formatDate(selectedDate) : view === 'week' ? (() => { const wd = getWeekDays(); return `${wd[0].getDate()} – ${wd[6].getDate()} ${wd[6].toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}`; })() : formatMonth(selectedDate)}
+                  </p>
+                  {view === 'day' && isToday(selectedDate) && <p style={{ fontSize: 10, fontWeight: 700, color: C.green, lineHeight: 1 }}>HOY</p>}
+                </div>
+                <button onClick={() => view === 'day' ? changeDay(1) : view === 'week' ? changeWeek(1) : changeMonth(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textSec, padding: 4, borderRadius: 6, display: 'flex' }}>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            <div style={{ flex: 1 }} />
+
+            {/* Badge ausencia + usuario (solo desktop) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ textAlign: 'right' }} className="hidden-mobile">
+                <p style={{ fontSize: 12, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>{profesional?.nombre || ''}</p>
+                {activeSection === 'agenda' && (() => {
+                  const absStatus = activeAbsenceStatus();
+                  if (!absStatus) return <p style={{ fontSize: 10, color: C.textSec, lineHeight: 1.2 }}>{isAdmin ? 'Admin' : 'Empleado'}</p>;
+                  return (
+                    <p style={{ fontSize: 10, color: '#F59E0B', lineHeight: 1.2, fontWeight: 600 }}>
+                      {absStatus.icon} {absStatus.label} · {absStatus.range}
+                    </p>
+                  );
+                })()}
+                {activeSection !== 'agenda' && (
+                  <p style={{ fontSize: 10, color: C.textSec, lineHeight: 1.2 }}>{isAdmin ? 'Admin' : 'Empleado'}</p>
+                )}
+              </div>
+              <div className="hidden-mobile" style={{ width: 30, height: 30, borderRadius: 8, background: C.green, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff' }}>
+                {profesional?.nombre?.[0]?.toUpperCase() || '?'}
+              </div>
+            </div>
           </div>
 
+          {/* Fila 2 (móvil): navegación de fecha compacta */}
           {activeSection === 'agenda' && (
-            <div style={{ display: 'flex', gap: 4, background: C.surfaceAlt, borderRadius: 8, padding: 3 }}>
-              {(['day', 'week', 'month'] as ViewMode[]).map(v => (
-                <button key={v} onClick={() => setView(v)}
-                  style={{ padding: '4px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: view === v ? 600 : 400, background: view === v ? C.green : 'transparent', color: view === v ? '#fff' : C.textSec, transition: 'all 0.12s' }}>
-                  {v === 'day' ? 'Día' : v === 'week' ? 'Semana' : 'Mes'}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {activeSection === 'agenda' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 4 }}>
-              <button onClick={() => view === 'day' ? changeDay(-1) : view === 'week' ? changeWeek(-1) : changeMonth(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textSec, padding: 4, borderRadius: 6, display: 'flex' }}>
+            <div className="show-mobile-only" style={{ height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, borderTop: `1px solid ${C.surfaceAlt}`, padding: '0 8px' }}>
+              <button onClick={() => view === 'day' ? changeDay(-1) : view === 'week' ? changeWeek(-1) : changeMonth(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textSec, padding: 6, borderRadius: 6, display: 'flex' }}>
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <div style={{ textAlign: 'center', minWidth: 130 }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>
-                  {view === 'day' ? formatDate(selectedDate) : view === 'week' ? (() => { const wd = getWeekDays(); return `${wd[0].getDate()} – ${wd[6].getDate()} ${wd[6].toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}`; })() : formatMonth(selectedDate)}
+              <div style={{ textAlign: 'center', flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: C.text, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {view === 'day'
+                    ? (() => {
+                        const t = isToday(selectedDate);
+                        const short = selectedDate.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+                        return t ? `Hoy · ${short}` : short;
+                      })()
+                    : view === 'week'
+                    ? (() => { const wd = getWeekDays(); return `${wd[0].getDate()} – ${wd[6].getDate()} ${wd[6].toLocaleDateString('es-ES', { month: 'short' })}`; })()
+                    : selectedDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
+                  }
                 </p>
-                {view === 'day' && isToday(selectedDate) && <p style={{ fontSize: 10, fontWeight: 700, color: C.green, lineHeight: 1 }}>HOY</p>}
               </div>
-              <button onClick={() => view === 'day' ? changeDay(1) : view === 'week' ? changeWeek(1) : changeMonth(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textSec, padding: 4, borderRadius: 6, display: 'flex' }}>
+              <button onClick={() => view === 'day' ? changeDay(1) : view === 'week' ? changeWeek(1) : changeMonth(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textSec, padding: 6, borderRadius: 6, display: 'flex' }}>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           )}
-
-          <div style={{ flex: 1 }} />
-
-          {/* ── CAMBIO 1: badge de ausencia inline junto al nombre del profesional ── */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ textAlign: 'right' }} className="hidden-mobile">
-              <p style={{ fontSize: 12, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>{profesional?.nombre || ''}</p>
-              {activeSection === 'agenda' && (() => {
-                const absStatus = activeAbsenceStatus();
-                if (!absStatus) return <p style={{ fontSize: 10, color: C.textSec, lineHeight: 1.2 }}>{isAdmin ? 'Admin' : 'Empleado'}</p>;
-                return (
-                  <p style={{ fontSize: 10, color: '#F59E0B', lineHeight: 1.2, fontWeight: 600 }}>
-                    {absStatus.icon} {absStatus.label} · {absStatus.range}
-                  </p>
-                );
-              })()}
-              {activeSection !== 'agenda' && (
-                <p style={{ fontSize: 10, color: C.textSec, lineHeight: 1.2 }}>{isAdmin ? 'Admin' : 'Empleado'}</p>
-              )}
-            </div>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: C.green, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff' }}>
-              {profesional?.nombre?.[0]?.toUpperCase() || '?'}
-            </div>
-          </div>
         </div>
 
         {activeSection !== 'agenda' && (
@@ -1332,15 +1362,13 @@ export default function Dashboard() {
             transition: margin-left 0.2s cubic-bezier(0.4,0,0.2,1);
           }
           .show-mobile-flex { display: none !important; }
+          .show-mobile-only { display: none !important; }
         }
         @media (max-width: 767px) {
           .main-content-desktop { margin-left: 0 !important; padding-bottom: 64px; }
           .hidden-mobile { display: none !important; }
-          .show-mobile-only { display: none !important; }
-          .show-mobile-only { display: none; }
           .show-mobile-flex { display: flex !important; }
           .show-mobile-only { display: flex !important; }
-          .show-mobile-only { display: block; }
         }
       `}</style>
     </div>
