@@ -640,14 +640,18 @@ export default function Dashboard() {
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }} className="main-content-desktop">
         {/* ── HEADER ── */}
-        <div style={{ background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}`, flexShrink: 0 }}>
+        <div style={{ background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}`, flexShrink: 0, position: 'sticky', top: 0, zIndex: 30 }}>
           {/* Fila 1: Logo + Toggle vista + Usuario */}
-          <div style={{ height: 48, display: 'flex', alignItems: 'center', padding: '0 12px', gap: 8 }}>
-            <div className="show-mobile-flex" style={{ alignItems: 'center', gap: 6, marginRight: 4, flexShrink: 0 }}>
-              <div style={{ width: 26, height: 26, borderRadius: 6, background: C.green, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
-                {empresa?.nombre?.[0]?.toUpperCase() || '?'}
-              </div>
-              <p style={{ fontSize: 12, fontWeight: 700, color: C.text, whiteSpace: 'nowrap' }}>{empresa?.nombre || 'Mi negocio'}</p>
+          <div style={{ height: 52, display: 'flex', alignItems: 'center', padding: '0 14px', gap: 8 }}>
+            <div className="show-mobile-flex" style={{ alignItems: 'center', gap: 8, marginRight: 4, flexShrink: 0 }}>
+              {empresa?.logo_url ? (
+                <img src={empresa.logo_url} alt="" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+              ) : (
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: empresa?.color_primario || C.green, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+                  {empresa?.nombre?.[0]?.toUpperCase() || '?'}
+                </div>
+              )}
+              <p style={{ fontSize: 15, fontWeight: 700, color: C.text, whiteSpace: 'nowrap' }}>{empresa?.nombre || 'Mi negocio'}</p>
             </div>
 
             {activeSection === 'agenda' && (
