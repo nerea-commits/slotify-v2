@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import {
   TrendingUp, TrendingDown, Users, Calendar, DollarSign,
   Clock, BarChart3, Star, AlertTriangle, RefreshCw,
-  ChevronDown, Award, Target, Zap
+  ChevronDown, Award, Target, Zap, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 const C = {
@@ -27,20 +27,20 @@ type Tab = 'general' | 'empleados' | 'clientes' | 'servicios';
 
 function KPI({ label, value, sub, color = C.text, icon: Icon, trend }: any) {
   return (
-    <div style={{ background: C.panel, borderRadius: 14, padding: '16px 18px', border: `1px solid ${C.border}` }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: C.textDim, letterSpacing: 0.8, textTransform: 'uppercase' }}>{label}</span>
-        {Icon && <Icon size={16} style={{ color, opacity: 0.6 }} />}
+    <div style={{ background: C.panel, borderRadius: 14, padding: '14px 16px', border: `1px solid ${C.border}` }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: C.textDim, letterSpacing: 0.8, textTransform: 'uppercase', lineHeight: 1.3 }}>{label}</span>
+        {Icon && <Icon size={14} style={{ color, opacity: 0.6, flexShrink: 0 }} />}
       </div>
-      <div style={{ fontSize: 30, fontWeight: 800, color, lineHeight: 1, marginBottom: 4 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: C.textDim }}>{sub}</div>}
+      <div style={{ fontSize: 26, fontWeight: 800, color, lineHeight: 1, marginBottom: 3 }}>{value}</div>
+      {sub && <div style={{ fontSize: 10, color: C.textDim, lineHeight: 1.3 }}>{sub}</div>}
       {trend !== undefined && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5 }}>
           {trend >= 0
-            ? <TrendingUp size={12} style={{ color: C.green }} />
-            : <TrendingDown size={12} style={{ color: C.red }} />}
-          <span style={{ fontSize: 11, color: trend >= 0 ? C.green : C.red, fontWeight: 600 }}>
-            {trend >= 0 ? '+' : ''}{trend}% vs período anterior
+            ? <TrendingUp size={11} style={{ color: C.green }} />
+            : <TrendingDown size={11} style={{ color: C.red }} />}
+          <span style={{ fontSize: 10, color: trend >= 0 ? C.green : C.red, fontWeight: 600 }}>
+            {trend >= 0 ? '+' : ''}{trend}%
           </span>
         </div>
       )}
@@ -53,8 +53,8 @@ function BarraHorizontal({ label, value, max, color, sub }: any) {
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-        <span style={{ fontSize: 12, color: C.text, fontWeight: 500 }}>{label}</span>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <span style={{ fontSize: 12, color: C.text, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: 8 }}>{label}</span>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
           {sub && <span style={{ fontSize: 11, color: C.textDim }}>{sub}</span>}
           <span style={{ fontSize: 12, color, fontWeight: 700 }}>{value}</span>
         </div>
@@ -77,6 +77,15 @@ export default function EstadisticasSection({ empresaId }: { empresaId: string }
   const [fechaCustomDesde, setFechaCustomDesde] = useState('');
   const [fechaCustomHasta, setFechaCustomHasta] = useState('');
   const [usandoCustom, setUsandoCustom] = useState(false);
+  const [mostrarCustom, setMostrarCustom] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   useEffect(() => { if (empresaId) load(); }, [empresaId]);
 
@@ -95,7 +104,6 @@ export default function EstadisticasSection({ empresaId }: { empresaId: string }
     setLoading(false);
   }
 
-  // Rango de fechas
   const { desde, hasta } = useMemo(() => {
     if (usandoCustom && fechaCustomDesde && fechaCustomHasta) {
       return { desde: new Date(fechaCustomDesde), hasta: new Date(fechaCustomHasta + 'T23:59:59') };
@@ -107,7 +115,6 @@ export default function EstadisticasSection({ empresaId }: { empresaId: string }
     return { desde, hasta };
   }, [periodo, usandoCustom, fechaCustomDesde, fechaCustomHasta]);
 
-  // Rango anterior (para tendencias)
   const { desdeAnterior, hastaAnterior } = useMemo(() => {
     const diff = hasta.getTime() - desde.getTime();
     return { desdeAnterior: new Date(desde.getTime() - diff), hastaAnterior: new Date(desde) };
@@ -126,14 +133,12 @@ export default function EstadisticasSection({ empresaId }: { empresaId: string }
     return Math.round(((actual - anterior) / anterior) * 100);
   }
 
-  // Precio efectivo de una cita
   function precioEfectivo(cita: any): number | null {
     if (cita.importar && parseFloat(cita.importar) > 0) return parseFloat(cita.importar);
     if (cita.servicios?.precio && parseFloat(cita.servicios.precio) > 0) return parseFloat(cita.servicios.precio);
     return null;
   }
 
-  // KPIs generales
   const totalCitas = citasPeriodo.length;
   const citasCompletadas = citasPeriodo.filter(c => (c.estado || '').toLowerCase() === 'completada').length;
   const citasCanceladas = citasPeriodo.filter(c => (c.estado || '').toLowerCase() === 'cancelada').length;
@@ -149,7 +154,6 @@ export default function EstadisticasSection({ empresaId }: { empresaId: string }
   const tasaCancelacion = totalCitas > 0 ? Math.round((citasCanceladas / totalCitas) * 100) : 0;
   const tasaNoShow = totalCitas > 0 ? Math.round((noShows / totalCitas) * 100) : 0;
 
-  // Clientes nuevos vs recurrentes
   const clientesEnPeriodo = new Set(citasPeriodo.map(c => c.cliente_id).filter(Boolean));
   const clientesNuevos = clientes.filter(c => {
     const creado = new Date(c.created_at);
@@ -160,7 +164,6 @@ export default function EstadisticasSection({ empresaId }: { empresaId: string }
     return citasCliente.length > 1;
   }).length;
 
-  // Servicios más solicitados
   const serviciosCount: Record<string, { nombre: string; count: number; ingresos: number }> = {};
   citasPeriodo.forEach(c => {
     const nombre = c.servicios?.nombre || c.servicio_nombre_libre || 'Sin servicio';
@@ -172,7 +175,6 @@ export default function EstadisticasSection({ empresaId }: { empresaId: string }
   const topServicios = Object.values(serviciosCount).sort((a, b) => b.count - a.count).slice(0, 8);
   const maxServicio = topServicios[0]?.count || 1;
 
-  // Hora punta
   const horaCount: Record<number, number> = {};
   citasPeriodo.forEach(c => {
     if (!c.hora_inicio) return;
@@ -182,7 +184,6 @@ export default function EstadisticasSection({ empresaId }: { empresaId: string }
   const maxHora = Math.max(...Object.values(horaCount), 1);
   const horaPunta = Object.entries(horaCount).sort((a, b) => b[1] - a[1])[0];
 
-  // Evolución mensual (últimos 6 meses)
   const evolucion = useMemo(() => {
     return Array.from({ length: 6 }, (_, i) => {
       const d = new Date();
@@ -199,7 +200,6 @@ export default function EstadisticasSection({ empresaId }: { empresaId: string }
   }, [citas]);
   const maxEv = Math.max(...evolucion.map(e => e.citas), 1);
 
-  // Stats por empleado
   const statsEmpleados = useMemo(() => {
     return profesionales.map(p => {
       const mias = citasPeriodo.filter(c => c.id_profesional === p.id);
@@ -211,7 +211,6 @@ export default function EstadisticasSection({ empresaId }: { empresaId: string }
   }, [profesionales, citasPeriodo]);
   const maxEmpCitas = statsEmpleados[0]?.citas || 1;
 
-  // Ranking clientes
   const rankingClientes = useMemo(() => {
     const map: Record<string, { nombre: string; citas: number; ingresos: number; ultimaVisita: string }> = {};
     citasPeriodo.forEach(c => {
@@ -227,10 +226,10 @@ export default function EstadisticasSection({ empresaId }: { empresaId: string }
   }, [citasPeriodo]);
 
   const PERIODOS: { key: Periodo; label: string }[] = [
-    { key: '7d', label: '7 días' },
-    { key: '30d', label: '30 días' },
-    { key: '90d', label: '3 meses' },
-    { key: '365d', label: '1 año' },
+    { key: '7d', label: '7d' },
+    { key: '30d', label: '30d' },
+    { key: '90d', label: '3m' },
+    { key: '365d', label: '1a' },
   ];
 
   const TABS: { key: Tab; label: string; icon: any }[] = [
@@ -252,45 +251,60 @@ export default function EstadisticasSection({ empresaId }: { empresaId: string }
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
 
       {/* HEADER */}
-      <div style={{ background: C.panel, borderBottom: `1px solid ${C.border}`, padding: '16px 24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+      <div style={{ background: C.panel, borderBottom: `1px solid ${C.border}`, padding: isMobile ? '12px 14px 0' : '16px 24px 0' }}>
+
+        {/* Fila 1: título + filtros período */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 10 }}>
           <div>
-            <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Estadísticas</h2>
-            <p style={{ fontSize: 12, color: C.textDim, margin: '2px 0 0' }}>Panel de análisis del negocio</p>
+            <h2 style={{ fontSize: isMobile ? 17 : 20, fontWeight: 700, margin: 0 }}>Estadísticas</h2>
+            {!isMobile && <p style={{ fontSize: 12, color: C.textDim, margin: '2px 0 0' }}>Panel de análisis del negocio</p>}
           </div>
-          {/* Filtro período */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Selector período */}
             <div style={{ display: 'flex', background: C.panelAlt, borderRadius: 10, padding: 3, gap: 2 }}>
               {PERIODOS.map(p => (
                 <button key={p.key} onClick={() => { setPeriodo(p.key); setUsandoCustom(false); }}
-                  style={{ padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: !usandoCustom && periodo === p.key ? C.green : 'transparent', color: !usandoCustom && periodo === p.key ? '#fff' : C.textMid, transition: 'all 0.12s' }}>
+                  style={{ padding: isMobile ? '5px 10px' : '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: !usandoCustom && periodo === p.key ? C.green : 'transparent', color: !usandoCustom && periodo === p.key ? '#fff' : C.textMid, transition: 'all 0.12s' }}>
                   {p.label}
                 </button>
               ))}
             </div>
-            {/* Custom range */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input type="date" value={fechaCustomDesde} onChange={e => setFechaCustomDesde(e.target.value)}
-                style={{ padding: '6px 10px', background: C.panelAlt, border: `1px solid ${usandoCustom ? C.green + '55' : C.border}`, borderRadius: 8, color: C.text, fontSize: 12, outline: 'none', colorScheme: 'dark' }} />
-              <span style={{ color: C.textDim, fontSize: 12 }}>—</span>
-              <input type="date" value={fechaCustomHasta} onChange={e => setFechaCustomHasta(e.target.value)}
-                style={{ padding: '6px 10px', background: C.panelAlt, border: `1px solid ${usandoCustom ? C.green + '55' : C.border}`, borderRadius: 8, color: C.text, fontSize: 12, outline: 'none', colorScheme: 'dark' }} />
-              <button onClick={() => { if (fechaCustomDesde && fechaCustomHasta) setUsandoCustom(true); }}
-                disabled={!fechaCustomDesde || !fechaCustomHasta}
-                style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: C.green, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: !fechaCustomDesde || !fechaCustomHasta ? 0.5 : 1 }}>
-                Aplicar
-              </button>
-            </div>
+
+            {/* Botón rango custom — en móvil solo icono */}
+            <button onClick={() => setMostrarCustom(v => !v)}
+              style={{ padding: isMobile ? '6px 8px' : '6px 12px', borderRadius: 8, border: `1px solid ${usandoCustom ? C.green + '55' : C.border}`, background: usandoCustom ? C.green + '10' : 'transparent', color: usandoCustom ? C.green : C.textMid, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600 }}>
+              <Calendar size={14} />
+              {!isMobile && 'Rango'}
+              <ChevronDown size={11} style={{ transform: mostrarCustom ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.15s' }} />
+            </button>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: 4, marginTop: 16 }}>
+        {/* Panel rango custom expandible */}
+        {mostrarCustom && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 12, flexWrap: 'wrap' }}>
+            <input type="date" value={fechaCustomDesde} onChange={e => setFechaCustomDesde(e.target.value)}
+              style={{ flex: 1, minWidth: 120, padding: '7px 10px', background: C.panelAlt, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontSize: 12, outline: 'none', colorScheme: 'dark' }} />
+            <span style={{ color: C.textDim, fontSize: 12, flexShrink: 0 }}>—</span>
+            <input type="date" value={fechaCustomHasta} onChange={e => setFechaCustomHasta(e.target.value)}
+              style={{ flex: 1, minWidth: 120, padding: '7px 10px', background: C.panelAlt, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontSize: 12, outline: 'none', colorScheme: 'dark' }} />
+            <button onClick={() => { if (fechaCustomDesde && fechaCustomHasta) { setUsandoCustom(true); setMostrarCustom(false); } }}
+              disabled={!fechaCustomDesde || !fechaCustomHasta}
+              style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: C.green, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: !fechaCustomDesde || !fechaCustomHasta ? 0.5 : 1, flexShrink: 0 }}>
+              Aplicar
+            </button>
+          </div>
+        )}
+
+        {/* Tabs — scroll horizontal en móvil */}
+        <div style={{ display: 'flex', gap: isMobile ? 0 : 4, overflowX: 'auto', scrollbarWidth: 'none' }}>
           {TABS.map(t => {
             const Icon = t.icon;
+            const isActive = tab === t.key;
             return (
               <button key={t.key} onClick={() => setTab(t.key)}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, background: tab === t.key ? C.green + '20' : 'transparent', color: tab === t.key ? C.green : C.textMid, borderBottom: tab === t.key ? `2px solid ${C.green}` : '2px solid transparent', transition: 'all 0.12s' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '10px 16px' : '8px 16px', borderRadius: isMobile ? 0 : 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, background: 'transparent', color: isActive ? C.green : C.textMid, borderBottom: isActive ? `2px solid ${C.green}` : '2px solid transparent', transition: 'all 0.12s', flexShrink: 0, whiteSpace: 'nowrap' }}>
                 <Icon size={14} />
                 {t.label}
               </button>
@@ -299,65 +313,81 @@ export default function EstadisticasSection({ empresaId }: { empresaId: string }
         </div>
       </div>
 
-      <div style={{ padding: '20px 24px' }}>
+      {/* CONTENIDO */}
+      <div style={{ padding: isMobile ? '14px 12px' : '20px 24px', paddingBottom: 80 }}>
 
         {/* ── TAB GENERAL ── */}
         {tab === 'general' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 12 : 20 }}>
 
-            {/* KPIs fila 1 */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+            {/* KPIs — 2x2 en móvil, 4 en línea en desktop */}
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: isMobile ? 8 : 12 }}>
               <KPI label="Total citas" value={totalCitas} icon={Calendar} color={C.blue}
                 trend={tendencia(totalCitas, citasAnt.length)} sub={`${citasCompletadas} completadas`} />
-              <KPI label="Ingresos período"
+              <KPI label="Ingresos"
                 value={citasConPrecio > 0 ? `${ingresosPeriodo.toFixed(0)}€` : '—'}
                 icon={DollarSign} color={C.green}
                 trend={ingresosAnt > 0 ? tendencia(ingresosPeriodo, ingresosAnt) : undefined}
-                sub={citasConPrecio > 0 ? `Ticket medio ${ticketMedio.toFixed(0)}€` : 'Sin precios registrados'} />
-              <KPI label="Tasa cancelación" value={`${tasaCancelacion}%`} icon={AlertTriangle}
+                sub={citasConPrecio > 0 ? `~${ticketMedio.toFixed(0)}€/cita` : 'Sin precios'} />
+              <KPI label="Cancelación" value={`${tasaCancelacion}%`} icon={AlertTriangle}
                 color={tasaCancelacion > 20 ? C.red : tasaCancelacion > 10 ? C.amber : C.green}
-                sub={`${citasCanceladas} canceladas · ${noShows} no-shows`} />
+                sub={`${citasCanceladas} cancel. · ${noShows} no-show`} />
               <KPI label="Clientes activos" value={clientesEnPeriodo.size} icon={Users} color={C.purple}
-                sub={`${clientesNuevos} nuevos · ${clientesRecurrentes} recurrentes`} />
+                sub={`${clientesNuevos} nuevos · ${clientesRecurrentes} recur.`} />
             </div>
 
-            {/* Evolución + Hora punta */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
-
-              {/* Evolución mensual */}
-              <div style={{ background: C.panel, borderRadius: 16, padding: 20 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: C.textDim, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16 }}>Evolución mensual — últimos 6 meses</p>
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 120 }}>
+            {/* Evolución mensual */}
+            <div style={{ background: C.panel, borderRadius: 16, padding: isMobile ? '14px 12px' : 20 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: C.textDim, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>Evolución — últimos 6 meses</p>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: isMobile ? 6 : 8, height: isMobile ? 90 : 120 }}>
+                {evolucion.map((e, i) => (
+                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, height: '100%', justifyContent: 'flex-end' }}>
+                    <span style={{ fontSize: isMobile ? 9 : 10, color: C.textDim, fontWeight: 600 }}>{e.citas}</span>
+                    <div style={{ width: '100%', height: `${Math.max((e.citas / maxEv) * 90, e.citas > 0 ? 4 : 0)}%`, background: i === evolucion.length - 1 ? C.green : C.blue + '88', borderRadius: '4px 4px 0 0', transition: 'height 0.4s ease', minHeight: e.citas > 0 ? 4 : 0 }} />
+                    <span style={{ fontSize: isMobile ? 9 : 10, color: C.textDim }}>{e.label}</span>
+                  </div>
+                ))}
+              </div>
+              {evolucion.some(e => e.ingresos > 0) && (
+                <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}`, display: 'flex', gap: isMobile ? 6 : 8 }}>
                   {evolucion.map((e, i) => (
-                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end' }}>
-                      <span style={{ fontSize: 10, color: C.textDim, fontWeight: 600 }}>{e.citas}</span>
-                      <div style={{ width: '100%', height: `${Math.max((e.citas / maxEv) * 90, e.citas > 0 ? 4 : 0)}px`, background: i === evolucion.length - 1 ? C.green : C.blue + '88', borderRadius: '4px 4px 0 0', transition: 'height 0.4s ease', minHeight: e.citas > 0 ? 4 : 0 }} />
-                      <span style={{ fontSize: 10, color: C.textDim }}>{e.label}</span>
+                    <div key={i} style={{ flex: 1, textAlign: 'center' }}>
+                      <div style={{ fontSize: isMobile ? 9 : 10, color: C.green, fontWeight: 700 }}>{e.ingresos > 0 ? `${e.ingresos.toFixed(0)}€` : '—'}</div>
                     </div>
                   ))}
                 </div>
-                {evolucion.some(e => e.ingresos > 0) && (
-                  <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${C.border}`, display: 'flex', gap: 8 }}>
-                    {evolucion.map((e, i) => (
-                      <div key={i} style={{ flex: 1, textAlign: 'center' }}>
-                        <div style={{ fontSize: 10, color: C.green, fontWeight: 700 }}>{e.ingresos > 0 ? `${e.ingresos.toFixed(0)}€` : '—'}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              )}
+            </div>
 
-              {/* Hora punta */}
-              <div style={{ background: C.panel, borderRadius: 16, padding: 20 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: C.textDim, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16 }}>Hora punta</p>
-                {horaPunta ? (
-                  <>
-                    <div style={{ fontSize: 36, fontWeight: 800, color: C.amber, marginBottom: 4 }}>{horaPunta[0]}:00</div>
-                    <div style={{ fontSize: 12, color: C.textDim, marginBottom: 16 }}>{horaPunta[1]} citas en este horario</div>
-                  </>
-                ) : (
-                  <div style={{ fontSize: 13, color: C.textDim, marginBottom: 16 }}>Sin datos</div>
-                )}
+            {/* Hora punta — en móvil va sola a ancho completo, en desktop al lado de evolución */}
+            <div style={{ background: C.panel, borderRadius: 16, padding: isMobile ? '14px 12px' : 20 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: C.textDim, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>Hora punta</p>
+              {horaPunta ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 14 }}>
+                  <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 800, color: C.amber }}>{horaPunta[0]}:00</div>
+                  <div style={{ fontSize: 12, color: C.textDim }}>{horaPunta[1]} citas en este horario</div>
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, color: C.textDim, marginBottom: 14 }}>Sin datos</div>
+              )}
+              {/* En móvil, barras más compactas en 2 columnas */}
+              {isMobile ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
+                  {HORAS.map(h => {
+                    const hora = parseInt(h);
+                    const count = horaCount[hora] || 0;
+                    return (
+                      <div key={h} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 9, color: C.textDim, width: 28, flexShrink: 0 }}>{h}</span>
+                        <div style={{ flex: 1, height: 5, background: 'rgba(148,163,184,0.08)', borderRadius: 3, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${(count / maxHora) * 100}%`, background: count === maxHora ? C.amber : C.blue + '88', borderRadius: 3 }} />
+                        </div>
+                        <span style={{ fontSize: 9, color: C.textDim, width: 12, textAlign: 'right' }}>{count || ''}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {HORAS.map(h => {
                     const hora = parseInt(h);
@@ -373,23 +403,23 @@ export default function EstadisticasSection({ empresaId }: { empresaId: string }
                     );
                   })}
                 </div>
-              </div>
+              )}
             </div>
 
-            {/* Nuevos vs recurrentes */}
-            <div style={{ background: C.panel, borderRadius: 16, padding: 20 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: C.textDim, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16 }}>Clientes nuevos vs recurrentes</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+            {/* Clientes nuevos vs recurrentes */}
+            <div style={{ background: C.panel, borderRadius: 16, padding: isMobile ? '14px 12px' : 20 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: C.textDim, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>Clientes nuevos vs recurrentes</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: isMobile ? 8 : 16 }}>
                 {[
-                  { label: 'Clientes únicos en período', value: clientesEnPeriodo.size, color: C.blue   },
-                  { label: 'Clientes nuevos',            value: clientesNuevos,         color: C.green  },
-                  { label: 'Clientes recurrentes',       value: clientesRecurrentes,    color: C.purple },
+                  { label: 'Únicos en período', value: clientesEnPeriodo.size, color: C.blue   },
+                  { label: 'Nuevos',            value: clientesNuevos,         color: C.green  },
+                  { label: 'Recurrentes',       value: clientesRecurrentes,    color: C.purple },
                 ].map(s => (
-                  <div key={s.label} style={{ background: C.panelAlt, borderRadius: 12, padding: '14px 16px', textAlign: 'center' }}>
-                    <div style={{ fontSize: 32, fontWeight: 800, color: s.color }}>{s.value}</div>
-                    <div style={{ fontSize: 11, color: C.textDim, marginTop: 4 }}>{s.label}</div>
+                  <div key={s.label} style={{ background: C.panelAlt, borderRadius: 12, padding: isMobile ? '10px 8px' : '14px 16px', textAlign: 'center' }}>
+                    <div style={{ fontSize: isMobile ? 24 : 32, fontWeight: 800, color: s.color }}>{s.value}</div>
+                    <div style={{ fontSize: isMobile ? 9 : 11, color: C.textDim, marginTop: 3, lineHeight: 1.3 }}>{s.label}</div>
                     {clientesEnPeriodo.size > 0 && (
-                      <div style={{ fontSize: 11, color: s.color, fontWeight: 700, marginTop: 4 }}>
+                      <div style={{ fontSize: 10, color: s.color, fontWeight: 700, marginTop: 3 }}>
                         {Math.round((s.value / clientesEnPeriodo.size) * 100)}%
                       </div>
                     )}
@@ -402,85 +432,95 @@ export default function EstadisticasSection({ empresaId }: { empresaId: string }
 
         {/* ── TAB EMPLEADOS ── */}
         {tab === 'empleados' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 12 }}>
-              {statsEmpleados.length === 0 ? (
-                <p style={{ color: C.textDim, fontSize: 13 }}>No hay empleados activos</p>
-              ) : statsEmpleados.map((emp, i) => (
-                <div key={emp.id} style={{ background: C.panel, borderRadius: 16, padding: 20, border: i === 0 ? `1px solid ${C.green}33` : `1px solid ${C.border}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                    <div style={{ width: 42, height: 42, borderRadius: 12, background: emp.color || C.panelAlt, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
-                      {emp.nombre?.[0]?.toUpperCase() || '?'}
-                    </div>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{emp.nombre}</span>
-                        {i === 0 && <Award size={14} style={{ color: C.amber }} />}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {statsEmpleados.length === 0 ? (
+              <p style={{ color: C.textDim, fontSize: 13, textAlign: 'center', padding: 40 }}>No hay empleados activos</p>
+            ) : (
+              // En móvil: apilados. En desktop: grid auto-fill
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
+                {statsEmpleados.map((emp, i) => (
+                  <div key={emp.id} style={{ background: C.panel, borderRadius: 16, padding: isMobile ? '14px 12px' : 20, border: i === 0 ? `1px solid ${C.green}33` : `1px solid ${C.border}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 12, background: emp.color || C.panelAlt, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+                        {emp.nombre?.[0]?.toUpperCase() || '?'}
                       </div>
-                      <span style={{ fontSize: 11, color: C.textDim }}>{emp.rol || 'Empleado'}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{emp.nombre}</span>
+                          {i === 0 && <Award size={13} style={{ color: C.amber, flexShrink: 0 }} />}
+                        </div>
+                        <span style={{ fontSize: 11, color: C.textDim }}>{emp.rol || 'Empleado'}</span>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: C.blue }}>{emp.citas}</div>
+                        <div style={{ fontSize: 10, color: C.textDim }}>citas</div>
+                      </div>
                     </div>
-                    <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                      <div style={{ fontSize: 22, fontWeight: 800, color: C.blue }}>{emp.citas}</div>
-                      <div style={{ fontSize: 10, color: C.textDim }}>citas</div>
+                    <BarraHorizontal label="Citas" value={emp.citas} max={maxEmpCitas} color={C.blue} />
+                    <BarraHorizontal label="Ingresos" value={emp.ingresos > 0 ? `${emp.ingresos.toFixed(0)}€` : '—'} max={statsEmpleados[0]?.ingresos || 1} color={C.green} />
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                      <div style={{ flex: 1, background: C.redDim, borderRadius: 8, padding: '8px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: C.red }}>{emp.canceladas}</div>
+                        <div style={{ fontSize: 9, color: C.textDim }}>cancel.</div>
+                      </div>
+                      <div style={{ flex: 1, background: C.amberDim, borderRadius: 8, padding: '8px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: C.amber }}>{emp.noshow}</div>
+                        <div style={{ fontSize: 9, color: C.textDim }}>no-show</div>
+                      </div>
+                      <div style={{ flex: 1, background: C.greenDim, borderRadius: 8, padding: '8px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: C.green }}>
+                          {emp.citas > 0 ? `${Math.round(((emp.citas - emp.canceladas - emp.noshow) / emp.citas) * 100)}%` : '—'}
+                        </div>
+                        <div style={{ fontSize: 9, color: C.textDim }}>asist.</div>
+                      </div>
                     </div>
                   </div>
-                  <BarraHorizontal label="Citas" value={emp.citas} max={maxEmpCitas} color={C.blue} />
-                  <BarraHorizontal label="Ingresos" value={emp.ingresos > 0 ? `${emp.ingresos.toFixed(0)}€` : '—'} max={statsEmpleados[0]?.ingresos || 1} color={C.green} />
-                  <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
-                    <div style={{ flex: 1, background: C.redDim, borderRadius: 8, padding: '8px 10px', textAlign: 'center' }}>
-                      <div style={{ fontSize: 18, fontWeight: 800, color: C.red }}>{emp.canceladas}</div>
-                      <div style={{ fontSize: 10, color: C.textDim }}>canceladas</div>
-                    </div>
-                    <div style={{ flex: 1, background: C.amberDim, borderRadius: 8, padding: '8px 10px', textAlign: 'center' }}>
-                      <div style={{ fontSize: 18, fontWeight: 800, color: C.amber }}>{emp.noshow}</div>
-                      <div style={{ fontSize: 10, color: C.textDim }}>no-shows</div>
-                    </div>
-                    <div style={{ flex: 1, background: C.greenDim, borderRadius: 8, padding: '8px 10px', textAlign: 'center' }}>
-                      <div style={{ fontSize: 18, fontWeight: 800, color: C.green }}>
-                        {emp.citas > 0 ? `${Math.round(((emp.citas - emp.canceladas - emp.noshow) / emp.citas) * 100)}%` : '—'}
-                      </div>
-                      <div style={{ fontSize: 10, color: C.textDim }}>asistencia</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {/* ── TAB CLIENTES ── */}
         {tab === 'clientes' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ background: C.panel, borderRadius: 16, padding: 20 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: C.textDim, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16 }}>
-                Top 10 clientes · {rankingClientes.length} con actividad en período
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ background: C.panel, borderRadius: 16, padding: isMobile ? '14px 12px' : 20 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: C.textDim, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>
+                Top clientes · {rankingClientes.length} activos en período
               </p>
               {rankingClientes.length === 0 ? (
-                <p style={{ color: C.textDim, fontSize: 13 }}>Sin datos en este período</p>
+                <p style={{ color: C.textDim, fontSize: 13, textAlign: 'center', padding: 20 }}>Sin datos en este período</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {rankingClientes.map((cl, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', background: i < 3 ? C.panelAlt : 'transparent', borderRadius: 10 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: 8, background: i === 0 ? C.amber + '33' : i === 1 ? C.textDim + '22' : i === 2 ? C.amber + '18' : C.panelAlt, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: i === 0 ? C.amber : C.textDim, flexShrink: 0 }}>
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 14, padding: isMobile ? '10px 10px' : '12px 14px', background: i < 3 ? C.panelAlt : 'transparent', borderRadius: 10 }}>
+                      {/* Posición */}
+                      <div style={{ width: 24, height: 24, borderRadius: 7, background: i === 0 ? C.amber + '33' : i === 1 ? C.textDim + '22' : i === 2 ? C.amber + '18' : C.panelAlt, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: i === 0 ? C.amber : C.textDim, flexShrink: 0 }}>
                         {i + 1}
                       </div>
-                      <div style={{ width: 36, height: 36, borderRadius: 10, background: C.greenDim, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: C.green, flexShrink: 0 }}>
+                      {/* Avatar */}
+                      <div style={{ width: 32, height: 32, borderRadius: 9, background: C.greenDim, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: C.green, flexShrink: 0 }}>
                         {cl.nombre[0].toUpperCase()}
                       </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{cl.nombre}</div>
-                        <div style={{ fontSize: 11, color: C.textDim }}>
-                          Última visita: {cl.ultimaVisita ? new Date(cl.ultimaVisita).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '—'}
-                        </div>
+                      {/* Nombre */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cl.nombre}</div>
+                        {!isMobile && (
+                          <div style={{ fontSize: 11, color: C.textDim }}>
+                            Última: {cl.ultimaVisita ? new Date(cl.ultimaVisita).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '—'}
+                          </div>
+                        )}
                       </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 16, fontWeight: 800, color: C.blue }}>{cl.citas}</div>
-                        <div style={{ fontSize: 10, color: C.textDim }}>citas</div>
+                      {/* Citas */}
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: isMobile ? 14 : 16, fontWeight: 800, color: C.blue }}>{cl.citas}</div>
+                        <div style={{ fontSize: 9, color: C.textDim }}>citas</div>
                       </div>
+                      {/* Ingresos — solo si tiene y hay espacio */}
                       {cl.ingresos > 0 && (
-                        <div style={{ textAlign: 'right', minWidth: 60 }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: C.green }}>{cl.ingresos.toFixed(0)}€</div>
-                          <div style={{ fontSize: 10, color: C.textDim }}>ingresos</div>
+                        <div style={{ textAlign: 'right', flexShrink: 0, minWidth: isMobile ? 44 : 56 }}>
+                          <div style={{ fontSize: isMobile ? 12 : 14, fontWeight: 700, color: C.green }}>{cl.ingresos.toFixed(0)}€</div>
+                          {!isMobile && <div style={{ fontSize: 9, color: C.textDim }}>ingresos</div>}
                         </div>
                       )}
                     </div>
@@ -493,11 +533,11 @@ export default function EstadisticasSection({ empresaId }: { empresaId: string }
 
         {/* ── TAB SERVICIOS ── */}
         {tab === 'servicios' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ background: C.panel, borderRadius: 16, padding: 20 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: C.textDim, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16 }}>Servicios más solicitados</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ background: C.panel, borderRadius: 16, padding: isMobile ? '14px 12px' : 20 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: C.textDim, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>Servicios más solicitados</p>
               {topServicios.length === 0 ? (
-                <p style={{ color: C.textDim, fontSize: 13 }}>Sin datos en este período</p>
+                <p style={{ color: C.textDim, fontSize: 13, textAlign: 'center', padding: 20 }}>Sin datos en este período</p>
               ) : topServicios.map((s, i) => (
                 <BarraHorizontal
                   key={i}
@@ -510,15 +550,15 @@ export default function EstadisticasSection({ empresaId }: { empresaId: string }
               ))}
             </div>
 
-            {/* Catálogo con precios */}
-            <div style={{ background: C.panel, borderRadius: 16, padding: 20 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: C.textDim, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16 }}>Catálogo de servicios</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8 }}>
+            {/* Catálogo — 1 columna en móvil, auto-fill en desktop */}
+            <div style={{ background: C.panel, borderRadius: 16, padding: isMobile ? '14px 12px' : 20 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: C.textDim, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>Catálogo de servicios</p>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8 }}>
                 {servicios.map(s => (
-                  <div key={s.id} style={{ background: C.panelAlt, borderRadius: 10, padding: '12px 14px', borderLeft: `3px solid ${s.color || C.green}` }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 4 }}>{s.nombre}</div>
-                    <div style={{ display: 'flex', gap: 10 }}>
-                      {s.precio ? <span style={{ fontSize: 12, color: C.green, fontWeight: 700 }}>{s.precio}€</span> : <span style={{ fontSize: 11, color: C.textDim }}>Sin precio</span>}
+                  <div key={s.id} style={{ background: C.panelAlt, borderRadius: 10, padding: '11px 14px', borderLeft: `3px solid ${s.color || C.green}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{s.nombre}</div>
+                    <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+                      {s.precio ? <span style={{ fontSize: 12, color: C.green, fontWeight: 700 }}>{s.precio}€</span> : null}
                       {s.duracion_minutos && <span style={{ fontSize: 11, color: C.textDim }}>{s.duracion_minutos}min</span>}
                     </div>
                   </div>
@@ -527,7 +567,6 @@ export default function EstadisticasSection({ empresaId }: { empresaId: string }
             </div>
           </div>
         )}
-
       </div>
     </div>
   );
