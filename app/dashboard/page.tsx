@@ -733,7 +733,7 @@ export default function Dashboard() {
         </div>
 
         {activeSection !== 'agenda' && (
-          <div className="flex-1 overflow-y-auto" style={{ background: C.bg }}>
+          <div className="flex-1 overflow-y-auto" style={{ background: C.bg, paddingBottom: 80 }}>
             {activeSection === 'clientes' && <ClientesSection empresaId={empresa?.id || ''} />}
             {activeSection === 'servicios' && <ServiciosSection empresaId={empresa?.id || ''} {...({canEdit: isAdmin || !!permisos.editar_servicios} as any)} />}
             {activeSection === 'estadisticas' && <EstadisticasSection empresaId={empresa?.id || ''} />}
