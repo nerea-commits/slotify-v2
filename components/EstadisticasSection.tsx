@@ -314,7 +314,7 @@ export default function EstadisticasSection({ empresaId }: { empresaId: string }
       </div>
 
       {/* CONTENIDO */}
-      <div style={{ padding: isMobile ? '14px 12px' : '20px 24px', paddingBottom: 80 }}>
+      <div style={{ padding: isMobile ? '14px 12px' : '20px 24px', paddingBottom: isMobile ? 120 : 80 }}>
 
         {/* ── TAB GENERAL ── */}
         {tab === 'general' && (
