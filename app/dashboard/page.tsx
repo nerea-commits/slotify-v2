@@ -69,6 +69,7 @@ export default function Dashboard() {
   const [activeSection, setActiveSection] = useState<string>('agenda');
   const [estadosCita, setEstadosCita] = useState<any[]>([]);
   const [miniCalMonth, setMiniCalMonth] = useState(new Date());
+  const [miniCalOpen, setMiniCalOpen] = useState(false);
   const [permisos, setPermisos] = useState<Record<string, boolean>>({});
   const [anotaciones, setAnotaciones] = useState<any[]>([]);
   const [absences, setAbsences] = useState<any[]>([]);
@@ -496,6 +497,14 @@ export default function Dashboard() {
     });
   }
 
+  // ── 3 días para vista semana móvil: centrado en selectedDate ──
+  function getMobile3Days(): Date[] {
+    const d = new Date(selectedDate);
+    const prev = new Date(d); prev.setDate(d.getDate() - 1);
+    const next = new Date(d); next.setDate(d.getDate() + 1);
+    return [prev, d, next];
+  }
+
   function getMonthDays(refDate?: Date): (Date | null)[] {
     const base = refDate || selectedDate;
     const y = base.getFullYear(), mo = base.getMonth();
@@ -915,45 +924,107 @@ export default function Dashboard() {
           {/* ── VISTA SEMANA ── */}
           {view === 'week' && (
             <div className="flex-1 flex overflow-hidden" style={{ minHeight: 0 }}>
-              <div style={{ width: 196, flexShrink: 0, borderRight: `1px solid ${C.surfaceAlt}`, background: C.surface, padding: '16px 10px', display: 'flex', flexDirection: 'column', gap: 0, overflowY: 'auto' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <button onClick={() => setMiniCalMonth(d => { const x = new Date(d); x.setMonth(x.getMonth() - 1); return x; })} style={{ background: 'none', border: 'none', color: C.textSec, cursor: 'pointer', padding: '2px 4px', lineHeight: 1 }}><ChevronLeft className="w-3 h-3" /></button>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: C.text, textTransform: 'capitalize', letterSpacing: 0.3 }}>{miniCalMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</span>
-                  <button onClick={() => setMiniCalMonth(d => { const x = new Date(d); x.setMonth(x.getMonth() + 1); return x; })} style={{ background: 'none', border: 'none', color: C.textSec, cursor: 'pointer', padding: '2px 4px', lineHeight: 1 }}><ChevronRight className="w-3 h-3" /></button>
+              {/* ── Sidebar mini calendario (solo desktop) ── */}
+              {!isMobile && (
+                <div style={{ width: 196, flexShrink: 0, borderRight: `1px solid ${C.surfaceAlt}`, background: C.surface, padding: '16px 10px', display: 'flex', flexDirection: 'column', gap: 0, overflowY: 'auto' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <button onClick={() => setMiniCalMonth(d => { const x = new Date(d); x.setMonth(x.getMonth() - 1); return x; })} style={{ background: 'none', border: 'none', color: C.textSec, cursor: 'pointer', padding: '2px 4px', lineHeight: 1 }}><ChevronLeft className="w-3 h-3" /></button>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: C.text, textTransform: 'capitalize', letterSpacing: 0.3 }}>{miniCalMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</span>
+                    <button onClick={() => setMiniCalMonth(d => { const x = new Date(d); x.setMonth(x.getMonth() + 1); return x; })} style={{ background: 'none', border: 'none', color: C.textSec, cursor: 'pointer', padding: '2px 4px', lineHeight: 1 }}><ChevronRight className="w-3 h-3" /></button>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 4 }}>
+                    {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(d => <div key={d} style={{ textAlign: 'center', fontSize: 9, color: C.textSec, fontWeight: 700, padding: '1px 0' }}>{d}</div>)}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1 }}>
+                    {getMonthDays(miniCalMonth).map((day, i) => {
+                      if (!day) return <div key={`e${i}`} style={{ height: 22 }} />;
+                      const today = isToday(day);
+                      const inWeek = isInCurrentWeek(day);
+                      const hasCitas = allCitas.some(c => rawDate(c.hora_inicio) === toDS(day) && (c.estado || '').toLowerCase() !== 'cancelada');
+                      return (
+                        <div key={i} onClick={() => setSelectedDate(new Date(day))}
+                          style={{ textAlign: 'center', fontSize: 10, lineHeight: '22px', height: 22, borderRadius: 4, cursor: 'pointer', background: today ? C.green : inWeek ? `${C.green}25` : 'transparent', color: today ? '#fff' : inWeek ? C.green : C.text, fontWeight: inWeek || today ? 700 : 400, position: 'relative' }}
+                          onMouseEnter={e => { if (!today && !inWeek) (e.currentTarget as HTMLElement).style.background = C.surfaceAlt; }}
+                          onMouseLeave={e => { if (!today && !inWeek) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
+                          {day.getDate()}
+                          {hasCitas && <div style={{ position: 'absolute', bottom: 1, left: '50%', transform: 'translateX(-50%)', width: 3, height: 3, borderRadius: '50%', background: today ? 'rgba(255,255,255,0.7)' : inWeek ? C.green : C.textSec }} />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button onClick={() => { const t = new Date(); setSelectedDate(t); setMiniCalMonth(t); }} style={{ marginTop: 14, padding: '6px 0', borderRadius: 8, border: `1px solid ${C.surfaceAlt}`, background: 'transparent', color: C.textSec, fontSize: 11, cursor: 'pointer', fontWeight: 600, letterSpacing: 0.2 }}>Hoy</button>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 4 }}>
-                  {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(d => <div key={d} style={{ textAlign: 'center', fontSize: 9, color: C.textSec, fontWeight: 700, padding: '1px 0' }}>{d}</div>)}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1 }}>
-                  {getMonthDays(miniCalMonth).map((day, i) => {
-                    if (!day) return <div key={`e${i}`} style={{ height: 22 }} />;
-                    const today = isToday(day);
-                    const inWeek = isInCurrentWeek(day);
-                    const hasCitas = allCitas.some(c => rawDate(c.hora_inicio) === toDS(day) && (c.estado || '').toLowerCase() !== 'cancelada');
-                    return (
-                      <div key={i} onClick={() => setSelectedDate(new Date(day))}
-                        style={{ textAlign: 'center', fontSize: 10, lineHeight: '22px', height: 22, borderRadius: 4, cursor: 'pointer', background: today ? C.green : inWeek ? `${C.green}25` : 'transparent', color: today ? '#fff' : inWeek ? C.green : C.text, fontWeight: inWeek || today ? 700 : 400, position: 'relative' }}
-                        onMouseEnter={e => { if (!today && !inWeek) (e.currentTarget as HTMLElement).style.background = C.surfaceAlt; }}
-                        onMouseLeave={e => { if (!today && !inWeek) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
-                        {day.getDate()}
-                        {hasCitas && <div style={{ position: 'absolute', bottom: 1, left: '50%', transform: 'translateX(-50%)', width: 3, height: 3, borderRadius: '50%', background: today ? 'rgba(255,255,255,0.7)' : inWeek ? C.green : C.textSec }} />}
-                      </div>
-                    );
-                  })}
-                </div>
-                <button onClick={() => { const t = new Date(); setSelectedDate(t); setMiniCalMonth(t); }} style={{ marginTop: 14, padding: '6px 0', borderRadius: 8, border: `1px solid ${C.surfaceAlt}`, background: 'transparent', color: C.textSec, fontSize: 11, cursor: 'pointer', fontWeight: 600, letterSpacing: 0.2 }}>Hoy</button>
-              </div>
+              )}
 
-              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', padding: '10px 12px 0' }}>
-                <div className="flex items-center justify-between flex-shrink-0" style={{ marginBottom: 8 }}>
-                  <button onClick={() => changeWeek(-1)} className="p-2" style={{ color: C.textSec }}><ChevronLeft className="w-5 h-5" /></button>
-                  <span className="text-sm font-semibold">{(() => { const d = getWeekDays(); return `${d[0].getDate()} – ${d[6].getDate()} ${d[6].toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}`; })()}</span>
-                  <button onClick={() => changeWeek(1)} className="p-2" style={{ color: C.textSec }}><ChevronRight className="w-5 h-5" /></button>
-                </div>
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', padding: isMobile ? '0' : '10px 12px 0' }}>
+
+                {/* ── Móvil: mini calendario colapsable + navegación ── */}
+                {isMobile && (
+                  <div style={{ flexShrink: 0, background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px' }}>
+                      <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 3); setSelectedDate(d); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textSec, padding: 4, display: 'flex' }}>
+                        <ChevronLeft className="w-5 h-5" />
+                      </button>
+                      <button onClick={() => setMiniCalOpen(o => !o)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>
+                          {selectedDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </span>
+                        <ChevronRight className="w-3 h-3" style={{ color: C.textSec, transform: miniCalOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+                      </button>
+                      <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 3); setSelectedDate(d); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textSec, padding: 4, display: 'flex' }}>
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                    </div>
+                    {/* Mini calendario expandible */}
+                    {miniCalOpen && (
+                      <div style={{ padding: '0 12px 10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                          <button onClick={() => setMiniCalMonth(d => { const x = new Date(d); x.setMonth(x.getMonth() - 1); return x; })} style={{ background: 'none', border: 'none', color: C.textSec, cursor: 'pointer', padding: 4 }}><ChevronLeft className="w-3 h-3" /></button>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: C.text, textTransform: 'capitalize' }}>{miniCalMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</span>
+                          <button onClick={() => setMiniCalMonth(d => { const x = new Date(d); x.setMonth(x.getMonth() + 1); return x; })} style={{ background: 'none', border: 'none', color: C.textSec, cursor: 'pointer', padding: 4 }}><ChevronRight className="w-3 h-3" /></button>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 4 }}>
+                          {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(d => <div key={d} style={{ textAlign: 'center', fontSize: 10, color: C.textSec, fontWeight: 700, padding: '2px 0' }}>{d}</div>)}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+                          {getMonthDays(miniCalMonth).map((day, i) => {
+                            if (!day) return <div key={`e${i}`} style={{ height: 32 }} />;
+                            const today = isToday(day);
+                            const isSel = day.toDateString() === selectedDate.toDateString();
+                            const hasCitas = allCitas.some(c => rawDate(c.hora_inicio) === toDS(day) && (c.estado || '').toLowerCase() !== 'cancelada');
+                            return (
+                              <div key={i} onClick={() => { setSelectedDate(new Date(day)); setMiniCalOpen(false); }}
+                                style={{ textAlign: 'center', fontSize: 12, lineHeight: '32px', height: 32, borderRadius: 8, cursor: 'pointer', background: isSel ? C.green : today ? `${C.green}25` : 'transparent', color: isSel ? '#fff' : today ? C.green : C.text, fontWeight: isSel || today ? 700 : 400, position: 'relative' }}>
+                                {day.getDate()}
+                                {hasCitas && <div style={{ position: 'absolute', bottom: 2, left: '50%', transform: 'translateX(-50%)', width: 4, height: 4, borderRadius: '50%', background: isSel ? 'rgba(255,255,255,0.7)' : C.green }} />}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <button onClick={() => { const t = new Date(); setSelectedDate(t); setMiniCalMonth(t); setMiniCalOpen(false); }}
+                          style={{ marginTop: 8, width: '100%', padding: '6px 0', borderRadius: 8, border: `1px solid ${C.surfaceAlt}`, background: 'transparent', color: C.textSec, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+                          Hoy
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Desktop: navegación semana ── */}
+                {!isMobile && (
+                  <div className="flex items-center justify-between flex-shrink-0" style={{ marginBottom: 8 }}>
+                    <button onClick={() => changeWeek(-1)} className="p-2" style={{ color: C.textSec }}><ChevronLeft className="w-5 h-5" /></button>
+                    <span className="text-sm font-semibold">{(() => { const d = getWeekDays(); return `${d[0].getDate()} – ${d[6].getDate()} ${d[6].toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}`; })()}</span>
+                    <button onClick={() => changeWeek(1)} className="p-2" style={{ color: C.textSec }}><ChevronRight className="w-5 h-5" /></button>
+                  </div>
+                )}
+
                 <div style={{ flex: 1, minHeight: 0, overflow: 'auto', paddingBottom: 80 }}>
                   {(() => {
-                    const weekDays = getWeekDays();
-                    const dayCitaMaps = weekDays.map(day => {
+                    const displayDays = isMobile ? getMobile3Days() : getWeekDays();
+                    const numDays = displayDays.length;
+                    const dayCitaMaps = displayDays.map(day => {
                       const dayCitas = citasForDate(day);
                       const citaAtSlot: Record<number, any> = {};
                       const citaSpans: Record<number, number> = {};
@@ -975,11 +1046,12 @@ export default function Dashboard() {
                     const cells: React.ReactNode[] = [];
                     cells.push(<div key="th-time" style={{ gridColumn: 1, gridRow: 1, minHeight: 44 }} />);
 
-                    weekDays.forEach((day, di) => {
+                    displayDays.forEach((day, di) => {
                       const today = isToday(day);
                       const working = isWorkingDay(day);
                       const dayAnotaciones = anotacionesForDate(day);
                       const dayCompanyClosures = absencesForDate(day).filter(a => a.scope === 'company');
+                      const isSel = isMobile && day.toDateString() === selectedDate.toDateString();
                       cells.push(
                         <div key={`th-${di}`} onClick={() => {
                             const hasEmpAbsence = !isAdmin && absenceBlocksForDate(day).length > 0;
@@ -987,13 +1059,18 @@ export default function Dashboard() {
                             else if (working) { goToDay(day); }
                             else { setAnotacionModal({ open: true, date: day }); }
                           }}
-                          style={{ gridColumn: di + 2, gridRow: 1, minHeight: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: today ? 'rgba(34,197,94,0.2)' : dayCompanyClosures.length > 0 ? 'rgba(239,68,68,0.1)' : working ? C.surfaceAlt : 'rgba(15,23,42,0.4)', borderRadius: '10px 10px 0 0', borderTop: today ? `1px solid ${C.green}55` : dayCompanyClosures.length > 0 ? '1px solid rgba(239,68,68,0.25)' : `1px solid rgba(148,163,184,0.12)`, borderLeft: today ? `1px solid ${C.green}55` : `1px solid rgba(148,163,184,0.12)`, borderRight: today ? `1px solid ${C.green}55` : `1px solid rgba(148,163,184,0.12)`, borderBottom: `1px solid rgba(148,163,184,0.08)`, cursor: 'pointer', padding: '4px 2px' }}>
-                          <div style={{ fontSize: 9, fontWeight: 700, color: working ? C.textSec : 'rgba(148,163,184,0.5)', letterSpacing: 0.8 }}>{weekDayNames[di]}</div>
-                          <div style={{ fontSize: 15, fontWeight: 700, color: today ? C.green : dayCompanyClosures.length > 0 ? '#EF4444' : working ? C.text : 'rgba(241,245,249,0.3)' }}>{day.getDate()}</div>
+                          style={{ gridColumn: di + 2, gridRow: 1, minHeight: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: isSel ? 'rgba(34,197,94,0.25)' : today ? 'rgba(34,197,94,0.2)' : dayCompanyClosures.length > 0 ? 'rgba(239,68,68,0.1)' : working ? C.surfaceAlt : 'rgba(15,23,42,0.4)', borderRadius: '10px 10px 0 0', borderTop: isSel || today ? `1px solid ${C.green}55` : dayCompanyClosures.length > 0 ? '1px solid rgba(239,68,68,0.25)' : `1px solid rgba(148,163,184,0.12)`, borderLeft: isSel || today ? `1px solid ${C.green}55` : `1px solid rgba(148,163,184,0.12)`, borderRight: isSel || today ? `1px solid ${C.green}55` : `1px solid rgba(148,163,184,0.12)`, borderBottom: `1px solid rgba(148,163,184,0.08)`, cursor: 'pointer', padding: '4px 2px' }}>
+                          <div style={{ fontSize: isMobile ? 10 : 9, fontWeight: 700, color: working ? C.textSec : 'rgba(148,163,184,0.5)', letterSpacing: 0.8 }}>
+                            {isMobile
+                              ? day.toLocaleDateString('es-ES', { weekday: 'short' }).toUpperCase().substring(0, 3)
+                              : weekDayNames[day.getDay() === 0 ? 6 : day.getDay() - 1]
+                            }
+                          </div>
+                          <div style={{ fontSize: isMobile ? 18 : 15, fontWeight: 700, color: today ? C.green : dayCompanyClosures.length > 0 ? '#EF4444' : working ? C.text : 'rgba(241,245,249,0.3)' }}>{day.getDate()}</div>
                           {today && <div style={{ fontSize: 7, color: C.green, fontWeight: 700 }}>HOY</div>}
-                          {!working && dayAnotaciones.length > 0 && <div style={{ fontSize: 7, color: C.yellow, fontWeight: 700 }}>● {dayAnotaciones.length}</div>}
+                          {!isMobile && !working && dayAnotaciones.length > 0 && <div style={{ fontSize: 7, color: C.yellow, fontWeight: 700 }}>● {dayAnotaciones.length}</div>}
                           {dayCompanyClosures.length > 0 && <div style={{ fontSize: 7, fontWeight: 700, color: '#EF4444' }}>⛔ CIERRE</div>}
-                          {/* ── CAMBIO 3: bloque elegante de ausencia dentro del header ── */}
+                          {/* Bloque ausencia en header */}
                           {(() => {
                             const empAbs = absenceBlocksForDate(day);
                             if (!empAbs.length) return null;
@@ -1010,7 +1087,7 @@ export default function Dashboard() {
                                 maxWidth: '92%',
                               }}>
                                 <span style={{ fontSize: 9, flexShrink: 0 }}>{empAbs[0].icon}</span>
-                                <span style={{ fontSize: 8, fontWeight: 700, color: '#F59E0B', whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>{empAbs[0].label} · {empAbs[0].name}</span>
+                                <span style={{ fontSize: isMobile ? 9 : 8, fontWeight: 700, color: '#F59E0B', whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>{empAbs[0].label}{!isMobile ? ` · ${empAbs[0].name}` : ''}</span>
                               </div>
                             );
                           })()}
@@ -1022,11 +1099,11 @@ export default function Dashboard() {
                       const rowIdx = si + 2;
                       const isHour = slot.endsWith(':00');
                       cells.push(
-                        <div key={`time-${si}`} style={{ gridColumn: 1, gridRow: rowIdx, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: 6, paddingTop: 6, borderBottom: `1px solid ${isHour ? C.surfaceAlt : 'rgba(36,50,71,0.25)'}`, background: C.bg }}>
+                        <div key={`time-${si}`} style={{ gridColumn: 1, gridRow: rowIdx, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: isMobile ? 4 : 6, paddingTop: 6, borderBottom: `1px solid ${isHour ? C.surfaceAlt : 'rgba(36,50,71,0.25)'}`, background: C.bg }}>
                           <span style={{ fontSize: isHour ? 10 : 9, color: C.textSec, fontWeight: isHour ? 600 : 400, opacity: isHour ? 1 : 0.5, lineHeight: 1, whiteSpace: 'nowrap' }}>{slot}</span>
                         </div>
                       );
-                      weekDays.forEach((day, di) => {
+                      displayDays.forEach((day, di) => {
                         const today = isToday(day);
                         const working = isWorkingDay(day);
                         const { citaAtSlot, citaSpans, coveredSlots } = dayCitaMaps[di];
@@ -1038,7 +1115,6 @@ export default function Dashboard() {
                         const weekSlotAbsence = isSlotInAbsence(slot, day);
                         const isCompanyClosure = weekSlotAbsence && weekSlotAbsence.scope === 'company';
 
-                        // ── CAMBIO 2: sin rayado, fondos limpios ──
                         const weekCellBg = isCompanyClosure
                           ? 'rgba(239,68,68,0.05)'
                           : (working ? C.surface : 'rgba(15,23,42,0.35)');
@@ -1046,8 +1122,8 @@ export default function Dashboard() {
                         cells.push(
                           <div key={`cell-${si}-${di}`} style={{ gridColumn: di + 2, gridRow: spanSlots > 1 ? `${rowIdx} / span ${spanSlots}` : `${rowIdx}`, background: weekCellBg, borderBottom: `1px solid ${isHour ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.06)'}`, borderLeft: `1px solid ${today ? C.green + '55' : isCompanyClosure ? 'rgba(239,68,68,0.25)' : 'rgba(148,163,184,0.12)'}`, borderRight: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`, position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: cita ? 'center' : 'flex-start', boxSizing: 'border-box' as const, overflow: 'visible' }}>
                             {cita && (
-                              <div onClick={() => setSelectedCita(cita)} style={{ position: 'absolute', inset: 0, background: `${citaColor(cita.estado)}22`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 4, padding: '6px 8px', cursor: 'pointer', boxSizing: 'border-box' as const, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden' }}>
-                                <p style={{ fontSize: 11, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, textTransform: 'uppercase' as const, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                              <div onClick={() => setSelectedCita(cita)} style={{ position: 'absolute', inset: 0, background: `${citaColor(cita.estado)}22`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 4, padding: isMobile ? '4px 6px' : '6px 8px', cursor: 'pointer', boxSizing: 'border-box' as const, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden' }}>
+                                <p style={{ fontSize: isMobile ? 12 : 11, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, textTransform: 'uppercase' as const, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
                                   {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
                                   {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && <span style={{ marginLeft: 3, fontSize: 9 }}>{clientRiskCache[cita.cliente_id].icon}</span>}
                                 </p>
@@ -1060,7 +1136,7 @@ export default function Dashboard() {
                                   if (expandido) {
                                     return (
                                       <>
-                                        {linea2 && <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', lineHeight: 1.3, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{linea2}</p>}
+                                        {linea2 && <p style={{ fontSize: isMobile ? 11 : 10, color: 'rgba(255,255,255,0.75)', lineHeight: 1.3, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{linea2}</p>}
                                         {isAdmin && empNombre && (
                                           <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                                             <div style={{ width: 6, height: 6, borderRadius: '50%', background: cita.profesionales?.color || C.green, flexShrink: 0 }} />
@@ -1072,7 +1148,7 @@ export default function Dashboard() {
                                   } else {
                                     return (
                                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, overflow: 'hidden' }}>
-                                        {linea2 && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{linea2}</span>}
+                                        {linea2 && <span style={{ fontSize: isMobile ? 10 : 10, color: 'rgba(255,255,255,0.75)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{linea2}</span>}
                                         {isAdmin && empNombre && (
                                           <>
                                             <div style={{ width: 6, height: 6, borderRadius: '50%', background: cita.profesionales?.color || C.green, flexShrink: 0 }} />
@@ -1085,7 +1161,7 @@ export default function Dashboard() {
                                 })()}
                               </div>
                             )}
-                            {!cita && <div onClick={() => working ? openModal(day, slot) : setAnotacionModal({ open: true, date: day })} style={{ position: 'absolute', inset: 0, cursor: working ? 'pointer' : 'default' }} onMouseEnter={e => { if (working) (e.currentTarget as HTMLElement).style.background = C.greenBg; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }} />}
+                            {!cita && <div onClick={() => working ? openModal(day, slot) : setAnotacionModal({ open: true, date: day })} style={{ position: 'absolute', inset: 0, cursor: working ? 'pointer' : 'default' }} onMouseEnter={e => { if (working && !isMobile) (e.currentTarget as HTMLElement).style.background = C.greenBg; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }} />}
                             {isNowSlot && <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', pointerEvents: 'none', zIndex: 20 }}><div style={{ width: 6, height: 6, borderRadius: '50%', background: C.red, boxShadow: '0 0 5px rgba(239,68,68,0.8)', flexShrink: 0 }} /><div style={{ flex: 1, height: 2, background: C.red, opacity: 0.8 }} /></div>}
                           </div>
                         );
@@ -1093,14 +1169,14 @@ export default function Dashboard() {
                     });
 
                     return (
-                      <div style={{ display: 'grid', gridTemplateColumns: `42px repeat(7, 1fr)`, gridTemplateRows: `auto repeat(${visibleSlots.length}, ${WEEK_SLOT_H}px)`, columnGap: '4px', rowGap: 0 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: `${isMobile ? '36px' : '42px'} repeat(${numDays}, 1fr)`, gridTemplateRows: `auto repeat(${visibleSlots.length}, ${WEEK_SLOT_H}px)`, columnGap: isMobile ? '2px' : '4px', rowGap: 0 }}>
                         {cells}
                       </div>
                     );
                   })()}
                 </div>
               </div>
-              <button onClick={() => openModal()} style={{ position: 'fixed', bottom: 32, right: 32, width: 56, height: 56, borderRadius: '50%', background: C.green, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 4px 20px rgba(34,197,94,0.45)`, zIndex: 35 }}>
+              <button onClick={() => openModal()} style={{ position: 'fixed', bottom: isMobile ? 72 : 32, right: isMobile ? 16 : 32, width: isMobile ? 50 : 56, height: isMobile ? 50 : 56, borderRadius: '50%', background: C.green, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 4px 20px rgba(34,197,94,0.45)`, zIndex: 35 }}>
                 <Plus className="w-6 h-6 text-white" />
               </button>
             </div>
