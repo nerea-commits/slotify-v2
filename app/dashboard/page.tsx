@@ -623,7 +623,7 @@ export default function Dashboard() {
   const sidebarW = sidebarCollapsed ? 56 : 220;
 
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, color: C.text, display: 'flex', overflow: 'hidden', width: '100%' }}>
+    <div style={{ height: '100dvh', background: C.bg, color: C.text, display: 'flex', overflow: 'hidden', width: '100%' }}>
 
       <Sidebar
         collapsed={sidebarCollapsed}
