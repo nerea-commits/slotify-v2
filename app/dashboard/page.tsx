@@ -540,12 +540,12 @@ export default function Dashboard() {
     const targetTime = time || '';
 
     const dateStr = toDS(targetDate);
-    const empAbsence = absences.find(abs =>
+    const empAbsence = !isAdmin ? absences.find(abs =>
       abs.scope === 'employee' &&
       abs.status !== 'rejected' &&
       abs.start_dt <= `${dateStr}T23:59:59` &&
       abs.end_dt >= `${dateStr}T00:00:00`
-    );
+    ) : null;
 
     if (empAbsence) {
       const typeLabels: Record<string, string> = { vacation: 'De vacaciones', sick: 'De baja médica', personal: 'Ausencia personal', other: 'Ausente' };
@@ -871,7 +871,7 @@ export default function Dashboard() {
                       const dayCompanyClosures = absencesForDate(day).filter(a => a.scope === 'company');
                       cells.push(
                         <div key={`th-${di}`} onClick={() => {
-                            const hasEmpAbsence = absenceBlocksForDate(day).length > 0;
+                            const hasEmpAbsence = !isAdmin && absenceBlocksForDate(day).length > 0;
                             if (hasEmpAbsence) { openModal(day); }
                             else if (working) { goToDay(day); }
                             else { setAnotacionModal({ open: true, date: day }); }
