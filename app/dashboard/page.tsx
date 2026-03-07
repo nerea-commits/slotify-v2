@@ -586,14 +586,14 @@ export default function Dashboard() {
   const [hoveredCitaId, setHoveredCitaId] = useState<string | null>(null);
   const [phoneTooltipId, setPhoneTooltipId] = useState<string | null>(null);
 
-  async function marcarCompletada(id: string) {
-    const estadoCompletada = estadosCita.find(e =>
-      (e.nombre_defecto || '').toLowerCase() === 'completada' ||
-      (e.nombre_personalizado || '').toLowerCase() === 'completada'
-    );
-    const estadoFinal = estadoCompletada
-      ? (estadoCompletada.nombre_personalizado || estadoCompletada.nombre_defecto)
-      : 'completada';
+  async function marcarNoShow(id: string) {
+    const estadoNoShow = estadosCita.find(e => {
+      const n = (e.nombre_defecto || '').toLowerCase();
+      return n === 'no-show' || n === 'no_show' || n.includes('no-show') || n.includes('no_show');
+    });
+    const estadoFinal = estadoNoShow
+      ? (estadoNoShow.nombre_personalizado || estadoNoShow.nombre_defecto)
+      : 'no-show';
     await supabase.from('citas').update({ estado: estadoFinal, blocks_time: false }).eq('id', id);
     loadAllCitas();
   }
@@ -607,7 +607,6 @@ export default function Dashboard() {
   function renderQuickActions(cita: any, compact: boolean): React.ReactNode {
     if (hoveredCitaId !== cita.id) return null;
     const tel = cita.clientes?.telefono || '';
-    const yaCompletada = (cita.estado || '').toLowerCase() === 'completada';
     const yaCancelada = (cita.estado || '').toLowerCase() === 'cancelada';
     const btnBase: React.CSSProperties = {
       width: compact ? 20 : 24,
@@ -628,9 +627,9 @@ export default function Dashboard() {
       >
         <button title="Editar" onClick={e => { e.stopPropagation(); openEdit(cita); }}
           style={{ ...btnBase, background: 'rgba(148,163,184,0.25)', color: '#F1F5F9' }}>✏️</button>
-        {!yaCompletada && !yaCancelada && (
-          <button title="Marcar completada" onClick={e => { e.stopPropagation(); marcarCompletada(cita.id); }}
-            style={{ ...btnBase, background: 'rgba(34,197,94,0.25)', color: '#22C55E', fontWeight: 700, fontSize: compact ? 12 : 14 }}>✓</button>
+        {!yaCancelada && (cita.estado || '').toLowerCase() !== 'no-show' && (cita.estado || '').toLowerCase() !== 'no_show' && (
+          <button title="No-show" onClick={e => { e.stopPropagation(); marcarNoShow(cita.id); }}
+            style={{ ...btnBase, background: 'rgba(251,146,60,0.25)', color: '#FB923C', fontWeight: 700, fontSize: compact ? 12 : 14 }}>👻</button>
         )}
         {!yaCancelada && (
           <button title="Cancelar cita" onClick={e => { e.stopPropagation(); cancelarCita(cita.id); }}
