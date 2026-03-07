@@ -285,6 +285,40 @@ export default function Dashboard() {
     }
     const { data: absData } = await absQ;
     setAbsences(absData || []);
+
+    // ── AUTO-COMPLETADO: marcar como Completada las citas pasadas ──
+    await autoCompletarCitasPasadas(eid, admin ? null : pid);
+  }
+
+  async function autoCompletarCitasPasadas(eid: string, pid: string | null) {
+    const ahora = new Date().toISOString();
+    const estadosProtegidos = ['cancelada', 'no-show', 'no_show', 'completada'];
+    // Buscar nombre real del estado Completada en estados_cita
+    const estadoCompletadaObj = estadosCita.find(e =>
+      (e.nombre_defecto || '').toLowerCase() === 'completada' ||
+      (e.nombre_personalizado || '').toLowerCase() === 'completada'
+    );
+    const estadoCompletada = estadoCompletadaObj
+      ? (estadoCompletadaObj.nombre_personalizado || estadoCompletadaObj.nombre_defecto)
+      : 'Completada';
+
+    let q = supabase.from('citas')
+      .select('id, estado')
+      .eq('empresa_id', eid)
+      .lt('hora_fin', ahora);
+    if (pid) q = q.eq('profesional_id', pid);
+    const { data: pasadas } = await q;
+    if (!pasadas || pasadas.length === 0) return;
+
+    const aCompletar = pasadas.filter(c =>
+      !estadosProtegidos.includes((c.estado || '').toLowerCase())
+    );
+    if (aCompletar.length === 0) return;
+
+    const ids = aCompletar.map(c => c.id);
+    await supabase.from('citas')
+      .update({ estado: estadoCompletada, blocks_time: false })
+      .in('id', ids);
   }
 
   const scheduleStart = empresa?.horario_inicio || '09:00';
@@ -504,6 +538,10 @@ export default function Dashboard() {
     });
     if (found) return found.nombre_personalizado || found.nombre_defecto;
     return estado.charAt(0).toUpperCase() + estado.slice(1);
+  }
+
+  function isCompletada(estado: string): boolean {
+    return (estado || '').toLowerCase() === 'completada';
   }
 
   function isToday(d: Date) { return d.toDateString() === new Date().toDateString(); }
@@ -1189,7 +1227,12 @@ export default function Dashboard() {
                                       cursor: 'pointer',
                                       boxSizing: 'border-box' as const,
                                       position: 'relative' as const,
+                                      opacity: isCompletada(cita.estado) ? 0.45 : 1,
+                                      transition: 'opacity 0.2s',
                                     }}>
+                                    {isCompletada(cita.estado) && (
+                                      <span style={{ position: 'absolute', top: 4, left: 6, fontSize: 10, color: C.textSec, fontWeight: 700, opacity: 0.7 }}>✓</span>
+                                    )}
                                     {!isMobile && renderQuickActions(cita, false)}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                       <p style={{ fontSize: isMobile ? 13 : 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, letterSpacing: 0.2, textTransform: 'uppercase' as const, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
@@ -1458,7 +1501,10 @@ export default function Dashboard() {
                                 onClick={() => setSelectedCita(cita)}
                                 onMouseEnter={() => !isMobile && setHoveredCitaId(cita.id)}
                                 onMouseLeave={() => { setHoveredCitaId(null); setPhoneTooltipId(null); }}
-                                style={{ position: 'absolute', inset: 0, background: `${citaColor(cita.estado)}22`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 4, padding: isMobile ? '4px 6px' : '6px 8px', cursor: 'pointer', boxSizing: 'border-box' as const, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'visible' }}>
+                                style={{ position: 'absolute', inset: 0, background: `${citaColor(cita.estado)}22`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 4, padding: isMobile ? '4px 6px' : '6px 8px', cursor: 'pointer', boxSizing: 'border-box' as const, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'visible', opacity: isCompletada(cita.estado) ? 0.45 : 1, transition: 'opacity 0.2s' }}>
+                                {isCompletada(cita.estado) && (
+                                  <span style={{ position: 'absolute', top: 2, left: 4, fontSize: 9, color: C.textSec, fontWeight: 700, opacity: 0.8 }}>✓</span>
+                                )}
                                 {!isMobile && renderQuickActions(cita, true)}
                                 <p style={{ fontSize: isMobile ? 12 : 11, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, textTransform: 'uppercase' as const, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
                                   {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
