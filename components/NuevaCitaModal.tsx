@@ -13,6 +13,7 @@ interface Props {
   empresaId: string;
   selectedDate: Date;
   preselectedTime?: string;
+  preselectedEndTime?: string; // NUEVO: hora fin preseleccionada por drag
 }
 
 function normalizeTel(t: string): string {
@@ -38,7 +39,7 @@ function fmtDuracion(min: number): string {
 }
 
 export default function NuevaCitaModal({
-  open, onClose, onCreated, profesionalId, empresaId, selectedDate, preselectedTime
+  open, onClose, onCreated, profesionalId, empresaId, selectedDate, preselectedTime, preselectedEndTime
 }: Props) {
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
@@ -57,7 +58,6 @@ export default function NuevaCitaModal({
   const [clienteEncontrado, setClienteEncontrado] = useState<any>(null);
   const [fiabilidad, setFiabilidad] = useState<FiabilidadResult | null>(null);
   const [buscandoCliente, setBuscandoCliente] = useState(false);
-  // Track if hora/importe were auto-filled so user can override
   const [autoFilledFin, setAutoFilledFin] = useState(false);
   const [autoFilledImporte, setAutoFilledImporte] = useState(false);
 
@@ -75,12 +75,18 @@ export default function NuevaCitaModal({
 
       if (preselectedTime) {
         setHoraInicio(preselectedTime);
-        setHoraFin(addMinutes(preselectedTime, 60));
+        // NUEVO: si viene hora fin del drag, usarla; si no, calcular +1h
+        if (preselectedEndTime) {
+          setHoraFin(preselectedEndTime);
+          setAutoFilledFin(true);
+        } else {
+          setHoraFin(addMinutes(preselectedTime, 60));
+        }
       } else {
         setHoraInicio('09:00'); setHoraFin('10:00');
       }
     }
-  }, [open, empresaId, preselectedTime]);
+  }, [open, empresaId, preselectedTime, preselectedEndTime]);
 
   async function cargarServicios() {
     const { data } = await supabase
@@ -109,23 +115,19 @@ export default function NuevaCitaModal({
     setMostrarImporte(data?.mostrar_importe || false);
   }
 
-  // ── Autocompletar duración + precio al seleccionar servicio ──
   function handleServicioChange(id: string) {
     setServicioId(id);
     if (!id) return;
     const svc = servicios.find(s => s.id === id);
     if (!svc) return;
-    // Autocomplete hora fin
     setHoraFin(addMinutes(horaInicio, svc.duracion_minutos));
     setAutoFilledFin(true);
-    // Autocomplete importe si visible y no ha sido modificado manualmente
     if (mostrarImporte && svc.precio != null && svc.precio > 0) {
       setImporte(String(svc.precio));
       setAutoFilledImporte(true);
     }
   }
 
-  // Si el usuario cambia hora inicio y hay servicio seleccionado, recalcular fin
   function handleHoraInicioChange(val: string) {
     setHoraInicio(val);
     if (servicioId && autoFilledFin) {
@@ -134,7 +136,6 @@ export default function NuevaCitaModal({
     }
   }
 
-  // ── Buscar cliente ──
   useEffect(() => {
     const digits = normalizeTel(telefono);
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -217,10 +218,9 @@ export default function NuevaCitaModal({
       notas: notas.trim() || null,
     };
 
-    // Snapshot del servicio — si se edita el servicio luego, la cita no cambia
     if (svcObj) {
       citaData.servicio_id = svcObj.id;
-      citaData.servicio_nombre_libre = svcObj.nombre;   // snapshot nombre
+      citaData.servicio_nombre_libre = svcObj.nombre;
     } else if (servicioLibre.trim()) {
       citaData.servicio_nombre_libre = servicioLibre.trim();
     }
@@ -310,7 +310,7 @@ export default function NuevaCitaModal({
               style={{ width:'100%', padding:'12px 14px', background:'#1A2332', border:'1px solid rgba(148,163,184,0.06)', borderRadius:12, color:'#F1F5F9', fontSize:15, outline:'none', boxSizing:'border-box' }} />
           </div>
 
-          {/* Servicio — con autocompletado */}
+          {/* Servicio */}
           <div>
             <label style={{ fontSize:12, color:'#94A3B8', fontWeight:600, display:'block', marginBottom:6 }}>SERVICIO</label>
             {servicios.length > 0 ? (
@@ -336,7 +336,6 @@ export default function NuevaCitaModal({
                     <span style={{ fontSize:11, color:'#4B5563' }}>(puedes editar)</span>
                   </div>
                 )}
-                {/* Permitir nombre libre si no hay servicio seleccionado */}
                 {!servicioId && (
                   <input type="text" placeholder="O escribe manualmente..." value={servicioLibre} onChange={e => setServicioLibre(e.target.value)}
                     style={{ marginTop:8, width:'100%', padding:'10px 14px', background:'#1A2332', border:'1px solid rgba(148,163,184,0.06)', borderRadius:10, color:'#F1F5F9', fontSize:14, outline:'none', boxSizing:'border-box' }} />
