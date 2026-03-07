@@ -102,11 +102,11 @@ export default function NuevaCitaModal({
       .from('estados_cita').select('*')
       .eq('empresa_id', empresaId).eq('activo', true).order('orden');
     setEstadosCita(data || []);
-    const confirmada = data?.find(e =>
-      (e.nombre_defecto || '').toLowerCase() === 'confirmada' ||
-      (e.nombre_personalizado || '').toLowerCase() === 'confirmada'
+    const programada = data?.find(e =>
+      (e.nombre_defecto || '').toLowerCase() === 'programada' ||
+      (e.nombre_personalizado || '').toLowerCase() === 'programada'
     );
-    if (confirmada) setEstadoSeleccionado(confirmada.nombre_personalizado || confirmada.nombre_defecto);
+    if (programada) setEstadoSeleccionado(programada.nombre_personalizado || programada.nombre_defecto);
     else if (data && data.length > 0) setEstadoSeleccionado(data[0].nombre_personalizado || data[0].nombre_defecto);
   }
 
@@ -204,7 +204,7 @@ export default function NuevaCitaModal({
       clienteId = nuevo.id;
     }
 
-    const estadoFinal = estadoSeleccionado || 'Confirmada';
+    const estadoFinal = estadoSeleccionado || 'Programada';
     const svcObj = servicios.find(s => s.id === servicioId);
 
     const citaData: any = {
