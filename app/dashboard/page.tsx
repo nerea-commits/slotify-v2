@@ -1139,15 +1139,17 @@ export default function Dashboard() {
                                   <div
                                     style={{ position: 'absolute', inset: 0, cursor: isInDayDragRange ? 'ns-resize' : 'pointer' }}
                                     onMouseDown={e => handleDayDragMouseDown(e, si)}
-                                    onMouseEnter={() => handleDayDragMouseEnter(si)}
+                                    onMouseEnter={e => {
+                                      handleDayDragMouseEnter(si);
+                                      if (!dayDragRef.current?.active) (e.currentTarget as HTMLElement).style.background = C.greenBg;
+                                    }}
+                                    onMouseLeave={e => {
+                                      if (!dayDragRef.current?.active) (e.currentTarget as HTMLElement).style.background = 'transparent';
+                                    }}
                                     onMouseUp={e => handleDayDragMouseUp(e)}
-                                    onMouseLeave={() => {}}
-                                    onClick={e => {
-                                      // Solo abrir modal por click si no hubo drag real
+                                    onClick={() => {
                                       if (!dayDrag) openModal(selectedDate, slot);
                                     }}
-                                    onMouseEnterCapture={e => { if (!dayDragRef.current?.active) (e.currentTarget as HTMLElement).style.background = C.greenBg; }}
-                                    onMouseLeaveCapture={e => { if (!dayDragRef.current?.active) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                                   />
                                 ) : (
                                   <div onClick={() => openModal(selectedDate, slot)} style={{ position: 'absolute', inset: 0, cursor: 'pointer' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.greenBg; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }} />
