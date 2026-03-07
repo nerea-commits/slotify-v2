@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { ChevronLeft, ChevronRight, Plus, X, Edit2 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
@@ -23,6 +23,12 @@ const ALL_SLOTS = Array.from({ length: 48 }, (_, i) => {
 function timeToMinutes(t: string) {
   const [h, m] = (t || '00:00').split(':').map(Number);
   return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
+}
+
+function minutesToTime(mins: number): string {
+  const h = Math.floor(mins / 60) % 24;
+  const m = mins % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
 function toDS(d: Date) {
@@ -51,6 +57,16 @@ const C = {
 
 type ViewMode = 'day' | 'week' | 'month';
 
+// ── DRAG STATE ──
+interface DragState {
+  active: boolean;
+  dayIndex: number;        // índice en displayDays (semana) o 0 (día)
+  startSlotIdx: number;    // índice en visibleSlots
+  currentSlotIdx: number;  // índice en visibleSlots
+  date: Date;
+  hasConflict: boolean;
+}
+
 export default function Dashboard() {
   const [view, setView] = useState<ViewMode>('day');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -64,6 +80,7 @@ export default function Dashboard() {
   const [selectedCita, setSelectedCita] = useState<any>(null);
   const [editingCita, setEditingCita] = useState<any>(null);
   const [preselectedTime, setPreselectedTime] = useState('');
+  const [preselectedEndTime, setPreselectedEndTime] = useState(''); // NUEVO
   const [preselectedDate, setPreselectedDate] = useState<Date | null>(null);
   const [currentMinutes, setCurrentMinutes] = useState(-1);
   const [activeSection, setActiveSection] = useState<string>('agenda');
@@ -77,7 +94,6 @@ export default function Dashboard() {
   const [anotacionTexto, setAnotacionTexto] = useState('');
   const [anotacionLoading, setAnotacionLoading] = useState(false);
 
-  // ── CAMBIO 4: state para el aviso de ausencia al crear cita ──
   const [absenceWarning, setAbsenceWarning] = useState<{
     open: boolean;
     date: Date | null;
@@ -94,11 +110,12 @@ export default function Dashboard() {
   const [editEstado, setEditEstado] = useState('');
   const [editLoading, setEditLoading] = useState(false);
 
-  // RISK INDICATOR CACHE
   const [clientRiskCache, setClientRiskCache] = useState<Record<string, { show: boolean; color: string; icon: string | null }>>({});
-
-  // ── RESPONSIVE: detección de móvil ──
   const [isMobile, setIsMobile] = useState(false);
+
+  // ── DRAG STATE ──
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const dragRef = useRef<DragState | null>(null); // ref para handlers de mouse
 
   useEffect(() => {
     function checkMobile() { setIsMobile(window.innerWidth < 768); }
@@ -199,6 +216,18 @@ export default function Dashboard() {
   useEffect(() => { loadAllCitas(); }, [selectedDate, view]);
   useEffect(() => { if (profesional) { profesionalIdRef.current = profesional.id; loadAllCitas(); } }, [profesional]);
 
+  // ── Global mouseup para cancelar drag si se suelta fuera ──
+  useEffect(() => {
+    function handleGlobalMouseUp() {
+      if (dragRef.current?.active) {
+        setDrag(null);
+        dragRef.current = null;
+      }
+    }
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, []);
+
   function loadClientRisks(citas: any[]) {
     const citasPorCliente: Record<string, any[]> = {};
     citas.forEach(c => {
@@ -268,7 +297,6 @@ export default function Dashboard() {
   });
   const totalSlots = visibleSlots.length;
 
-  // ── Slots de 1h para vista día móvil ──
   const mobileHourSlots = visibleSlots.filter(s => s.endsWith(':00'));
 
   function parseDiasLaborables(raw: any): number[] {
@@ -371,7 +399,6 @@ export default function Dashboard() {
       });
   }
 
-  // ── CAMBIO 1: activeAbsenceStatus sin cambios, se usa diferente en el render ──
   function activeAbsenceStatus(): { icon: string; label: string; range: string } | null {
     const today = new Date();
     const todayStr = today.toISOString();
@@ -497,7 +524,6 @@ export default function Dashboard() {
     });
   }
 
-  // ── 3 días para vista semana móvil: centrado en selectedDate ──
   function getMobile3Days(): Date[] {
     const d = new Date(selectedDate);
     const prev = new Date(d); prev.setDate(d.getDate() - 1);
@@ -556,8 +582,7 @@ export default function Dashboard() {
     loadAllCitas();
   }
 
-  // ── CAMBIO 4: openModal intercepta ausencias de empleado ──
-  function openModal(date?: Date, time?: string) {
+  function openModal(date?: Date, time?: string, endTime?: string) {
     const targetDate = date ? new Date(date) : selectedDate;
     const targetTime = time || '';
 
@@ -590,6 +615,7 @@ export default function Dashboard() {
 
     setPreselectedDate(targetDate);
     setPreselectedTime(targetTime);
+    setPreselectedEndTime(endTime || ''); // NUEVO
     setModalOpen(true);
   }
 
@@ -597,8 +623,177 @@ export default function Dashboard() {
     return getWeekDays().some(wd => wd.toDateString() === d.toDateString());
   }
 
+  // ── DRAG: comprobar solapamiento con citas existentes ──
+  function dragHasConflict(date: Date, startSlotIdx: number, endSlotIdx: number): boolean {
+    const minIdx = Math.min(startSlotIdx, endSlotIdx);
+    const maxIdx = Math.max(startSlotIdx, endSlotIdx);
+    const startTime = visibleSlots[minIdx];
+    const endSlot = visibleSlots[maxIdx];
+    const startM = timeToMinutes(startTime);
+    const endM = timeToMinutes(endSlot) + 30; // +30 porque el slot final está incluido
+
+    const dayCitas = citasForDate(date);
+    return dayCitas.some(cita => {
+      if ((cita.estado || '').toLowerCase() === 'cancelada') return false;
+      const citaStart = rawTimeMin(cita.hora_inicio);
+      const citaEnd = cita.hora_fin ? rawTimeMin(cita.hora_fin) : citaStart + 30;
+      return startM < citaEnd && endM > citaStart;
+    });
+  }
+
+  // ── DRAG handlers ──
+  function handleDragMouseDown(e: React.MouseEvent, slotIdx: number, dayIdx: number, date: Date) {
+    if (isMobile) return;
+    e.preventDefault();
+    const newDrag: DragState = {
+      active: true,
+      dayIndex: dayIdx,
+      startSlotIdx: slotIdx,
+      currentSlotIdx: slotIdx,
+      date,
+      hasConflict: false,
+    };
+    dragRef.current = newDrag;
+    setDrag(newDrag);
+  }
+
+  function handleDragMouseEnter(slotIdx: number, dayIdx: number, date: Date) {
+    if (!dragRef.current?.active) return;
+    // Solo permitir arrastrar en la misma columna (mismo día)
+    if (dayIdx !== dragRef.current.dayIndex) return;
+    const hasConflict = dragHasConflict(
+      date,
+      dragRef.current.startSlotIdx,
+      slotIdx
+    );
+    const updated: DragState = {
+      ...dragRef.current,
+      currentSlotIdx: slotIdx,
+      hasConflict,
+    };
+    dragRef.current = updated;
+    setDrag({ ...updated });
+  }
+
+  function handleDragMouseUp(e: React.MouseEvent, date: Date) {
+    if (!dragRef.current?.active) return;
+    e.preventDefault();
+    const d = dragRef.current;
+
+    if (d.hasConflict) {
+      // Solapamiento: cancelar silenciosamente
+      setDrag(null);
+      dragRef.current = null;
+      return;
+    }
+
+    const minIdx = Math.min(d.startSlotIdx, d.currentSlotIdx);
+    const maxIdx = Math.max(d.startSlotIdx, d.currentSlotIdx);
+    const startTime = visibleSlots[minIdx];
+    const endSlot = visibleSlots[maxIdx];
+    const endM = timeToMinutes(endSlot) + 30;
+    const endTime = minutesToTime(endM);
+
+    setDrag(null);
+    dragRef.current = null;
+
+    // Abrir modal solo si el drag fue al menos 1 slot (no fue solo un click)
+    // Si fue el mismo slot, mínimo 30min
+    openModal(date, startTime, endTime);
+  }
+
+  // ── DRAG: calcular posición y altura del bloque provisional ──
+  function getDragBlockStyle(slotIdx: number, dayIdx: number): React.CSSProperties | null {
+    if (!drag?.active || drag.dayIndex !== dayIdx) return null;
+
+    const minIdx = Math.min(drag.startSlotIdx, drag.currentSlotIdx);
+    const maxIdx = Math.max(drag.startSlotIdx, drag.currentSlotIdx);
+
+    if (slotIdx !== minIdx) return null;
+
+    const spanSlots = maxIdx - minIdx + 1;
+
+    return {
+      position: 'absolute' as const,
+      top: 0,
+      left: 2,
+      right: 2,
+      height: spanSlots * WEEK_SLOT_H,
+      background: drag.hasConflict ? 'rgba(239,68,68,0.25)' : 'rgba(34,197,94,0.25)',
+      border: `2px dashed ${drag.hasConflict ? C.red : C.green}`,
+      borderRadius: 6,
+      zIndex: 30,
+      pointerEvents: 'none' as const,
+      display: 'flex',
+      flexDirection: 'column' as const,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 2,
+    };
+  }
+
+  // ── DRAG en vista DÍA (columna única) ──
+  const [dayDrag, setDayDrag] = useState<{
+    active: boolean;
+    startSlotIdx: number;
+    currentSlotIdx: number;
+    hasConflict: boolean;
+  } | null>(null);
+  const dayDragRef = useRef<typeof dayDrag>(null);
+
+  useEffect(() => {
+    function handleGlobalMouseUpDay() {
+      if (dayDragRef.current?.active) {
+        setDayDrag(null);
+        dayDragRef.current = null;
+      }
+    }
+    window.addEventListener('mouseup', handleGlobalMouseUpDay);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUpDay);
+  }, []);
+
+  function handleDayDragMouseDown(e: React.MouseEvent, slotIdx: number) {
+    if (isMobile) return;
+    e.preventDefault();
+    const newDrag = { active: true, startSlotIdx: slotIdx, currentSlotIdx: slotIdx, hasConflict: false };
+    dayDragRef.current = newDrag;
+    setDayDrag(newDrag);
+  }
+
+  function handleDayDragMouseEnter(slotIdx: number) {
+    if (!dayDragRef.current?.active) return;
+    const hasConflict = dragHasConflict(selectedDate, dayDragRef.current.startSlotIdx, slotIdx);
+    const updated = { ...dayDragRef.current, currentSlotIdx: slotIdx, hasConflict };
+    dayDragRef.current = updated;
+    setDayDrag({ ...updated });
+  }
+
+  function handleDayDragMouseUp(e: React.MouseEvent) {
+    if (!dayDragRef.current?.active) return;
+    e.preventDefault();
+    const d = dayDragRef.current;
+
+    if (d.hasConflict) {
+      setDayDrag(null);
+      dayDragRef.current = null;
+      return;
+    }
+
+    const minIdx = Math.min(d.startSlotIdx, d.currentSlotIdx);
+    const maxIdx = Math.max(d.startSlotIdx, d.currentSlotIdx);
+    const startTime = visibleSlots[minIdx];
+    const endM = timeToMinutes(visibleSlots[maxIdx]) + 30;
+    const endTime = minutesToTime(endM);
+
+    setDayDrag(null);
+    dayDragRef.current = null;
+
+    openModal(selectedDate, startTime, endTime);
+  }
+
   const weekDayNames = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
   const WEEK_SLOT_H = 44;
+  const DAY_SLOT_H = 50;
 
   function renderCitaBlock(cita: any, style: React.CSSProperties) {
     const name = cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente';
@@ -641,7 +836,6 @@ export default function Dashboard() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }} className="main-content-desktop">
         {/* ── HEADER ── */}
         <div style={{ background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}`, flexShrink: 0 }}>
-          {/* Fila 1: Logo + Toggle vista + Usuario */}
           <div style={{ height: 52, display: 'flex', alignItems: 'center', padding: '0 14px', gap: 8 }}>
             <div className="show-mobile-flex" style={{ alignItems: 'center', gap: 8, marginRight: 4, flexShrink: 0 }}>
               {empresa?.logo_url ? (
@@ -665,7 +859,6 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Desktop: navegación fecha en la misma fila */}
             {activeSection === 'agenda' && (
               <div className="hidden-mobile" style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 4 }}>
                 <button onClick={() => view === 'day' ? changeDay(-1) : view === 'week' ? changeWeek(-1) : changeMonth(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textSec, padding: 4, borderRadius: 6, display: 'flex' }}>
@@ -685,7 +878,6 @@ export default function Dashboard() {
 
             <div style={{ flex: 1 }} />
 
-            {/* Badge ausencia + usuario (solo desktop) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ textAlign: 'right' }} className="hidden-mobile">
                 <p style={{ fontSize: 12, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>{profesional?.nombre || ''}</p>
@@ -708,7 +900,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Fila 2 (móvil): navegación de fecha compacta */}
           {activeSection === 'agenda' && (
             <div className="show-mobile-only" style={{ height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, borderTop: `1px solid ${C.surfaceAlt}`, padding: '0 8px' }}>
               <button onClick={() => view === 'day' ? changeDay(-1) : view === 'week' ? changeWeek(-1) : changeMonth(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textSec, padding: 6, borderRadius: 6, display: 'flex' }}>
@@ -750,7 +941,6 @@ export default function Dashboard() {
 
           {/* ── VISTA DÍA ── */}
           {view === 'day' && (<>
-            {/* ── Tira de días (solo móvil) ── */}
             {isMobile && (
               <div style={{ display: 'flex', alignItems: 'stretch', background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}`, padding: '6px 8px', gap: 4, flexShrink: 0 }}>
                 {getWeekDays().map((day, i) => {
@@ -783,7 +973,6 @@ export default function Dashboard() {
 
             <div className="flex-1 overflow-y-auto" style={{ paddingTop: 8, paddingBottom: 80 }}>
               <div style={{ paddingLeft: isMobile ? 8 : 16, paddingRight: isMobile ? 8 : 16 }}>
-                {/* Banners cierre empresa */}
                 {absenceBannersForDate(selectedDate).map((b, i) => (
                   <div key={`abs-banner-${i}`} style={{
                     padding: '8px 12px', borderRadius: 8, marginBottom: 6, fontSize: 12, fontWeight: 600,
@@ -794,7 +983,6 @@ export default function Dashboard() {
                     {b.icon} {b.text}
                   </div>
                 ))}
-                {/* Bloques elegantes de ausencia de empleado en vista día */}
                 {absenceBlocksForDate(selectedDate).map((block, i) => (
                   <div key={`abs-block-${i}`} style={{
                     display: 'flex', alignItems: 'center', gap: 10,
@@ -826,7 +1014,6 @@ export default function Dashboard() {
                     const dur = Math.max(citaEnd - citaStart, 30);
                     const slotIdx = slotsToRender.findIndex(s => timeToMinutes(s) === (isMobile ? Math.floor(citaStart / 60) * 60 : citaStart));
                     if (slotIdx === -1) return;
-                    // En móvil, múltiples citas pueden caer en el mismo slot de 1h
                     if (!citaAtSlot[slotIdx]) {
                       citaAtSlot[slotIdx] = cita;
                       const spanSlots = isMobile ? 1 : Math.ceil(dur / 30);
@@ -835,7 +1022,6 @@ export default function Dashboard() {
                     }
                   });
 
-                  // Para móvil: agrupar citas por slot horario
                   const citasPerHourSlot: Record<number, any[]> = {};
                   if (isMobile) {
                     dayCitas.forEach(cita => {
@@ -849,11 +1035,19 @@ export default function Dashboard() {
 
                   const nowSlotIdx = isToday(selectedDate) ? slotsToRender.findIndex(s => { const m = timeToMinutes(s); return currentMinutes >= m && currentMinutes < m + SLOT_DUR; }) : -1;
 
+                  // ── Drag preview en vista día ──
+                  const dayDragMinIdx = dayDrag ? Math.min(dayDrag.startSlotIdx, dayDrag.currentSlotIdx) : -1;
+                  const dayDragMaxIdx = dayDrag ? Math.max(dayDrag.startSlotIdx, dayDrag.currentSlotIdx) : -1;
+
                   return slotsToRender.map((slot, si) => {
                     if (!isMobile && coveredSlots.has(si) && !citaAtSlot[si]) return null;
                     const isHour = slot.endsWith(':00');
-                    const MIN_H = isMobile ? 56 : 50;
+                    const MIN_H = isMobile ? 56 : DAY_SLOT_H;
                     const slotCitas = isMobile ? (citasPerHourSlot[si] || []) : (citaAtSlot[si] ? [citaAtSlot[si]] : []);
+
+                    // ¿Este slot está en el rango del drag día?
+                    const isInDayDragRange = !isMobile && dayDrag?.active && si >= dayDragMinIdx && si <= dayDragMaxIdx;
+                    const isDayDragStart = !isMobile && dayDrag?.active && si === dayDragMinIdx;
 
                     return (
                       <div key={slot} style={{ display: 'flex', minHeight: slotCitas.length > 0 ? Math.max(MIN_H, slotCitas.length * 52) : MIN_H }}>
@@ -869,7 +1063,45 @@ export default function Dashboard() {
                             borderLeftStyle: 'solid' as const,
                           } : null;
                           return (
-                            <div style={{ flex: 1, borderBottom: `1px solid ${isHour ? C.surfaceAlt : 'rgba(36,50,71,0.4)'}`, minHeight: MIN_H, position: 'relative', display: 'flex', flexDirection: 'column', gap: 3, padding: slotCitas.length > 0 ? '2px 0' : 0, ...(absOverlay ? { background: absOverlay.background, borderLeft: `${absOverlay.borderLeftWidth} ${absOverlay.borderLeftStyle} ${absOverlay.borderLeftColor}` } : {}) }}>
+                            <div
+                              style={{ flex: 1, borderBottom: `1px solid ${isHour ? C.surfaceAlt : 'rgba(36,50,71,0.4)'}`, minHeight: MIN_H, position: 'relative', display: 'flex', flexDirection: 'column', gap: 3, padding: slotCitas.length > 0 ? '2px 0' : 0, ...(absOverlay ? { background: absOverlay.background, borderLeft: `${absOverlay.borderLeftWidth} ${absOverlay.borderLeftStyle} ${absOverlay.borderLeftColor}` } : {}), userSelect: 'none' }}
+                            >
+                              {/* ── Drag preview bloque día ── */}
+                              {isDayDragStart && dayDrag && (() => {
+                                const spanSlots = dayDragMaxIdx - dayDragMinIdx + 1;
+                                const startLabel = visibleSlots[dayDragMinIdx];
+                                const endM = timeToMinutes(visibleSlots[dayDragMaxIdx]) + 30;
+                                const endLabel = minutesToTime(endM);
+                                return (
+                                  <div style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 4,
+                                    right: 4,
+                                    height: spanSlots * MIN_H,
+                                    background: dayDrag.hasConflict ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)',
+                                    border: `2px dashed ${dayDrag.hasConflict ? C.red : C.green}`,
+                                    borderRadius: 8,
+                                    zIndex: 25,
+                                    pointerEvents: 'none',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 2,
+                                  }}>
+                                    {spanSlots >= 2 && (
+                                      <span style={{ fontSize: 12, fontWeight: 700, color: dayDrag.hasConflict ? C.red : C.green }}>
+                                        {startLabel} – {endLabel}
+                                      </span>
+                                    )}
+                                    {dayDrag.hasConflict && (
+                                      <span style={{ fontSize: 10, color: C.red }}>Ocupado</span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+
                               {slotCitas.length > 0 ? (
                                 slotCitas.map(cita => (
                                   <div key={cita.id} onClick={() => setSelectedCita(cita)} style={{
@@ -902,7 +1134,24 @@ export default function Dashboard() {
                                   </div>
                                 ))
                               ) : (
-                                <div onClick={() => openModal(selectedDate, slot)} style={{ position: 'absolute', inset: 0, cursor: 'pointer' }} onMouseEnter={e => { if (!isMobile) (e.currentTarget as HTMLElement).style.background = C.greenBg; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }} />
+                                // ── Zona de drag/click para slot vacío (solo desktop) ──
+                                !isMobile ? (
+                                  <div
+                                    style={{ position: 'absolute', inset: 0, cursor: isInDayDragRange ? 'ns-resize' : 'pointer' }}
+                                    onMouseDown={e => handleDayDragMouseDown(e, si)}
+                                    onMouseEnter={() => handleDayDragMouseEnter(si)}
+                                    onMouseUp={e => handleDayDragMouseUp(e)}
+                                    onMouseLeave={() => {}}
+                                    onClick={e => {
+                                      // Solo abrir modal por click si no hubo drag real
+                                      if (!dayDrag) openModal(selectedDate, slot);
+                                    }}
+                                    onMouseEnterCapture={e => { if (!dayDragRef.current?.active) (e.currentTarget as HTMLElement).style.background = C.greenBg; }}
+                                    onMouseLeaveCapture={e => { if (!dayDragRef.current?.active) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                                  />
+                                ) : (
+                                  <div onClick={() => openModal(selectedDate, slot)} style={{ position: 'absolute', inset: 0, cursor: 'pointer' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.greenBg; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }} />
+                                )
                               )}
                               {nowSlotIdx === si && (
                                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', pointerEvents: 'none', zIndex: 20 }}>
@@ -927,7 +1176,6 @@ export default function Dashboard() {
           {/* ── VISTA SEMANA ── */}
           {view === 'week' && (
             <div className="flex-1 flex overflow-hidden" style={{ minHeight: 0 }}>
-              {/* ── Sidebar mini calendario (solo desktop) ── */}
               {!isMobile && (
                 <div style={{ width: 196, flexShrink: 0, borderRight: `1px solid ${C.surfaceAlt}`, background: C.surface, padding: '16px 10px', display: 'flex', flexDirection: 'column', gap: 0, overflowY: 'auto' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
@@ -961,7 +1209,6 @@ export default function Dashboard() {
 
               <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', padding: isMobile ? '0' : '10px 12px 0' }}>
 
-                {/* ── Móvil: mini calendario colapsable + navegación ── */}
                 {isMobile && (
                   <div style={{ flexShrink: 0, background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}` }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px' }}>
@@ -979,7 +1226,6 @@ export default function Dashboard() {
                         <ChevronRight className="w-5 h-5" />
                       </button>
                     </div>
-                    {/* Mini calendario expandible */}
                     {miniCalOpen && (
                       <div style={{ padding: '0 12px 10px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -1014,7 +1260,6 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {/* ── Desktop: navegación semana ── */}
                 {!isMobile && (
                   <div className="flex items-center justify-between flex-shrink-0" style={{ marginBottom: 8 }}>
                     <button onClick={() => changeWeek(-1)} className="p-2" style={{ color: C.textSec }}><ChevronLeft className="w-5 h-5" /></button>
@@ -1073,21 +1318,14 @@ export default function Dashboard() {
                           {today && <div style={{ fontSize: 7, color: C.green, fontWeight: 700 }}>HOY</div>}
                           {!isMobile && !working && dayAnotaciones.length > 0 && <div style={{ fontSize: 7, color: C.yellow, fontWeight: 700 }}>● {dayAnotaciones.length}</div>}
                           {dayCompanyClosures.length > 0 && <div style={{ fontSize: 7, fontWeight: 700, color: '#EF4444' }}>⛔ CIERRE</div>}
-                          {/* Bloque ausencia en header */}
                           {(() => {
                             const empAbs = absenceBlocksForDate(day);
                             if (!empAbs.length) return null;
                             return (
                               <div style={{
-                                marginTop: 3,
-                                padding: '2px 5px',
-                                borderRadius: 5,
-                                background: 'rgba(245,158,11,0.15)',
-                                borderLeft: '2px solid rgba(245,158,11,0.6)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 3,
-                                maxWidth: '92%',
+                                marginTop: 3, padding: '2px 5px', borderRadius: 5,
+                                background: 'rgba(245,158,11,0.15)', borderLeft: '2px solid rgba(245,158,11,0.6)',
+                                display: 'flex', alignItems: 'center', gap: 3, maxWidth: '92%',
                               }}>
                                 <span style={{ fontSize: 9, flexShrink: 0 }}>{empAbs[0].icon}</span>
                                 <span style={{ fontSize: isMobile ? 9 : 8, fontWeight: 700, color: '#F59E0B', whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>{empAbs[0].label}{!isMobile ? ` · ${empAbs[0].name}` : ''}</span>
@@ -1106,6 +1344,7 @@ export default function Dashboard() {
                           <span style={{ fontSize: isHour ? 10 : 9, color: C.textSec, fontWeight: isHour ? 600 : 400, opacity: isHour ? 1 : 0.5, lineHeight: 1, whiteSpace: 'nowrap' }}>{slot}</span>
                         </div>
                       );
+
                       displayDays.forEach((day, di) => {
                         const today = isToday(day);
                         const working = isWorkingDay(day);
@@ -1122,8 +1361,18 @@ export default function Dashboard() {
                           ? 'rgba(239,68,68,0.05)'
                           : (working ? C.surface : 'rgba(15,23,42,0.35)');
 
+                        // ── Drag preview en celda semana ──
+                        const dragBlockStyle = !isMobile ? getDragBlockStyle(si, di) : null;
+                        const isDragActive = drag?.active && drag.dayIndex === di;
+                        const dragMinIdx = drag ? Math.min(drag.startSlotIdx, drag.currentSlotIdx) : -1;
+                        const dragMaxIdx = drag ? Math.max(drag.startSlotIdx, drag.currentSlotIdx) : -1;
+                        const isInDragRange = isDragActive && si >= dragMinIdx && si <= dragMaxIdx;
+
                         cells.push(
-                          <div key={`cell-${si}-${di}`} style={{ gridColumn: di + 2, gridRow: spanSlots > 1 ? `${rowIdx} / span ${spanSlots}` : `${rowIdx}`, background: weekCellBg, borderBottom: `1px solid ${isHour ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.06)'}`, borderLeft: `1px solid ${today ? C.green + '55' : isCompanyClosure ? 'rgba(239,68,68,0.25)' : 'rgba(148,163,184,0.12)'}`, borderRight: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`, position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: cita ? 'center' : 'flex-start', boxSizing: 'border-box' as const, overflow: 'visible' }}>
+                          <div
+                            key={`cell-${si}-${di}`}
+                            style={{ gridColumn: di + 2, gridRow: spanSlots > 1 ? `${rowIdx} / span ${spanSlots}` : `${rowIdx}`, background: weekCellBg, borderBottom: `1px solid ${isHour ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.06)'}`, borderLeft: `1px solid ${today ? C.green + '55' : isCompanyClosure ? 'rgba(239,68,68,0.25)' : 'rgba(148,163,184,0.12)'}`, borderRight: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`, position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: cita ? 'center' : 'flex-start', boxSizing: 'border-box' as const, overflow: 'visible', userSelect: 'none' }}
+                          >
                             {cita && (
                               <div onClick={() => setSelectedCita(cita)} style={{ position: 'absolute', inset: 0, background: `${citaColor(cita.estado)}22`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 4, padding: isMobile ? '4px 6px' : '6px 8px', cursor: 'pointer', boxSizing: 'border-box' as const, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden' }}>
                                 <p style={{ fontSize: isMobile ? 12 : 11, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, textTransform: 'uppercase' as const, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
@@ -1164,7 +1413,48 @@ export default function Dashboard() {
                                 })()}
                               </div>
                             )}
-                            {!cita && <div onClick={() => working ? openModal(day, slot) : setAnotacionModal({ open: true, date: day })} style={{ position: 'absolute', inset: 0, cursor: working ? 'pointer' : 'default' }} onMouseEnter={e => { if (working && !isMobile) (e.currentTarget as HTMLElement).style.background = C.greenBg; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }} />}
+
+                            {/* ── Drag preview bloque semana ── */}
+                            {dragBlockStyle && (() => {
+                              const spanCount = dragMaxIdx - dragMinIdx + 1;
+                              const startLabel = visibleSlots[dragMinIdx];
+                              const endM = timeToMinutes(visibleSlots[dragMaxIdx]) + 30;
+                              const endLabel = minutesToTime(endM);
+                              return (
+                                <div style={dragBlockStyle}>
+                                  {spanCount >= 2 && (
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: drag?.hasConflict ? C.red : C.green }}>
+                                      {startLabel} – {endLabel}
+                                    </span>
+                                  )}
+                                  {drag?.hasConflict && (
+                                    <span style={{ fontSize: 10, color: C.red }}>Ocupado</span>
+                                  )}
+                                </div>
+                              );
+                            })()}
+
+                            {!cita && (
+                              <div
+                                style={{ position: 'absolute', inset: 0, cursor: working && !isMobile ? (isInDragRange ? 'ns-resize' : 'pointer') : 'default' }}
+                                onMouseDown={e => { if (working && !isMobile) handleDragMouseDown(e, si, di, day); }}
+                                onMouseEnter={e => {
+                                  if (drag?.active) {
+                                    handleDragMouseEnter(si, di, day);
+                                  } else if (working && !isMobile) {
+                                    (e.currentTarget as HTMLElement).style.background = C.greenBg;
+                                  }
+                                }}
+                                onMouseLeave={e => {
+                                  if (!drag?.active) (e.currentTarget as HTMLElement).style.background = 'transparent';
+                                }}
+                                onMouseUp={e => { if (working && !isMobile) handleDragMouseUp(e, day); }}
+                                onClick={() => {
+                                  if (!drag && working) openModal(day, slot);
+                                  else if (!working) setAnotacionModal({ open: true, date: day });
+                                }}
+                              />
+                            )}
                             {isNowSlot && <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', pointerEvents: 'none', zIndex: 20 }}><div style={{ width: 6, height: 6, borderRadius: '50%', background: C.red, boxShadow: '0 0 5px rgba(239,68,68,0.8)', flexShrink: 0 }} /><div style={{ flex: 1, height: 2, background: C.red, opacity: 0.8 }} /></div>}
                           </div>
                         );
@@ -1214,28 +1504,14 @@ export default function Dashboard() {
                     if (isMobile) {
                       return (
                         <div key={i} onClick={() => working ? goToDay(day) : setAnotacionModal({ open: true, date: day })}
-                          style={{
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                            padding: '8px 2px', borderRadius: 8, cursor: 'pointer', minHeight: 48,
-                            background: today ? `${C.green}20` : 'transparent',
-                            border: today ? `1.5px solid ${C.green}` : '1.5px solid transparent',
-                            opacity: working ? 1 : 0.35,
-                          }}>
+                          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '8px 2px', borderRadius: 8, cursor: 'pointer', minHeight: 48, background: today ? `${C.green}20` : 'transparent', border: today ? `1.5px solid ${C.green}` : '1.5px solid transparent', opacity: working ? 1 : 0.35 }}>
                           <span style={{ fontSize: 15, fontWeight: 700, color: today ? C.green : C.text, lineHeight: 1 }}>{day.getDate()}</span>
                           <div style={{ display: 'flex', gap: 3, marginTop: 5, minHeight: 6 }}>
-                            {working && citasCount > 0 && (
-                              <div style={{ width: 5, height: 5, borderRadius: '50%', background: av?.color || C.green }} />
-                            )}
-                            {working && citasCount > 2 && (
-                              <div style={{ width: 5, height: 5, borderRadius: '50%', background: av?.color || C.green, opacity: 0.5 }} />
-                            )}
-                            {!working && dayAnotaciones.length > 0 && (
-                              <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.yellow }} />
-                            )}
+                            {working && citasCount > 0 && <div style={{ width: 5, height: 5, borderRadius: '50%', background: av?.color || C.green }} />}
+                            {working && citasCount > 2 && <div style={{ width: 5, height: 5, borderRadius: '50%', background: av?.color || C.green, opacity: 0.5 }} />}
+                            {!working && dayAnotaciones.length > 0 && <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.yellow }} />}
                           </div>
-                          {working && citasCount > 0 && (
-                            <span style={{ fontSize: 8, color: C.textSec, marginTop: 2 }}>{citasCount}</span>
-                          )}
+                          {working && citasCount > 0 && <span style={{ fontSize: 8, color: C.textSec, marginTop: 2 }}>{citasCount}</span>}
                         </div>
                       );
                     }
@@ -1463,7 +1739,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* ── CAMBIO 4: MODAL AVISO AUSENCIA ── */}
+          {/* ── MODAL AVISO AUSENCIA ── */}
           {absenceWarning?.open && (
             <div className="fixed inset-0 flex items-center justify-center z-50 p-4"
               style={{ background: 'rgba(0,0,0,0.7)' }}
@@ -1539,6 +1815,7 @@ export default function Dashboard() {
           empresaId={empresa?.id || ''}
           selectedDate={preselectedDate || selectedDate}
           preselectedTime={preselectedTime}
+          preselectedEndTime={preselectedEndTime}
         />
       </div>
 
