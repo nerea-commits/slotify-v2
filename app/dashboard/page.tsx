@@ -112,6 +112,8 @@ export default function Dashboard() {
 
   const [clientRiskCache, setClientRiskCache] = useState<Record<string, { show: boolean; color: string; icon: string | null }>>({});
   const [isMobile, setIsMobile] = useState(false);
+  const [navDir, setNavDir] = useState<'left' | 'right' | null>(null);
+  const [animKey, setAnimKey] = useState(0);
 
   // ── DRAG STATE ──
   const [drag, setDrag] = useState<DragState | null>(null);
@@ -547,10 +549,19 @@ export default function Dashboard() {
   function isToday(d: Date) { return d.toDateString() === new Date().toDateString(); }
   function formatDate(d: Date) { return d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); }
   function formatMonth(d: Date) { return d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }); }
-  function changeDay(n: number) { const d = new Date(selectedDate); d.setDate(d.getDate() + n); setSelectedDate(d); }
-  function changeWeek(n: number) { const d = new Date(selectedDate); d.setDate(d.getDate() + n * 7); setSelectedDate(d); }
+  function changeDay(n: number) {
+    if (!isMobile) { setNavDir(n > 0 ? 'left' : 'right'); setAnimKey(k => k + 1); }
+    const d = new Date(selectedDate); d.setDate(d.getDate() + n); setSelectedDate(d);
+  }
+  function changeWeek(n: number) {
+    if (!isMobile) { setNavDir(n > 0 ? 'left' : 'right'); setAnimKey(k => k + 1); }
+    const d = new Date(selectedDate); d.setDate(d.getDate() + n * 7); setSelectedDate(d);
+  }
   function changeMonth(n: number) { const d = new Date(selectedDate); d.setMonth(d.getMonth() + n); setSelectedDate(d); }
-  function goToDay(d: Date) { setSelectedDate(new Date(d)); setView('day'); }
+  function goToDay(d: Date) {
+    if (!isMobile) { setNavDir('left'); setAnimKey(k => k + 1); }
+    setSelectedDate(new Date(d)); setView('day');
+  }
 
   function getWeekDays(): Date[] {
     const d = new Date(selectedDate);
@@ -1081,7 +1092,11 @@ export default function Dashboard() {
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto" style={{ paddingTop: 8, paddingBottom: 80 }}>
+            <div
+              key={!isMobile ? `day-${animKey}` : 'day-mobile'}
+              className="flex-1 overflow-y-auto"
+              style={{ paddingTop: 8, paddingBottom: 80, animation: !isMobile && navDir ? `agendaSlide${navDir === 'left' ? 'Left' : 'Right'} 160ms cubic-bezier(0.25,0.46,0.45,0.94) both` : undefined }}
+            >
               <div style={{ paddingLeft: isMobile ? 8 : 16, paddingRight: isMobile ? 8 : 16 }}>
                 {absenceBannersForDate(selectedDate).map((b, i) => (
                   <div key={`abs-banner-${i}`} style={{
@@ -1391,7 +1406,10 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                <div style={{ flex: 1, minHeight: 0, overflow: 'auto', paddingBottom: 80 }}>
+                <div
+                  key={!isMobile ? `week-${animKey}` : 'week-mobile'}
+                  style={{ flex: 1, minHeight: 0, overflow: 'auto', paddingBottom: 80, animation: !isMobile && navDir ? `agendaSlide${navDir === 'left' ? 'Left' : 'Right'} 160ms cubic-bezier(0.25,0.46,0.45,0.94) both` : undefined }}
+                >
                   {(() => {
                     const displayDays = isMobile ? getMobile3Days() : getWeekDays();
                     const numDays = displayDays.length;
@@ -1971,6 +1989,14 @@ export default function Dashboard() {
           .hidden-mobile { display: none !important; }
           .show-mobile-flex { display: flex !important; }
           .show-mobile-only { display: flex !important; }
+        }
+        @keyframes agendaSlideLeft {
+          from { opacity: 0; transform: translateX(18px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes agendaSlideRight {
+          from { opacity: 0; transform: translateX(-18px); }
+          to   { opacity: 1; transform: translateX(0); }
         }
       `}</style>
     </div>
