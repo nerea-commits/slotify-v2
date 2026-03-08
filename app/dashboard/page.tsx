@@ -1552,18 +1552,21 @@ export default function Dashboard() {
               : profesionales;
 
             const TEAM_SLOT_H = 48;
-            const COL_MIN_W = 140;
+            const COL_MIN_W = 160;
+            const COL_MAX_W = 220;
 
             return (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
                 {/* Cabecera empleados */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: `56px repeat(${profsVisibles.length}, minmax(${COL_MIN_W}px, 1fr))`,
+                  gridTemplateColumns: `56px repeat(${profsVisibles.length}, minmax(${COL_MIN_W}px, ${COL_MAX_W}px))`,
                   flexShrink: 0,
                   background: C.surface,
-                  borderBottom: `1px solid ${C.surfaceAlt}`,
+                  borderBottom: `2px solid ${C.surfaceAlt}`,
                   position: 'sticky', top: 0, zIndex: 10,
+                  width: 'fit-content',
+                  minWidth: '100%',
                 }}>
                   <div style={{ borderRight: `1px solid ${C.surfaceAlt}` }} />
                   {profsVisibles.map(prof => {
@@ -1613,7 +1616,9 @@ export default function Dashboard() {
                 <div style={{ flex: 1, overflow: 'auto', paddingBottom: 80 }}>
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: `56px repeat(${profsVisibles.length}, minmax(${COL_MIN_W}px, 1fr))`,
+                    gridTemplateColumns: `56px repeat(${profsVisibles.length}, minmax(${COL_MIN_W}px, ${COL_MAX_W}px))`,
+                    width: 'fit-content',
+                    minWidth: '100%',
                   }}>
                     {visibleSlots.map((slot, si) => {
                       const isHour = slot.endsWith(':00');
