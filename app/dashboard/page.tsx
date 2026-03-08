@@ -148,6 +148,10 @@ export default function Dashboard() {
   const empresaIdRef = useRef<string | null>(null);
   const profesionalIdRef = useRef<string | null>(null);
   const isAdminRef = useRef(false);
+  const visibleSlotsRef = useRef<string[]>([]);
+  const allCitasRef = useRef<any[]>([]);
+  const absencesRef = useRef<any[]>([]);
+  const diasLaborablesRef = useRef<number[]>([1,2,3,4,5]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -390,6 +394,12 @@ export default function Dashboard() {
   }
 
   const diasLaborables = parseDiasLaborables(empresa?.dias_laborables);
+
+  // Mantener refs sincronizados para usar en listeners globales sin closure stale
+  visibleSlotsRef.current = visibleSlots;
+  allCitasRef.current = allCitas;
+  absencesRef.current = absences;
+  diasLaborablesRef.current = diasLaborables;
 
   function isWorkingDay(d: Date): boolean {
     const dow = d.getDay();
@@ -694,67 +704,94 @@ export default function Dashboard() {
     setMoveDrag({ ...state });
   }
 
-  // Actualizar posición del fantasma via data-attributes en los slots
-  function handleMoveDragMouseMove(e: MouseEvent) {
-    if (!moveDragRef.current?.active) return;
-    const el = document.elementFromPoint(e.clientX, e.clientY);
-    if (!el) return;
-    const slotEl = (el as HTMLElement).closest('[data-slot-idx]') as HTMLElement | null;
-    if (!slotEl) return;
-    const slotIdx = parseInt(slotEl.dataset.slotIdx || '-1');
-    const dayIdx = parseInt(slotEl.dataset.dayIdx || '0');
-    const dateStr = slotEl.dataset.date || '';
-    if (slotIdx < 0 || !dateStr) return;
-    const md = moveDragRef.current;
-    const targetSlotIdx = Math.max(0, Math.min(slotIdx, visibleSlots.length - md.durSlots));
-    const targetDate = new Date(dateStr + 'T12:00:00');
-    const hasConflict = moveDragHasConflict(targetDate, targetSlotIdx, md.durSlots, md.cita.id);
-    const updated: MoveDragState = { ...md, targetDayIdx: dayIdx, targetDate, targetSlotIdx, hasConflict };
-    moveDragRef.current = updated;
-    setMoveDrag({ ...updated });
-  }
+  // Actualizar posición del fantasma via data-attributes — usa refs para evitar stale closures
+  const handleMoveDragMouseMoveRef = useRef<(e: MouseEvent) => void>(() => {});
+  const handleMoveDragMouseUpRef = useRef<(e: MouseEvent) => void>(() => {});
 
-  async function handleMoveDragMouseUp(e: MouseEvent) {
-    if (!moveDragRef.current?.active) return;
-    e.preventDefault();
-    const md = moveDragRef.current;
-    setMoveDrag(null);
-    moveDragRef.current = null;
-
-    if (md.hasConflict) {
-      setMoveConflictMsg('No se puede mover: horario ocupado');
-      setTimeout(() => setMoveConflictMsg(null), 2500);
-      return;
-    }
-
-    const targetSlot = visibleSlots[md.targetSlotIdx];
-    if (!targetSlot) return;
-    if (!isWorkingDay(md.targetDate)) return;
-
-    const dateStr = toDS(md.targetDate);
-    const startM = timeToMinutes(targetSlot);
-    const endM = startM + md.durSlots * 30;
-    const newStart = `${dateStr}T${targetSlot}:00`;
-    const newEnd = `${dateStr}T${minutesToTime(endM)}:00`;
-
-    if (newStart === md.cita.hora_inicio && newEnd === md.cita.hora_fin) return;
-
-    await supabase.from('citas').update({
-      hora_inicio: newStart,
-      hora_fin: newEnd,
-    }).eq('id', md.cita.id);
-    loadAllCitas();
-  }
-
-  // Registrar listeners globales para moveDrag
   useEffect(() => {
-    window.addEventListener('mousemove', handleMoveDragMouseMove);
-    window.addEventListener('mouseup', handleMoveDragMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMoveDragMouseMove);
-      window.removeEventListener('mouseup', handleMoveDragMouseUp);
+    handleMoveDragMouseMoveRef.current = (e: MouseEvent) => {
+      if (!moveDragRef.current?.active) return;
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      if (!el) return;
+      const slotEl = (el as HTMLElement).closest('[data-slot-idx]') as HTMLElement | null;
+      if (!slotEl) return;
+      const slotIdx = parseInt(slotEl.dataset.slotIdx || '-1');
+      const dayIdx = parseInt(slotEl.dataset.dayIdx || '0');
+      const dateStr = slotEl.dataset.date || '';
+      if (slotIdx < 0 || !dateStr) return;
+      const slots = visibleSlotsRef.current;
+      const md = moveDragRef.current;
+      const targetSlotIdx = Math.max(0, Math.min(slotIdx, slots.length - md.durSlots));
+
+      // Calcular conflicto usando refs
+      const startM = timeToMinutes(slots[targetSlotIdx] || '00:00');
+      const endM = startM + md.durSlots * 30;
+      const [y, mo, d] = dateStr.split('-').map(Number);
+      const targetDate = new Date(y, mo - 1, d);
+      const dayCitas = allCitasRef.current.filter(c =>
+        c.hora_inicio && c.hora_inicio.substring(0, 10) === dateStr && c.id !== md.cita.id &&
+        (c.estado || '').toLowerCase() !== 'cancelada'
+      );
+      const hasConflict = dayCitas.some(c => {
+        const cs = rawTimeMin(c.hora_inicio);
+        const ce = c.hora_fin ? rawTimeMin(c.hora_fin) : cs + 30;
+        return startM < ce && endM > cs;
+      });
+
+      const updated: MoveDragState = { ...md, targetDayIdx: dayIdx, targetDate, targetSlotIdx, hasConflict };
+      moveDragRef.current = updated;
+      setMoveDrag({ ...updated });
     };
-  }, [visibleSlots, allCitas, absences, diasLaborables]);
+
+    handleMoveDragMouseUpRef.current = async (e: MouseEvent) => {
+      if (!moveDragRef.current?.active) return;
+      e.preventDefault();
+      const md = moveDragRef.current;
+      setMoveDrag(null);
+      moveDragRef.current = null;
+
+      if (md.hasConflict) {
+        setMoveConflictMsg('No se puede mover: horario ocupado');
+        setTimeout(() => setMoveConflictMsg(null), 2500);
+        return;
+      }
+
+      const slots = visibleSlotsRef.current;
+      const targetSlot = slots[md.targetSlotIdx];
+      if (!targetSlot) return;
+
+      // Comprobar día laborable usando ref
+      const dow = md.targetDate.getDay();
+      const isoDay = dow === 0 ? 7 : dow;
+      if (!diasLaborablesRef.current.includes(isoDay)) return;
+
+      const dateStr = toDS(md.targetDate);
+      const startM = timeToMinutes(targetSlot);
+      const endM = startM + md.durSlots * 30;
+      const newStart = `${dateStr}T${targetSlot}:00`;
+      const newEnd = `${dateStr}T${minutesToTime(endM)}:00`;
+
+      if (newStart === md.cita.hora_inicio && newEnd === md.cita.hora_fin) return;
+
+      await supabase.from('citas').update({
+        hora_inicio: newStart,
+        hora_fin: newEnd,
+      }).eq('id', md.cita.id);
+      loadAllCitas();
+    };
+  });
+
+  // Registrar listeners globales UNA vez, delegando a los refs
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => handleMoveDragMouseMoveRef.current(e);
+    const onUp = (e: MouseEvent) => handleMoveDragMouseUpRef.current(e);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
 
   // ── ACCIONES RÁPIDAS ──
   const [hoveredCitaId, setHoveredCitaId] = useState<string | null>(null);
