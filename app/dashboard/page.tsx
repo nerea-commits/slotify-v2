@@ -248,10 +248,7 @@ export default function Dashboard() {
         setDrag(null);
         dragRef.current = null;
       }
-      if (moveDragRef.current?.active) {
-        setMoveDrag(null);
-        moveDragRef.current = null;
-      }
+      // moveDragRef se gestiona en su propio listener global
     }
     window.addEventListener('mouseup', handleGlobalMouseUp);
     return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
