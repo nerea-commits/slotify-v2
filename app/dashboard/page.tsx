@@ -67,6 +67,20 @@ interface DragState {
   hasConflict: boolean;
 }
 
+// ── MOVE DRAG STATE ──
+interface MoveDragState {
+  active: boolean;
+  cita: any;
+  originDate: string;       // 'YYYY-MM-DD'
+  originSlotIdx: number;    // slot de inicio de la cita
+  offsetSlots: number;      // slots desde el inicio de la cita donde se agarró
+  targetDayIdx: number;     // índice en displayDays
+  targetDate: Date;
+  targetSlotIdx: number;    // slot donde caería el inicio
+  hasConflict: boolean;
+  durSlots: number;         // duración de la cita en slots
+}
+
 export default function Dashboard() {
   const [view, setView] = useState<ViewMode>('day');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -118,6 +132,11 @@ export default function Dashboard() {
   // ── DRAG STATE ──
   const [drag, setDrag] = useState<DragState | null>(null);
   const dragRef = useRef<DragState | null>(null); // ref para handlers de mouse
+
+  // ── MOVE DRAG STATE ──
+  const [moveDrag, setMoveDrag] = useState<MoveDragState | null>(null);
+  const moveDragRef = useRef<MoveDragState | null>(null);
+  const [moveConflictMsg, setMoveConflictMsg] = useState<string | null>(null);
 
   useEffect(() => {
     function checkMobile() { setIsMobile(window.innerWidth < 768); }
@@ -224,6 +243,10 @@ export default function Dashboard() {
       if (dragRef.current?.active) {
         setDrag(null);
         dragRef.current = null;
+      }
+      if (moveDragRef.current?.active) {
+        setMoveDrag(null);
+        moveDragRef.current = null;
       }
     }
     window.addEventListener('mouseup', handleGlobalMouseUp);
@@ -628,6 +651,89 @@ export default function Dashboard() {
     await supabase.from('citas').update({ estado: 'cancelada' }).eq('id', id);
     setSelectedCita(null);
     setEditingCita(null);
+    loadAllCitas();
+  }
+
+  // ── MOVE DRAG: funciones ──
+  function moveDragHasConflict(targetDate: Date, targetSlotIdx: number, durSlots: number, citaId: string): boolean {
+    const startM = timeToMinutes(visibleSlots[targetSlotIdx] || '00:00');
+    const endM = startM + durSlots * 30;
+    const dayCitas = citasForDate(targetDate).filter(c => c.id !== citaId);
+    return dayCitas.some(c => {
+      if ((c.estado || '').toLowerCase() === 'cancelada') return false;
+      const cs = rawTimeMin(c.hora_inicio);
+      const ce = c.hora_fin ? rawTimeMin(c.hora_fin) : cs + 30;
+      return startM < ce && endM > cs;
+    });
+  }
+
+  function handleCitaMouseDown(e: React.MouseEvent, cita: any, slotIdx: number, dayIdx: number, date: Date, grabbedSlotOffset: number) {
+    if (isMobile) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const citaStartM = rawTimeMin(cita.hora_inicio);
+    const citaEndM = cita.hora_fin ? rawTimeMin(cita.hora_fin) : citaStartM + 30;
+    const durSlots = Math.max(1, Math.ceil((citaEndM - citaStartM) / 30));
+    const originSlotIdx = visibleSlots.findIndex(s => timeToMinutes(s) === citaStartM);
+    const state: MoveDragState = {
+      active: true,
+      cita,
+      originDate: toDS(date),
+      originSlotIdx: originSlotIdx >= 0 ? originSlotIdx : slotIdx,
+      offsetSlots: grabbedSlotOffset,
+      targetDayIdx: dayIdx,
+      targetDate: new Date(date),
+      targetSlotIdx: originSlotIdx >= 0 ? originSlotIdx : slotIdx,
+      hasConflict: false,
+      durSlots,
+    };
+    moveDragRef.current = state;
+    setMoveDrag({ ...state });
+  }
+
+  function handleCitaMouseEnterSlot(slotIdx: number, dayIdx: number, date: Date) {
+    if (!moveDragRef.current?.active) return;
+    const md = moveDragRef.current;
+    const targetSlotIdx = Math.max(0, Math.min(slotIdx - md.offsetSlots, visibleSlots.length - md.durSlots));
+    const hasConflict = moveDragHasConflict(date, targetSlotIdx, md.durSlots, md.cita.id);
+    const updated: MoveDragState = { ...md, targetDayIdx: dayIdx, targetDate: new Date(date), targetSlotIdx, hasConflict };
+    moveDragRef.current = updated;
+    setMoveDrag({ ...updated });
+  }
+
+  async function handleCitaMouseUp(e: React.MouseEvent) {
+    if (!moveDragRef.current?.active) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const md = moveDragRef.current;
+    setMoveDrag(null);
+    moveDragRef.current = null;
+
+    if (md.hasConflict) {
+      setMoveConflictMsg('No se puede mover: horario ocupado');
+      setTimeout(() => setMoveConflictMsg(null), 2500);
+      return;
+    }
+
+    const targetSlot = visibleSlots[md.targetSlotIdx];
+    if (!targetSlot) return;
+
+    // Comprobar que el destino es laborable
+    if (!isWorkingDay(md.targetDate)) return;
+
+    const dateStr = toDS(md.targetDate);
+    const startM = timeToMinutes(targetSlot);
+    const endM = startM + md.durSlots * 30;
+    const newStart = `${dateStr}T${targetSlot}:00`;
+    const newEnd = `${dateStr}T${minutesToTime(endM)}:00`;
+
+    // Si no cambió nada, no hacer update
+    if (newStart === md.cita.hora_inicio && newEnd === md.cita.hora_fin) return;
+
+    await supabase.from('citas').update({
+      hora_inicio: newStart,
+      hora_fin: newEnd,
+    }).eq('id', md.cita.id);
     loadAllCitas();
   }
 
@@ -1190,7 +1296,27 @@ export default function Dashboard() {
                           return (
                             <div
                               style={{ flex: 1, borderBottom: `1px solid ${isHour ? C.surfaceAlt : 'rgba(36,50,71,0.4)'}`, minHeight: MIN_H, position: 'relative', display: 'flex', flexDirection: 'column', gap: 3, padding: slotCitas.length > 0 ? '2px 0' : 0, ...(absOverlay ? { background: absOverlay.background, borderLeft: `${absOverlay.borderLeftWidth} ${absOverlay.borderLeftStyle} ${absOverlay.borderLeftColor}` } : {}), userSelect: 'none' }}
+                              onMouseEnter={() => moveDragRef.current?.active && handleCitaMouseEnterSlot(si, 0, selectedDate)}
+                              onMouseUp={e => moveDragRef.current?.active && handleCitaMouseUp(e)}
                             >
+                              {/* ── Bloque fantasma moveDrag en vista día ── */}
+                              {moveDrag?.active && moveDrag.targetSlotIdx === si && (() => {
+                                const ghostH = moveDrag.durSlots * MIN_H;
+                                return (
+                                  <div style={{
+                                    position: 'absolute', top: 0, left: 4, right: 4,
+                                    height: ghostH,
+                                    background: moveDrag.hasConflict ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)',
+                                    border: `2px dashed ${moveDrag.hasConflict ? C.red : C.green}`,
+                                    borderRadius: 8, zIndex: 25, pointerEvents: 'none',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  }}>
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: moveDrag.hasConflict ? C.red : C.green }}>
+                                      {moveDrag.hasConflict ? 'Ocupado' : `${visibleSlots[moveDrag.targetSlotIdx]} – ${minutesToTime(timeToMinutes(visibleSlots[moveDrag.targetSlotIdx]) + moveDrag.durSlots * 30)}`}
+                                    </span>
+                                  </div>
+                                );
+                              })()}
                               {/* ── Drag preview bloque día ── */}
                               {isDayDragStart && dayDrag && (() => {
                                 const spanSlots = dayDragMaxIdx - dayDragMinIdx + 1;
@@ -1230,7 +1356,8 @@ export default function Dashboard() {
                               {slotCitas.length > 0 ? (
                                 slotCitas.map(cita => (
                                   <div key={cita.id}
-                                    onClick={() => setSelectedCita(cita)}
+                                    onClick={() => { if (!moveDrag) setSelectedCita(cita); }}
+                                    onMouseDown={e => handleCitaMouseDown(e, cita, si, 0, selectedDate, 0)}
                                     onMouseEnter={() => !isMobile && setHoveredCitaId(cita.id)}
                                     onMouseLeave={() => { setHoveredCitaId(null); setPhoneTooltipId(null); }}
                                     style={{
@@ -1239,11 +1366,11 @@ export default function Dashboard() {
                                       borderRadius: isMobile ? 8 : 10,
                                       padding: isMobile ? '8px 10px' : '10px 14px',
                                       margin: isMobile ? '1px 4px' : '3px 8px',
-                                      cursor: 'pointer',
+                                      cursor: isMobile ? 'pointer' : 'grab',
                                       boxSizing: 'border-box' as const,
                                       position: 'relative' as const,
-                                      opacity: isCompletada(cita.estado) ? 0.45 : 1,
-                                      transition: 'opacity 0.2s',
+                                      opacity: (isCompletada(cita.estado) ? 0.45 : 1) * (moveDrag?.cita?.id === cita.id ? 0.3 : 1),
+                                      transition: 'opacity 0.15s',
                                     }}>
                                     {isCompletada(cita.estado) && (
                                       <span style={{ position: 'absolute', top: 4, left: 6, fontSize: 10, color: C.textSec, fontWeight: 700, opacity: 0.7 }}>✓</span>
@@ -1513,13 +1640,36 @@ export default function Dashboard() {
                           <div
                             key={`cell-${si}-${di}`}
                             style={{ gridColumn: di + 2, gridRow: spanSlots > 1 ? `${rowIdx} / span ${spanSlots}` : `${rowIdx}`, background: weekCellBg, borderBottom: `1px solid ${isHour ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.06)'}`, borderLeft: `1px solid ${today ? C.green + '55' : isCompanyClosure ? 'rgba(239,68,68,0.25)' : 'rgba(148,163,184,0.12)'}`, borderRight: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`, position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: cita ? 'center' : 'flex-start', boxSizing: 'border-box' as const, overflow: 'visible', userSelect: 'none' }}
+                            onMouseEnter={() => moveDragRef.current?.active && handleCitaMouseEnterSlot(si, di, day)}
+                            onMouseUp={e => moveDragRef.current?.active && handleCitaMouseUp(e)}
                           >
+                            {/* ── Bloque fantasma moveDrag en vista semana ── */}
+                            {moveDrag?.active && moveDrag.targetDayIdx === di && moveDrag.targetSlotIdx === si && (() => {
+                              const ghostH = moveDrag.durSlots * WEEK_SLOT_H;
+                              return (
+                                <div style={{
+                                  position: 'absolute', top: 0, left: 2, right: 2,
+                                  height: ghostH,
+                                  background: moveDrag.hasConflict ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)',
+                                  border: `2px dashed ${moveDrag.hasConflict ? C.red : C.green}`,
+                                  borderRadius: 6, zIndex: 25, pointerEvents: 'none',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                  {moveDrag.durSlots >= 2 && (
+                                    <span style={{ fontSize: 10, fontWeight: 700, color: moveDrag.hasConflict ? C.red : C.green }}>
+                                      {moveDrag.hasConflict ? 'Ocupado' : `${visibleSlots[moveDrag.targetSlotIdx]} – ${minutesToTime(timeToMinutes(visibleSlots[moveDrag.targetSlotIdx]) + moveDrag.durSlots * 30)}`}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })()}
                             {cita && (
                               <div
-                                onClick={() => setSelectedCita(cita)}
+                                onClick={() => { if (!moveDrag) setSelectedCita(cita); }}
+                                onMouseDown={e => handleCitaMouseDown(e, cita, si, di, day, 0)}
                                 onMouseEnter={() => !isMobile && setHoveredCitaId(cita.id)}
                                 onMouseLeave={() => { setHoveredCitaId(null); setPhoneTooltipId(null); }}
-                                style={{ position: 'absolute', inset: 0, background: `${citaColor(cita.estado)}22`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 4, padding: isMobile ? '4px 6px' : '6px 8px', cursor: 'pointer', boxSizing: 'border-box' as const, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'visible', opacity: isCompletada(cita.estado) ? 0.45 : 1, transition: 'opacity 0.2s' }}>
+                                style={{ position: 'absolute', inset: 0, background: `${citaColor(cita.estado)}22`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 4, padding: isMobile ? '4px 6px' : '6px 8px', cursor: isMobile ? 'pointer' : 'grab', boxSizing: 'border-box' as const, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'visible', opacity: (isCompletada(cita.estado) ? 0.45 : 1) * (moveDrag?.cita?.id === cita.id ? 0.3 : 1), transition: 'opacity 0.15s' }}>
                                 {isCompletada(cita.estado) && (
                                   <span style={{ position: 'absolute', top: 2, left: 4, fontSize: 9, color: C.textSec, fontWeight: 700, opacity: 0.8 }}>✓</span>
                                 )}
@@ -1956,6 +2106,19 @@ export default function Dashboard() {
 
         </>)}
 
+        {/* ── Toast conflicto moveDrag ── */}
+        {moveConflictMsg && (
+          <div style={{
+            position: 'fixed', bottom: isMobile ? 90 : 40, left: '50%', transform: 'translateX(-50%)',
+            background: 'rgba(239,68,68,0.95)', color: '#fff', padding: '10px 20px',
+            borderRadius: 12, fontSize: 13, fontWeight: 600, zIndex: 100,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.4)', pointerEvents: 'none',
+            whiteSpace: 'nowrap',
+          }}>
+            ⚠️ {moveConflictMsg}
+          </div>
+        )}
+
         <NuevaCitaModal
           open={modalOpen}
           onClose={() => setModalOpen(false)}
@@ -1990,6 +2153,7 @@ export default function Dashboard() {
           .show-mobile-flex { display: flex !important; }
           .show-mobile-only { display: flex !important; }
         }
+        ${moveDrag?.active ? 'body { cursor: grabbing !important; }' : ''}
         @keyframes agendaSlideLeft {
           from { opacity: 0; transform: translateX(18px); }
           to   { opacity: 1; transform: translateX(0); }
