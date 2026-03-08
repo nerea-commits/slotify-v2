@@ -138,6 +138,10 @@ export default function Dashboard() {
   const moveDragRef = useRef<MoveDragState | null>(null);
   const [moveConflictMsg, setMoveConflictMsg] = useState<string | null>(null);
 
+  // ── FILTRO EMPLEADO (solo admin, desktop) ──
+  const [selectedProfId, setSelectedProfId] = useState<string | null>(null); // null = Todos
+  const [profesionales, setProfesionales] = useState<any[]>([]);
+
   useEffect(() => {
     function checkMobile() { setIsMobile(window.innerWidth < 768); }
     checkMobile();
@@ -181,6 +185,10 @@ export default function Dashboard() {
 
         supabase.from('estados_cita').select('*').eq('empresa_id', emp.id).eq('activo', true).order('orden')
           .then(({ data }) => { if (data) setEstadosCita(data); });
+
+        // Cargar lista de empleados para el selector
+        supabase.from('profesionales').select('id, nombre, color').eq('empresa_id', emp.id).eq('activo', true).order('nombre')
+          .then(({ data }) => { if (data) setProfesionales(data); });
 
         const pidLS = localStorage.getItem('slotify_profesional_id');
         if (pidLS) {
@@ -513,7 +521,8 @@ export default function Dashboard() {
     return allCitas.filter(c =>
       c.hora_inicio &&
       rawDate(c.hora_inicio) === ds &&
-      (c.estado || '').toLowerCase() !== 'cancelada'
+      (c.estado || '').toLowerCase() !== 'cancelada' &&
+      (selectedProfId === null || c.profesional_id === selectedProfId)
     );
   }
 
@@ -1153,6 +1162,43 @@ export default function Dashboard() {
                 <button onClick={() => view === 'day' ? changeDay(1) : view === 'week' ? changeWeek(1) : changeMonth(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textSec, padding: 4, borderRadius: 6, display: 'flex' }}>
                   <ChevronRight className="w-4 h-4" />
                 </button>
+              </div>
+            )}
+
+            {/* ── SELECTOR DE EMPLEADO (solo admin, solo desktop) ── */}
+            {isAdmin && activeSection === 'agenda' && profesionales.length > 0 && (
+              <div className="hidden-mobile" style={{ display: 'flex', alignItems: 'center', gap: 0, background: C.surfaceAlt, borderRadius: 8, padding: 2, flexShrink: 0, marginLeft: 4 }}>
+                <button
+                  onClick={() => setSelectedProfId(null)}
+                  style={{
+                    padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                    fontSize: 11, fontWeight: selectedProfId === null ? 600 : 400,
+                    background: selectedProfId === null ? C.green : 'transparent',
+                    color: selectedProfId === null ? '#fff' : C.textSec,
+                    transition: 'all 0.12s', whiteSpace: 'nowrap' as const,
+                  }}>
+                  Todos
+                </button>
+                {profesionales.map(prof => (
+                  <button
+                    key={prof.id}
+                    onClick={() => setSelectedProfId(selectedProfId === prof.id ? null : prof.id)}
+                    style={{
+                      padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                      fontSize: 11, fontWeight: selectedProfId === prof.id ? 600 : 400,
+                      background: selectedProfId === prof.id ? (prof.color || C.green) : 'transparent',
+                      color: selectedProfId === prof.id ? '#fff' : C.textSec,
+                      transition: 'all 0.12s', whiteSpace: 'nowrap' as const,
+                      display: 'flex', alignItems: 'center', gap: 5,
+                    }}>
+                    <span style={{
+                      width: 6, height: 6, borderRadius: '50%',
+                      background: selectedProfId === prof.id ? 'rgba(255,255,255,0.8)' : (prof.color || C.green),
+                      display: 'inline-block', flexShrink: 0,
+                    }} />
+                    {prof.nombre.split(' ')[0]}
+                  </button>
+                ))}
               </div>
             )}
 
