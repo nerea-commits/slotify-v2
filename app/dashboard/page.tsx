@@ -667,7 +667,10 @@ export default function Dashboard() {
     });
   }
 
-  function handleCitaMouseDown(e: React.MouseEvent, cita: any, slotIdx: number, dayIdx: number, date: Date, grabbedSlotOffset: number) {
+  // Ref para el contenedor de la agenda (para calcular posición del ratón)
+  const agendaRef = useRef<HTMLDivElement | null>(null);
+
+  function handleCitaMouseDown(e: React.MouseEvent, cita: any, slotIdx: number, dayIdx: number, date: Date) {
     if (isMobile) return;
     e.preventDefault();
     e.stopPropagation();
@@ -680,7 +683,7 @@ export default function Dashboard() {
       cita,
       originDate: toDS(date),
       originSlotIdx: originSlotIdx >= 0 ? originSlotIdx : slotIdx,
-      offsetSlots: grabbedSlotOffset,
+      offsetSlots: 0,
       targetDayIdx: dayIdx,
       targetDate: new Date(date),
       targetSlotIdx: originSlotIdx >= 0 ? originSlotIdx : slotIdx,
@@ -691,20 +694,29 @@ export default function Dashboard() {
     setMoveDrag({ ...state });
   }
 
-  function handleCitaMouseEnterSlot(slotIdx: number, dayIdx: number, date: Date) {
+  // Actualizar posición del fantasma via data-attributes en los slots
+  function handleMoveDragMouseMove(e: MouseEvent) {
     if (!moveDragRef.current?.active) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (!el) return;
+    const slotEl = (el as HTMLElement).closest('[data-slot-idx]') as HTMLElement | null;
+    if (!slotEl) return;
+    const slotIdx = parseInt(slotEl.dataset.slotIdx || '-1');
+    const dayIdx = parseInt(slotEl.dataset.dayIdx || '0');
+    const dateStr = slotEl.dataset.date || '';
+    if (slotIdx < 0 || !dateStr) return;
     const md = moveDragRef.current;
-    const targetSlotIdx = Math.max(0, Math.min(slotIdx - md.offsetSlots, visibleSlots.length - md.durSlots));
-    const hasConflict = moveDragHasConflict(date, targetSlotIdx, md.durSlots, md.cita.id);
-    const updated: MoveDragState = { ...md, targetDayIdx: dayIdx, targetDate: new Date(date), targetSlotIdx, hasConflict };
+    const targetSlotIdx = Math.max(0, Math.min(slotIdx, visibleSlots.length - md.durSlots));
+    const targetDate = new Date(dateStr + 'T12:00:00');
+    const hasConflict = moveDragHasConflict(targetDate, targetSlotIdx, md.durSlots, md.cita.id);
+    const updated: MoveDragState = { ...md, targetDayIdx: dayIdx, targetDate, targetSlotIdx, hasConflict };
     moveDragRef.current = updated;
     setMoveDrag({ ...updated });
   }
 
-  async function handleCitaMouseUp(e: React.MouseEvent) {
+  async function handleMoveDragMouseUp(e: MouseEvent) {
     if (!moveDragRef.current?.active) return;
     e.preventDefault();
-    e.stopPropagation();
     const md = moveDragRef.current;
     setMoveDrag(null);
     moveDragRef.current = null;
@@ -717,8 +729,6 @@ export default function Dashboard() {
 
     const targetSlot = visibleSlots[md.targetSlotIdx];
     if (!targetSlot) return;
-
-    // Comprobar que el destino es laborable
     if (!isWorkingDay(md.targetDate)) return;
 
     const dateStr = toDS(md.targetDate);
@@ -727,7 +737,6 @@ export default function Dashboard() {
     const newStart = `${dateStr}T${targetSlot}:00`;
     const newEnd = `${dateStr}T${minutesToTime(endM)}:00`;
 
-    // Si no cambió nada, no hacer update
     if (newStart === md.cita.hora_inicio && newEnd === md.cita.hora_fin) return;
 
     await supabase.from('citas').update({
@@ -736,6 +745,16 @@ export default function Dashboard() {
     }).eq('id', md.cita.id);
     loadAllCitas();
   }
+
+  // Registrar listeners globales para moveDrag
+  useEffect(() => {
+    window.addEventListener('mousemove', handleMoveDragMouseMove);
+    window.addEventListener('mouseup', handleMoveDragMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMoveDragMouseMove);
+      window.removeEventListener('mouseup', handleMoveDragMouseUp);
+    };
+  }, [visibleSlots, allCitas, absences, diasLaborables]);
 
   // ── ACCIONES RÁPIDAS ──
   const [hoveredCitaId, setHoveredCitaId] = useState<string | null>(null);
@@ -1295,9 +1314,10 @@ export default function Dashboard() {
                           } : null;
                           return (
                             <div
+                              data-slot-idx={si}
+                              data-day-idx={0}
+                              data-date={toDS(selectedDate)}
                               style={{ flex: 1, borderBottom: `1px solid ${isHour ? C.surfaceAlt : 'rgba(36,50,71,0.4)'}`, minHeight: MIN_H, position: 'relative', display: 'flex', flexDirection: 'column', gap: 3, padding: slotCitas.length > 0 ? '2px 0' : 0, ...(absOverlay ? { background: absOverlay.background, borderLeft: `${absOverlay.borderLeftWidth} ${absOverlay.borderLeftStyle} ${absOverlay.borderLeftColor}` } : {}), userSelect: 'none' }}
-                              onMouseEnter={() => moveDragRef.current?.active && handleCitaMouseEnterSlot(si, 0, selectedDate)}
-                              onMouseUp={e => moveDragRef.current?.active && handleCitaMouseUp(e)}
                             >
                               {/* ── Bloque fantasma moveDrag en vista día ── */}
                               {moveDrag?.active && moveDrag.targetSlotIdx === si && (() => {
@@ -1357,7 +1377,7 @@ export default function Dashboard() {
                                 slotCitas.map(cita => (
                                   <div key={cita.id}
                                     onClick={() => { if (!moveDrag) setSelectedCita(cita); }}
-                                    onMouseDown={e => handleCitaMouseDown(e, cita, si, 0, selectedDate, 0)}
+                                    onMouseDown={e => handleCitaMouseDown(e, cita, si, 0, selectedDate)}
                                     onMouseEnter={() => !isMobile && setHoveredCitaId(cita.id)}
                                     onMouseLeave={() => { setHoveredCitaId(null); setPhoneTooltipId(null); }}
                                     style={{
@@ -1639,9 +1659,10 @@ export default function Dashboard() {
                         cells.push(
                           <div
                             key={`cell-${si}-${di}`}
+                            data-slot-idx={si}
+                            data-day-idx={di}
+                            data-date={toDS(day)}
                             style={{ gridColumn: di + 2, gridRow: spanSlots > 1 ? `${rowIdx} / span ${spanSlots}` : `${rowIdx}`, background: weekCellBg, borderBottom: `1px solid ${isHour ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.06)'}`, borderLeft: `1px solid ${today ? C.green + '55' : isCompanyClosure ? 'rgba(239,68,68,0.25)' : 'rgba(148,163,184,0.12)'}`, borderRight: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`, position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: cita ? 'center' : 'flex-start', boxSizing: 'border-box' as const, overflow: 'visible', userSelect: 'none' }}
-                            onMouseEnter={() => moveDragRef.current?.active && handleCitaMouseEnterSlot(si, di, day)}
-                            onMouseUp={e => moveDragRef.current?.active && handleCitaMouseUp(e)}
                           >
                             {/* ── Bloque fantasma moveDrag en vista semana ── */}
                             {moveDrag?.active && moveDrag.targetDayIdx === di && moveDrag.targetSlotIdx === si && (() => {
@@ -1666,7 +1687,7 @@ export default function Dashboard() {
                             {cita && (
                               <div
                                 onClick={() => { if (!moveDrag) setSelectedCita(cita); }}
-                                onMouseDown={e => handleCitaMouseDown(e, cita, si, di, day, 0)}
+                                onMouseDown={e => handleCitaMouseDown(e, cita, si, di, day)}
                                 onMouseEnter={() => !isMobile && setHoveredCitaId(cita.id)}
                                 onMouseLeave={() => { setHoveredCitaId(null); setPhoneTooltipId(null); }}
                                 style={{ position: 'absolute', inset: 0, background: `${citaColor(cita.estado)}22`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 4, padding: isMobile ? '4px 6px' : '6px 8px', cursor: isMobile ? 'pointer' : 'grab', boxSizing: 'border-box' as const, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'visible', opacity: (isCompletada(cita.estado) ? 0.45 : 1) * (moveDrag?.cita?.id === cita.id ? 0.3 : 1), transition: 'opacity 0.15s' }}>
