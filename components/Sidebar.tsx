@@ -16,12 +16,13 @@ interface SidebarProps {
   onNavigate: (section: string) => void;
   activeSection: string;
   adminPin?: string | null;
+  onCambiarPerfil?: () => void;
 }
 
 export default function Sidebar({
   collapsed, onToggleCollapse,
   empresaNombre, profesionalNombre, empresaLogo, colorPrimario,
-  isAdmin, permisos = {}, onNavigate, activeSection, adminPin,
+  isAdmin, permisos = {}, onNavigate, activeSection, adminPin, onCambiarPerfil,
 }: SidebarProps) {
   const accent = colorPrimario || '#22C55E';
 
@@ -52,10 +53,9 @@ export default function Sidebar({
   }
 
   function doChangeProfile() {
-    localStorage.removeItem('slotify_profesional_id');
-    localStorage.removeItem('slotify_rol');
-    localStorage.setItem('slotify_select_profile', '1');
-    window.location.href = '/login';
+    if (onCambiarPerfil) {
+      onCambiarPerfil();
+    }
   }
 
   function handleChangeProfile() {
