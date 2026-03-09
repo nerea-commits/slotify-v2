@@ -483,7 +483,7 @@ function TabHorario({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
 // ══════════════════════════════════════════════════════
 function TabDias({ empresa, onSaved }: { empresa: any; onSaved: (data: any) => void }) {
   const parseDias = (raw: any): boolean[] => {
-    if (Array.isArray(raw)) return DIAS_IDX.map(d => raw.includes(d));
+    if (Array.isArray(raw)) return DIAS_IDX.map(d => raw.map(Number).includes(d));
     return [true,true,true,true,true,false,false];
   };
 
