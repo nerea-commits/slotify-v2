@@ -99,7 +99,7 @@ export default function Dashboard() {
     localStorage.removeItem('slotify_profesional_id');
     localStorage.removeItem('slotify_rol');
     localStorage.setItem('slotify_select_profile', '1');
-    router.push('/login');
+    window.location.href = '/login';
   }
   const [selectedCita, setSelectedCita] = useState<any>(null);
   const [editingCita, setEditingCita] = useState<any>(null);
