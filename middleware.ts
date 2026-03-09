@@ -35,8 +35,12 @@ export async function middleware(request: NextRequest) {
 
   // Si hay sesión y está en login/register → dashboard
   if (session && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/register')) {
+    // Permitir acceso a login si viene de "Cambiar perfil"
+    if (request.nextUrl.searchParams.get('select_profile') === '1') {
+      return response;
+    }
     return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
+}
 
   return response;
 }
