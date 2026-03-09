@@ -4,8 +4,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
   CheckCircle2, XCircle, Clock, MessageCircle, RefreshCw,
-  Bell, CheckCheck, Phone, Calendar, TrendingUp, BarChart3
+  Bell, CheckCheck, Phone, Calendar, TrendingUp, BarChart3,
+  AlertTriangle, ChevronRight, User
 } from 'lucide-react';
+import { calcularFiabilidad } from '@/lib/fiabilidad';
 
 const C = {
   bg: '#0B0F1A', panel: '#111827', panelAlt: '#1A2332',
@@ -13,6 +15,7 @@ const C = {
   red: '#EF4444', redDim: 'rgba(239,68,68,0.08)',
   amber: '#F59E0B', amberDim: 'rgba(245,158,11,0.08)',
   blue: '#3B82F6', blueDim: 'rgba(59,130,246,0.08)',
+  orange: '#FB923C', orangeDim: 'rgba(251,146,60,0.08)',
   text: '#F1F5F9', textMid: '#94A3B8', textDim: '#4B5563',
   border: 'rgba(148,163,184,0.08)',
 };
@@ -52,7 +55,25 @@ function MiniBar({ value, max, color }: { value: number; max: number; color: str
   );
 }
 
-export default function NotificacionesSection({ empresaId }: { empresaId: string }) {
+interface ClienteRiesgo {
+  id: string;
+  nombre: string;
+  telefono: string | null;
+  noShowsReales: number;
+  cancelaciones: number;
+  riskPoints: number;
+  riskLabel: 'atencion' | 'riesgo';
+  riskColor: string;
+  proximaCita: string | null;
+}
+
+export default function NotificacionesSection({
+  empresaId,
+  onNavigate,
+}: {
+  empresaId: string;
+  onNavigate?: (section: string) => void;
+}) {
   const [notifs, setNotifs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState<Filtro>('todos');
@@ -61,6 +82,11 @@ export default function NotificacionesSection({ empresaId }: { empresaId: string
   const [isMobile, setIsMobile] = useState(false);
   const [showStats, setShowStats] = useState(false);
 
+  // ── RIESGO ──
+  const [clientesRiesgo, setClientesRiesgo] = useState<ClienteRiesgo[]>([]);
+  const [loadingRiesgo, setLoadingRiesgo] = useState(true);
+  const [showRiesgo, setShowRiesgo] = useState(true);
+
   useEffect(() => {
     function checkMobile() { setIsMobile(window.innerWidth < 768); }
     checkMobile();
@@ -68,7 +94,12 @@ export default function NotificacionesSection({ empresaId }: { empresaId: string
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  useEffect(() => { if (empresaId) load(); }, [empresaId]);
+  useEffect(() => {
+    if (empresaId) {
+      load();
+      loadClientesRiesgo();
+    }
+  }, [empresaId]);
 
   async function load() {
     setLoading(true);
@@ -80,6 +111,77 @@ export default function NotificacionesSection({ empresaId }: { empresaId: string
       .limit(500);
     setNotifs(data || []);
     setLoading(false);
+  }
+
+  async function loadClientesRiesgo() {
+    setLoadingRiesgo(true);
+    try {
+      // Citas próximos 7 días
+      const hoy = new Date();
+      const en7dias = new Date(hoy.getTime() + 7 * 86400000);
+
+      const { data: citasProximas } = await supabase
+        .from('citas')
+        .select('cliente_id, hora_inicio, clientes(id, nombre, telefono)')
+        .eq('empresa_id', empresaId)
+        .gte('hora_inicio', hoy.toISOString())
+        .lte('hora_inicio', en7dias.toISOString())
+        .not('cliente_id', 'is', null);
+
+      if (!citasProximas || citasProximas.length === 0) {
+        setClientesRiesgo([]);
+        setLoadingRiesgo(false);
+        return;
+      }
+
+      // Clientes únicos con cita próxima
+      const clientesMap = new Map<string, { nombre: string; telefono: string | null; proximaCita: string }>();
+      citasProximas.forEach((c: any) => {
+        if (c.cliente_id && c.clientes && !clientesMap.has(c.cliente_id)) {
+          clientesMap.set(c.cliente_id, {
+            nombre: c.clientes.nombre,
+            telefono: c.clientes.telefono || null,
+            proximaCita: c.hora_inicio,
+          });
+        }
+      });
+
+      // Historial completo de cada cliente
+      const clienteIds = Array.from(clientesMap.keys());
+      const { data: historial } = await supabase
+        .from('citas')
+        .select('cliente_id, hora_inicio, estado, estado_detallado')
+        .eq('empresa_id', empresaId)
+        .in('cliente_id', clienteIds);
+
+      // Calcular fiabilidad por cliente
+      const resultado: ClienteRiesgo[] = [];
+      clientesMap.forEach((cliente, clienteId) => {
+        const citasCliente = (historial || []).filter((c: any) => c.cliente_id === clienteId);
+        const fiab = calcularFiabilidad(citasCliente);
+
+        if (fiab.riskLabel === 'atencion' || fiab.riskLabel === 'riesgo') {
+          resultado.push({
+            id: clienteId,
+            nombre: cliente.nombre,
+            telefono: cliente.telefono,
+            noShowsReales: fiab.noShowsReales,
+            cancelaciones: fiab.cancelaciones,
+            riskPoints: fiab.riskPoints,
+            riskLabel: fiab.riskLabel as 'atencion' | 'riesgo',
+            riskColor: fiab.riskColor,
+            proximaCita: cliente.proximaCita,
+          });
+        }
+      });
+
+      // Ordenar por riesgo descendente
+      resultado.sort((a, b) => b.riskPoints - a.riskPoints);
+      setClientesRiesgo(resultado);
+    } catch (e) {
+      console.error('Error cargando clientes riesgo:', e);
+    }
+    setLoadingRiesgo(false);
   }
 
   async function marcarLeida(id: string) {
@@ -191,7 +293,122 @@ export default function NotificacionesSection({ empresaId }: { empresaId: string
 
       <div style={{ padding: isMobile ? '12px 10px' : '20px 24px' }}>
 
-        {/* ── RESUMEN HOY (compacto en móvil, horizontal) ── */}
+        {/* ── PANEL RIESGO NO-SHOW ── */}
+        {!loadingRiesgo && clientesRiesgo.length > 0 && (
+          <div style={{
+            background: C.panel,
+            border: `1px solid ${C.red}22`,
+            borderRadius: isMobile ? 12 : 16,
+            marginBottom: isMobile ? 12 : 20,
+            overflow: 'hidden',
+          }}>
+            {/* Cabecera panel riesgo */}
+            <button
+              onClick={() => setShowRiesgo(s => !s)}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: isMobile ? '10px 14px' : '13px 18px',
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                borderBottom: showRiesgo ? `1px solid ${C.border}` : 'none',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: C.redDim, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <AlertTriangle size={14} style={{ color: C.red }} />
+                </div>
+                <div style={{ textAlign: 'left' }}>
+                  <p style={{ fontSize: isMobile ? 12 : 13, fontWeight: 700, color: C.text, margin: 0 }}>
+                    Riesgo de no-show esta semana
+                  </p>
+                  <p style={{ fontSize: 10, color: C.textDim, margin: 0 }}>
+                    {clientesRiesgo.length} cliente{clientesRiesgo.length !== 1 ? 's' : ''} con historial de incidencias
+                  </p>
+                </div>
+              </div>
+              <ChevronRight size={14} style={{ color: C.textDim, transform: showRiesgo ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
+            </button>
+
+            {/* Lista clientes riesgo */}
+            {showRiesgo && (
+              <div>
+                {clientesRiesgo.map((c, i) => (
+                  <div key={c.id} style={{
+                    display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 14,
+                    padding: isMobile ? '10px 14px' : '12px 18px',
+                    borderBottom: i < clientesRiesgo.length - 1 ? `1px solid ${C.border}` : 'none',
+                  }}>
+                    {/* Avatar con color de riesgo */}
+                    <div style={{
+                      width: isMobile ? 34 : 38, height: isMobile ? 34 : 38,
+                      borderRadius: '50%',
+                      background: c.riskColor + '22',
+                      border: `2px solid ${c.riskColor}44`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0, fontSize: 13, fontWeight: 800, color: c.riskColor,
+                    }}>
+                      {c.nombre[0]?.toUpperCase()}
+                    </div>
+
+                    {/* Info */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                        <span style={{ fontSize: isMobile ? 13 : 14, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                          {c.nombre}
+                        </span>
+                        <span style={{
+                          fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                          background: c.riskColor + '18', color: c.riskColor, flexShrink: 0,
+                        }}>
+                          {c.riskLabel === 'riesgo' ? '🔴 Riesgo' : '⚠️ Atención'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10, flexWrap: 'wrap' }}>
+                        {c.noShowsReales > 0 && (
+                          <span style={{ fontSize: 10, color: C.red, fontWeight: 600 }}>
+                            {c.noShowsReales} no-show{c.noShowsReales !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                        {c.cancelaciones > 0 && (
+                          <span style={{ fontSize: 10, color: C.amber, fontWeight: 600 }}>
+                            {c.cancelaciones} cancelación{c.cancelaciones !== 1 ? 'es' : ''}
+                          </span>
+                        )}
+                        {c.proximaCita && (
+                          <span style={{ fontSize: 10, color: C.textDim, display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <Calendar size={9} />
+                            {new Date(c.proximaCita).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
+                            {' '}
+                            {new Date(c.proximaCita).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Acción */}
+                    {onNavigate && (
+                      <button
+                        onClick={() => onNavigate('clientes')}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 4,
+                          padding: isMobile ? '5px 8px' : '6px 10px',
+                          borderRadius: 7, border: `1px solid ${C.border}`,
+                          background: 'transparent', color: C.textMid,
+                          cursor: 'pointer', fontSize: 10, fontWeight: 600, flexShrink: 0,
+                          whiteSpace: 'nowrap' as const,
+                        }}
+                      >
+                        <User size={10} />
+                        {isMobile ? 'Ver' : 'Ver ficha'}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── RESUMEN HOY ── */}
         <div style={{ display: 'flex', gap: isMobile ? 6 : 10, marginBottom: isMobile ? 10 : 16, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible' }}>
           {[
             { label: 'Confirmadas',   value: resumenHoy.aceptados,    color: C.green, bg: C.greenDim },
@@ -212,7 +429,7 @@ export default function NotificacionesSection({ empresaId }: { empresaId: string
           ))}
         </div>
 
-        {/* ── Stats toggle (colapsable en móvil) ── */}
+        {/* ── Stats toggle ── */}
         {isMobile && (
           <button onClick={() => setShowStats(s => !s)}
             style={{ width: '100%', padding: '8px 0', marginBottom: 10, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 10, color: C.textMid, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
