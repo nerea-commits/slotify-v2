@@ -216,8 +216,7 @@ export default function Dashboard() {
           if (adminProf) {
             setProfesional(adminProf);
             profesionalIdRef.current = adminProf.id;
-            localStorage.setItem('slotify_profesional_id', adminProf.id);
-            localStorage.setItem('slotify_rol', adminProf.rol);
+            // NO guardamos en localStorage para que "Cambiar perfil" lleve al selector
           }
         }
         return;
