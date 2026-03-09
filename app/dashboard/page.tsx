@@ -203,6 +203,22 @@ export default function Dashboard() {
             setProfesional(prof);
             profesionalIdRef.current = prof.id;
           }
+        } else {
+          // Admin sin perfil seleccionado → cargar su propio profesional
+          const { data: adminProf } = await supabase
+            .from('profesionales')
+            .select('*')
+            .eq('empresa_id', emp.id)
+            .eq('rol', 'admin')
+            .eq('activo', true)
+            .limit(1)
+            .maybeSingle();
+          if (adminProf) {
+            setProfesional(adminProf);
+            profesionalIdRef.current = adminProf.id;
+            localStorage.setItem('slotify_profesional_id', adminProf.id);
+            localStorage.setItem('slotify_rol', adminProf.rol);
+          }
         }
         return;
       }
@@ -1245,7 +1261,7 @@ export default function Dashboard() {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ textAlign: 'right' }} className="hidden-mobile">
-                <p style={{ fontSize: 12, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>{profesional?.nombre || ''}</p>
+                <p style={{ fontSize: 12, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>{profesional?.nombre || empresa?.nombre || ''}</p>
                 {activeSection === 'agenda' && (() => {
                   const absStatus = activeAbsenceStatus();
                   if (!absStatus) return <p style={{ fontSize: 10, color: C.textSec, lineHeight: 1.2 }}>{isAdmin ? 'Admin' : 'Empleado'}</p>;
@@ -1260,7 +1276,7 @@ export default function Dashboard() {
                 )}
               </div>
               <div className="hidden-mobile" style={{ width: 30, height: 30, borderRadius: 8, background: C.green, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff' }}>
-                {profesional?.nombre?.[0]?.toUpperCase() || '?'}
+                {profesional?.nombre?.[0]?.toUpperCase() || empresa?.nombre?.[0]?.toUpperCase() || '?'}
               </div>
             </div>
           </div>
