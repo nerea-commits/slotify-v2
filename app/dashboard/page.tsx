@@ -91,6 +91,7 @@ export default function Dashboard() {
   const [empresa, setEmpresa] = useState<any>(null);
   const [profesional, setProfesional] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminPin, setAdminPin] = useState<string | null>(null);
   const [selectedCita, setSelectedCita] = useState<any>(null);
   const [editingCita, setEditingCita] = useState<any>(null);
   const [preselectedTime, setPreselectedTime] = useState('');
@@ -231,6 +232,9 @@ export default function Dashboard() {
           .then(({ data }) => { if (data) setEmpresa(data); });
         supabase.from('estados_cita').select('*').eq('empresa_id', prof.empresa_id).eq('activo', true).order('orden')
           .then(({ data }) => { if (data) setEstadosCita(data); });
+        // Cargar PIN del admin para proteger "Cambiar perfil"
+        supabase.from('profesionales').select('pin').eq('empresa_id', prof.empresa_id).eq('rol', 'admin').eq('activo', true).limit(1).single()
+          .then(({ data }) => { if (data?.pin) setAdminPin(data.pin); });
         return;
       }
 
@@ -1149,6 +1153,7 @@ export default function Dashboard() {
         permisos={permisos}
         onNavigate={setActiveSection}
         activeSection={activeSection}
+        adminPin={adminPin}
       />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }} className="main-content-desktop">
