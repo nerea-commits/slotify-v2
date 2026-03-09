@@ -47,33 +47,12 @@ const MONEDAS = [
 const BUFFERS = [0, 5, 10, 15];
 const DURACIONES_DEF = [15, 20, 30, 45, 60, 90, 120];
 
-// Definición de permisos disponibles
 const PERMISOS_DEF = [
-  {
-    key: 'ver_agenda_todos',
-    label: 'Ver agenda de todos',
-    desc: 'Puede ver las citas de todos los empleados',
-  },
-  {
-    key: 'gestionar_citas_todos',
-    label: 'Gestionar citas de todos',
-    desc: 'Puede crear, editar y cancelar citas de cualquier empleado',
-  },
-  {
-    key: 'gestionar_clientes',
-    label: 'Gestionar clientes',
-    desc: 'Acceso completo a todos los clientes, no solo los suyos',
-  },
-  {
-    key: 'editar_servicios',
-    label: 'Editar servicios',
-    desc: 'Puede crear, editar y eliminar servicios',
-  },
-  {
-    key: 'ver_estadisticas',
-    label: 'Ver estadísticas propias',
-    desc: 'Acceso a su panel de estadísticas personales',
-  },
+  { key: 'ver_agenda_todos',      label: 'Ver agenda de todos',      desc: 'Puede ver las citas de todos los empleados' },
+  { key: 'gestionar_citas_todos', label: 'Gestionar citas de todos', desc: 'Puede crear, editar y cancelar citas de cualquier empleado' },
+  { key: 'gestionar_clientes',    label: 'Gestionar clientes',       desc: 'Acceso completo a todos los clientes, no solo los suyos' },
+  { key: 'editar_servicios',      label: 'Editar servicios',         desc: 'Puede crear, editar y eliminar servicios' },
+  { key: 'ver_estadisticas',      label: 'Ver estadísticas propias', desc: 'Acceso a su panel de estadísticas personales' },
 ];
 
 function defaultPermisos(): Record<string, boolean> {
@@ -88,20 +67,9 @@ function parsePermisos(raw: any): Record<string, boolean> {
 
 function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   return (
-    <div
-      onClick={() => onChange(!value)}
-      style={{
-        width: 36, height: 20, borderRadius: 10,
-        background: value ? C.green : 'rgba(148,163,184,0.2)',
-        position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0,
-      }}
-    >
-      <div style={{
-        position: 'absolute', top: 2,
-        left: value ? 18 : 2,
-        width: 16, height: 16, borderRadius: 8,
-        background: '#fff', transition: 'left 0.2s',
-      }} />
+    <div onClick={() => onChange(!value)}
+      style={{ width:36, height:20, borderRadius:10, background: value ? C.green : 'rgba(148,163,184,0.2)', position:'relative', transition:'background 0.2s', cursor:'pointer', flexShrink:0 }}>
+      <div style={{ position:'absolute', top:2, left: value ? 18 : 2, width:16, height:16, borderRadius:8, background:'#fff', transition:'left 0.2s' }}/>
     </div>
   );
 }
@@ -183,6 +151,23 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // FIX 1: Sincronizar estado local cuando llegan nuevos datos del padre
+  // Se usa empresa.id como dependencia para evitar loops, pero también
+  // re-sincronizamos si los campos concretos cambian (tras un guardado)
+  useEffect(() => {
+    setNombre(empresa?.nombre || '');
+    setTelefono(empresa?.telefono || '');
+    setEmail(empresa?.email || '');
+    setDireccion(empresa?.direccion || '');
+    setColorPrimario(empresa?.color_primario || '#22C55E');
+    setTimezone(empresa?.timezone || 'Europe/Madrid');
+    setMoneda(empresa?.moneda || 'EUR');
+    setMostrarImporte(empresa?.mostrar_importe || false);
+    setSector(empresa?.sector || '');
+    setCif(empresa?.cif || '');
+    setLogoUrl(empresa?.logo_url || '');
+  }, [empresa?.id]);
+
   async function save() {
     if (!nombre.trim()) { setError('El nombre es obligatorio'); return; }
     if (!empresa?.id) { setError('Error: empresa sin ID'); return; }
@@ -190,6 +175,7 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
 
     const finalLogoUrl = (logoUrl && !logoUrl.startsWith('data:')) ? logoUrl.trim() : null;
 
+    // FIX 2: Un único update con TODOS los campos, incluyendo timezone y moneda
     const { data: d1, error: e1 } = await supabase.from('empresas')
       .update({
         nombre: nombre.trim(),
@@ -200,6 +186,8 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
         direccion: direccion.trim() || null,
         sector: sector.trim() || null,
         cif: cif.trim() || null,
+        timezone,
+        moneda,
       })
       .eq('id', empresa.id)
       .select();
@@ -207,10 +195,22 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
     setLoading(false);
 
     if (e1) { setError(`Error Supabase: ${e1.message} (code: ${e1.code})`); return; }
-    if (!d1 || d1.length === 0) { setError('RLS bloqueó el guardado.'); return; }
+    if (!d1 || d1.length === 0) { setError('RLS bloqueó el guardado. Revisa políticas en Supabase.'); return; }
 
-    await supabase.from('empresas').update({ timezone, moneda }).eq('id', empresa.id);
-    onSaved({ nombre, color_primario: colorPrimario, logo_url: finalLogoUrl });
+    // FIX 3: onSaved recibe TODOS los campos para que el padre los persista correctamente
+    onSaved({
+      nombre: nombre.trim(),
+      color_primario: colorPrimario,
+      logo_url: finalLogoUrl,
+      telefono: telefono.trim() || null,
+      email: email.trim() || null,
+      direccion: direccion.trim() || null,
+      sector: sector.trim() || null,
+      cif: cif.trim() || null,
+      timezone,
+      moneda,
+      mostrar_importe: mostrarImporte,
+    });
   }
 
   return (
@@ -229,7 +229,9 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
           <div style={{ flex:1, display:'flex', flexDirection:'column', gap:8 }}>
             {logoUrl && <p style={{ fontSize:12, color: C.green, fontWeight:600 }}>✓ Logo guardado</p>}
             <label style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'11px 16px', background: C.panelAlt, border:`1px dashed ${logoUrl ? C.green+'44' : C.border}`, borderRadius:10, cursor: logoUploading ? 'wait' : 'pointer', fontSize:13, color: C.textMid, fontWeight:600 }}>
-              {logoUploading ? <><RefreshCw size={14} style={{ color: C.green, animation:'spin 1s linear infinite' }}/> Subiendo...</> : <><Upload size={14} style={{ color: C.green }}/>{logoUrl ? 'Cambiar logo' : 'Subir logo'}</>}
+              {logoUploading
+                ? <><RefreshCw size={14} style={{ color: C.green, animation:'spin 1s linear infinite' }}/> Subiendo...</>
+                : <><Upload size={14} style={{ color: C.green }}/>{logoUrl ? 'Cambiar logo' : 'Subir logo'}</>}
               <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" style={{ display:'none' }} disabled={logoUploading} onChange={async e => {
                 const file = e.target.files?.[0];
                 if (!file) return;
@@ -251,8 +253,11 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
               }}/>
             </label>
             {logoUrl && (
-              <button onClick={async () => { setLogoUrl(''); await supabase.from('empresas').update({ logo_url: null }).eq('id', empresa.id); onSaved({ nombre, color_primario: colorPrimario, logo_url: null }); }}
-                style={{ background:'none', border:'none', cursor:'pointer', color: C.textDim, fontSize:12, textAlign:'left' as const }}>
+              <button onClick={async () => {
+                setLogoUrl('');
+                await supabase.from('empresas').update({ logo_url: null }).eq('id', empresa.id);
+                onSaved({ nombre, color_primario: colorPrimario, logo_url: null });
+              }} style={{ background:'none', border:'none', cursor:'pointer', color: C.textDim, fontSize:12, textAlign:'left' as const }}>
                 Quitar logo
               </button>
             )}
@@ -261,15 +266,30 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
       </div>
 
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
-        <div style={{ display:'flex', flexDirection:'column' as const, gap:6 }}><p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Teléfono</p><Input value={telefono} onChange={setTelefono} placeholder="+34 600 000 000" type="tel"/></div>
-        <div style={{ display:'flex', flexDirection:'column' as const, gap:6 }}><p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Email</p><Input value={email} onChange={setEmail} placeholder="contacto@empresa.com" type="email"/></div>
+        <div style={{ display:'flex', flexDirection:'column' as const, gap:6 }}>
+          <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Teléfono</p>
+          <Input value={telefono} onChange={setTelefono} placeholder="+34 600 000 000" type="tel"/>
+        </div>
+        <div style={{ display:'flex', flexDirection:'column' as const, gap:6 }}>
+          <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Email</p>
+          <Input value={email} onChange={setEmail} placeholder="contacto@empresa.com" type="email"/>
+        </div>
       </div>
 
-      <div style={{ display:'flex', flexDirection:'column' as const, gap:6 }}><p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Dirección</p><Input value={direccion} onChange={setDireccion} placeholder="Calle, ciudad..."/></div>
+      <div style={{ display:'flex', flexDirection:'column' as const, gap:6 }}>
+        <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Dirección</p>
+        <Input value={direccion} onChange={setDireccion} placeholder="Calle, ciudad..."/>
+      </div>
 
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
-        <div style={{ display:'flex', flexDirection:'column' as const, gap:6 }}><p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Sector</p><Input value={sector} onChange={setSector} placeholder="Ej: Peluquería, Estética..."/></div>
-        <div style={{ display:'flex', flexDirection:'column' as const, gap:6 }}><p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>CIF</p><Input value={cif} onChange={setCif} placeholder="B12345678"/></div>
+        <div style={{ display:'flex', flexDirection:'column' as const, gap:6 }}>
+          <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Sector</p>
+          <Input value={sector} onChange={setSector} placeholder="Ej: Peluquería, Estética..."/>
+        </div>
+        <div style={{ display:'flex', flexDirection:'column' as const, gap:6 }}>
+          <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>CIF</p>
+          <Input value={cif} onChange={setCif} placeholder="B12345678"/>
+        </div>
       </div>
 
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
@@ -548,11 +568,9 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 3500); }
 
   async function loadHorario(empId: string) {
-    const { data } = await supabase
-      .from('profesionales')
+    const { data } = await supabase.from('profesionales')
       .select('horario_apertura, horario_cierre, pausa_activa, horario_pausa_inicio, horario_pausa_fin, dias_laborables')
-      .eq('id', empId)
-      .single();
+      .eq('id', empId).single();
     if (data) {
       setEmpHorarios(prev => ({ ...prev, [empId]: {
         apertura: data.horario_apertura || empresa?.horario_inicio || '09:00',
@@ -566,11 +584,7 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
   }
 
   async function loadPermisos(empId: string) {
-    const { data } = await supabase
-      .from('profesionales')
-      .select('permisos')
-      .eq('id', empId)
-      .single();
+    const { data } = await supabase.from('profesionales').select('permisos').eq('id', empId).single();
     setEmpPermisos(prev => ({ ...prev, [empId]: parsePermisos(data?.permisos) }));
   }
 
@@ -578,8 +592,7 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
     setSavingHorario(empId);
     const h = empHorarios[empId];
     await supabase.from('profesionales').update({
-      horario_apertura: h.apertura,
-      horario_cierre: h.cierre,
+      horario_apertura: h.apertura, horario_cierre: h.cierre,
       pausa_activa: h.pausaActiva,
       horario_pausa_inicio: h.pausaActiva ? h.pausaInicio : null,
       horario_pausa_fin: h.pausaActiva ? h.pausaFin : null,
@@ -686,7 +699,6 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
-
       {loading ? (
         <p style={{ color: C.textDim, fontSize:13 }}>Cargando...</p>
       ) : (
@@ -695,19 +707,13 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
             const isMe = emp.id === profesionalActual?.id;
             const isExpanded = expandedEmp === emp.id;
             const currentTab = expandedTab[emp.id] || 'horario';
-
             return (
               <div key={emp.id} style={{ borderRadius:12, overflow:'hidden', border: isMe ? `1px solid ${C.green}33` : `1px solid ${C.border}`, opacity: emp.activo ? 1 : 0.55 }}>
-
-                {/* Fila principal */}
                 <div style={{ display:'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? 0 : 12, padding: isMobile ? 0 : '12px 14px', background: C.panelAlt }}>
-
-                  {/* Avatar + Nombre */}
                   <div style={{ display:'flex', alignItems:'center', gap:12, padding: isMobile ? '12px 14px' : 0, flex: isMobile ? undefined : 1, minWidth:0 }}>
                     <div style={{ width:36, height:36, borderRadius:9, background: emp.color || C.panelAlt, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color:'#fff', flexShrink:0, border:`1px solid ${C.border}` }}>
                       {emp.nombre?.[0]?.toUpperCase() || '?'}
                     </div>
-
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                         <p style={{ fontSize:13, fontWeight:600, color: C.text, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{emp.nombre}</p>
@@ -720,15 +726,8 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
                       </div>
                     </div>
                   </div>
-
-                  {/* Botones de acción */}
                   {!isMe && (
-                    <div style={{
-                      display:'flex', gap:4, flexWrap:'wrap' as const,
-                      padding: isMobile ? '8px 14px 12px' : 0,
-                      borderTop: isMobile ? `1px solid ${C.border}` : 'none',
-                      flexShrink:0,
-                    }}>
+                    <div style={{ display:'flex', gap:4, flexWrap:'wrap' as const, padding: isMobile ? '8px 14px 12px' : 0, borderTop: isMobile ? `1px solid ${C.border}` : 'none', flexShrink:0 }}>
                       <button onClick={() => toggleEmp(emp.id, 'horario')}
                         style={{ padding: isMobile ? '6px 10px' : '5px 8px', borderRadius:7, border:`1px solid ${isExpanded && currentTab === 'horario' ? C.green+'66' : C.border}`, background: isExpanded && currentTab === 'horario' ? C.greenDim : 'transparent', cursor:'pointer', color: isExpanded && currentTab === 'horario' ? C.green : C.textDim, fontSize:11, fontWeight:600, display:'flex', alignItems:'center', gap:4 }}>
                         <Clock size={12}/> Horario
@@ -765,68 +764,38 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
                   )}
                 </div>
 
-                {/* Panel expandible: Horario */}
                 {isExpanded && currentTab === 'horario' && empHorarios[emp.id] && (
                   <div style={{ padding:'14px', borderTop:`1px solid ${C.border}`, background: C.panel }}>
                     <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:12 }}>Horario de {emp.nombre}</p>
-
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
-                      <div>
-                        <p style={{ fontSize:11, color: C.textMid, marginBottom:5 }}>Apertura</p>
-                        <input type="time" value={empHorarios[emp.id].apertura} onChange={e => updateHorario(emp.id, 'apertura', e.target.value)}
-                          style={{ width:'100%', padding:'8px 10px', background: C.panelAlt, border:`1px solid ${C.border}`, borderRadius:8, color: C.text, fontSize:13, outline:'none', boxSizing:'border-box' as const }}/>
-                      </div>
-                      <div>
-                        <p style={{ fontSize:11, color: C.textMid, marginBottom:5 }}>Cierre</p>
-                        <input type="time" value={empHorarios[emp.id].cierre} onChange={e => updateHorario(emp.id, 'cierre', e.target.value)}
-                          style={{ width:'100%', padding:'8px 10px', background: C.panelAlt, border:`1px solid ${C.border}`, borderRadius:8, color: C.text, fontSize:13, outline:'none', boxSizing:'border-box' as const }}/>
-                      </div>
+                      <div><p style={{ fontSize:11, color: C.textMid, marginBottom:5 }}>Apertura</p><input type="time" value={empHorarios[emp.id].apertura} onChange={e => updateHorario(emp.id, 'apertura', e.target.value)} style={{ width:'100%', padding:'8px 10px', background: C.panelAlt, border:`1px solid ${C.border}`, borderRadius:8, color: C.text, fontSize:13, outline:'none', boxSizing:'border-box' as const }}/></div>
+                      <div><p style={{ fontSize:11, color: C.textMid, marginBottom:5 }}>Cierre</p><input type="time" value={empHorarios[emp.id].cierre} onChange={e => updateHorario(emp.id, 'cierre', e.target.value)} style={{ width:'100%', padding:'8px 10px', background: C.panelAlt, border:`1px solid ${C.border}`, borderRadius:8, color: C.text, fontSize:13, outline:'none', boxSizing:'border-box' as const }}/></div>
                     </div>
-
                     <div style={{ background: C.panelAlt, borderRadius:10, overflow:'hidden', marginBottom:10, border: empHorarios[emp.id].pausaActiva ? `1px solid ${C.green}33` : `1px solid ${C.border}` }}>
-                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 12px', cursor:'pointer' }}
-                        onClick={() => updateHorario(emp.id, 'pausaActiva', !empHorarios[emp.id].pausaActiva)}>
-                        <div>
-                          <p style={{ fontSize:12, fontWeight:600, color: C.text }}>Turno partido</p>
-                          <p style={{ fontSize:10, color: C.textDim }}>{empHorarios[emp.id].pausaActiva ? `Pausa de ${empHorarios[emp.id].pausaInicio} a ${empHorarios[emp.id].pausaFin}` : 'Activa si tiene pausa al mediodía'}</p>
-                        </div>
-                        <div style={{ width:36, height:20, borderRadius:10, background: empHorarios[emp.id].pausaActiva ? C.green : C.border, position:'relative', transition:'background 0.2s' }}>
-                          <div style={{ position:'absolute', top:2, left: empHorarios[emp.id].pausaActiva ? 18 : 2, width:16, height:16, borderRadius:8, background:'#fff', transition:'left 0.2s' }}/>
-                        </div>
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 12px', cursor:'pointer' }} onClick={() => updateHorario(emp.id, 'pausaActiva', !empHorarios[emp.id].pausaActiva)}>
+                        <div><p style={{ fontSize:12, fontWeight:600, color: C.text }}>Turno partido</p><p style={{ fontSize:10, color: C.textDim }}>{empHorarios[emp.id].pausaActiva ? `Pausa de ${empHorarios[emp.id].pausaInicio} a ${empHorarios[emp.id].pausaFin}` : 'Activa si tiene pausa al mediodía'}</p></div>
+                        <div style={{ width:36, height:20, borderRadius:10, background: empHorarios[emp.id].pausaActiva ? C.green : C.border, position:'relative', transition:'background 0.2s' }}><div style={{ position:'absolute', top:2, left: empHorarios[emp.id].pausaActiva ? 18 : 2, width:16, height:16, borderRadius:8, background:'#fff', transition:'left 0.2s' }}/></div>
                       </div>
                       {empHorarios[emp.id].pausaActiva && (
                         <div style={{ padding:'0 12px 12px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                          <div>
-                            <p style={{ fontSize:11, color: C.textMid, marginBottom:5 }}>Inicio pausa</p>
-                            <input type="time" value={empHorarios[emp.id].pausaInicio} onChange={e => updateHorario(emp.id, 'pausaInicio', e.target.value)}
-                              style={{ width:'100%', padding:'8px 10px', background: C.panel, border:`1px solid ${C.border}`, borderRadius:8, color: C.text, fontSize:13, outline:'none', boxSizing:'border-box' as const }}/>
-                          </div>
-                          <div>
-                            <p style={{ fontSize:11, color: C.textMid, marginBottom:5 }}>Fin pausa</p>
-                            <input type="time" value={empHorarios[emp.id].pausaFin} onChange={e => updateHorario(emp.id, 'pausaFin', e.target.value)}
-                              style={{ width:'100%', padding:'8px 10px', background: C.panel, border:`1px solid ${C.border}`, borderRadius:8, color: C.text, fontSize:13, outline:'none', boxSizing:'border-box' as const }}/>
-                          </div>
+                          <div><p style={{ fontSize:11, color: C.textMid, marginBottom:5 }}>Inicio pausa</p><input type="time" value={empHorarios[emp.id].pausaInicio} onChange={e => updateHorario(emp.id, 'pausaInicio', e.target.value)} style={{ width:'100%', padding:'8px 10px', background: C.panel, border:`1px solid ${C.border}`, borderRadius:8, color: C.text, fontSize:13, outline:'none', boxSizing:'border-box' as const }}/></div>
+                          <div><p style={{ fontSize:11, color: C.textMid, marginBottom:5 }}>Fin pausa</p><input type="time" value={empHorarios[emp.id].pausaFin} onChange={e => updateHorario(emp.id, 'pausaFin', e.target.value)} style={{ width:'100%', padding:'8px 10px', background: C.panel, border:`1px solid ${C.border}`, borderRadius:8, color: C.text, fontSize:13, outline:'none', boxSizing:'border-box' as const }}/></div>
                         </div>
                       )}
                     </div>
-
                     <p style={{ fontSize:11, color: C.textDim, fontWeight:700, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:8 }}>Días laborables</p>
                     <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:4, marginBottom:12 }}>
                       {DIAS_LABELS.map((d, i) => {
                         const idx = DIAS_IDX2[i];
                         const active = (empHorarios[emp.id].dias || []).includes(idx);
                         return (
-                          <button key={d} onClick={() => {
-                            const dias = empHorarios[emp.id].dias || [];
-                            updateHorario(emp.id, 'dias', active ? dias.filter((x: number) => x !== idx) : [...dias, idx]);
-                          }}
+                          <button key={d} onClick={() => { const dias = empHorarios[emp.id].dias || []; updateHorario(emp.id, 'dias', active ? dias.filter((x: number) => x !== idx) : [...dias, idx]); }}
                             style={{ padding:'8px 2px', borderRadius:8, border:'none', cursor:'pointer', background: active ? C.greenDim : C.panelAlt, outline: active ? `2px solid ${C.green}55` : 'none' }}>
                             <span style={{ fontSize:10, fontWeight:700, color: active ? C.green : C.textDim }}>{d}</span>
                           </button>
                         );
                       })}
                     </div>
-
                     <button onClick={() => saveHorario(emp.id)} disabled={savingHorario === emp.id}
                       style={{ display:'flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'none', background: C.green, color:'#fff', cursor:'pointer', fontSize:12, fontWeight:700, opacity: savingHorario === emp.id ? 0.7 : 1 }}>
                       <Check size={13}/> {savingHorario === emp.id ? 'Guardando...' : 'Guardar horario'}
@@ -834,14 +803,12 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
                   </div>
                 )}
 
-                {/* Panel expandible: Permisos */}
                 {isExpanded && currentTab === 'permisos' && empPermisos[emp.id] && (
                   <div style={{ padding:'14px', borderTop:`1px solid ${C.border}`, background: C.panel }}>
                     <div style={{ marginBottom:14 }}>
                       <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const }}>Permisos de {emp.nombre}</p>
                       <p style={{ fontSize:11, color: C.textDim, marginTop:3 }}>Ver y gestionar agenda propia siempre están activos</p>
                     </div>
-
                     <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:14 }}>
                       {PERMISOS_DEF.map(p => (
                         <div key={p.key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 12px', background: C.panelAlt, borderRadius:10, gap:12 }}>
@@ -849,48 +816,30 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
                             <p style={{ fontSize:13, fontWeight:600, color: C.text }}>{p.label}</p>
                             <p style={{ fontSize:11, color: C.textDim, marginTop:2 }}>{p.desc}</p>
                           </div>
-                          <Toggle
-                            value={empPermisos[emp.id][p.key] || false}
-                            onChange={v => updatePermiso(emp.id, p.key, v)}
-                          />
+                          <Toggle value={empPermisos[emp.id][p.key] || false} onChange={v => updatePermiso(emp.id, p.key, v)}/>
                         </div>
                       ))}
                     </div>
-
                     <button onClick={() => savePermisos(emp.id)} disabled={savingPermisos === emp.id}
                       style={{ display:'flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'none', background: C.green, color:'#fff', cursor:'pointer', fontSize:12, fontWeight:700, opacity: savingPermisos === emp.id ? 0.7 : 1 }}>
                       <Check size={13}/> {savingPermisos === emp.id ? 'Guardando...' : 'Guardar permisos'}
                     </button>
                   </div>
                 )}
-
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Añadir empleado */}
       <div style={{ background: C.panelAlt, borderRadius:12, padding:16 }}>
         <p style={{ fontSize:13, fontWeight:700, color: C.text, marginBottom:14 }}>Añadir empleado</p>
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-            <div>
-              <p style={{ fontSize:11, color: C.textMid, fontWeight:600, marginBottom:5 }}>NOMBRE *</p>
-              <Input value={invNombre} onChange={setInvNombre} placeholder="Nombre"/>
-            </div>
-            <div>
-              <p style={{ fontSize:11, color: C.textMid, fontWeight:600, marginBottom:5 }}>EMAIL</p>
-              <Input value={invEmail} onChange={setInvEmail} placeholder="email@..." type="email"/>
-            </div>
+            <div><p style={{ fontSize:11, color: C.textMid, fontWeight:600, marginBottom:5 }}>NOMBRE *</p><Input value={invNombre} onChange={setInvNombre} placeholder="Nombre"/></div>
+            <div><p style={{ fontSize:11, color: C.textMid, fontWeight:600, marginBottom:5 }}>EMAIL</p><Input value={invEmail} onChange={setInvEmail} placeholder="email@..." type="email"/></div>
           </div>
-          <div>
-            <p style={{ fontSize:11, color: C.textMid, fontWeight:600, marginBottom:5 }}>ROL</p>
-            <Select value={invRol} onChange={setInvRol} options={[
-              { value:'empleado', label:'Empleado' },
-              { value:'admin', label:'Administrador' },
-            ]}/>
-          </div>
+          <div><p style={{ fontSize:11, color: C.textMid, fontWeight:600, marginBottom:5 }}>ROL</p><Select value={invRol} onChange={setInvRol} options={[{ value:'empleado', label:'Empleado' },{ value:'admin', label:'Administrador' }]}/></div>
           {invError && <p style={{ color: C.red, fontSize:12 }}>{invError}</p>}
           <button onClick={invitar} disabled={invLoading}
             style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 16px', borderRadius:10, border:'none', background: C.green, color:'#fff', cursor: invLoading ? 'not-allowed' : 'pointer', fontSize:13, fontWeight:700, opacity: invLoading ? 0.7 : 1 }}>
@@ -921,7 +870,11 @@ export default function ConfiguracionSection({
   const [mobileOpen, setMobileOpen] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
 
-  useEffect(() => { setEmpresa(empresaProp); }, [empresaProp?.id]);
+  // FIX 4: Sincronizar empresa completa cuando el padre actualiza los props
+  // Antes era [empresaProp?.id] — solo reaccionaba al cambio de empresa, no de campos
+  useEffect(() => {
+    if (empresaProp) setEmpresa(empresaProp);
+  }, [empresaProp]);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -933,8 +886,10 @@ export default function ConfiguracionSection({
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 3500); }
 
   function handleSaved(tab: string, data: any) {
-    setEmpresa((prev: any) => ({ ...prev, ...data }));
-    onEmpresaUpdated?.(data);
+    // FIX 5: merge completo — el padre recibe la empresa entera, no solo el delta
+    const merged = { ...empresa, ...data };
+    setEmpresa(merged);
+    onEmpresaUpdated?.(merged);
     showToast('Cambios guardados');
   }
 
