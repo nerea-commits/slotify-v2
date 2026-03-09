@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import {
   CheckCircle2, XCircle, Clock, MessageCircle, RefreshCw,
   Bell, CheckCheck, Phone, Calendar, TrendingUp, BarChart3,
-  AlertTriangle, ChevronRight, User
+  AlertTriangle, ChevronRight, User, Search, ArrowUpDown, ArrowUp, ArrowDown
 } from 'lucide-react';
 import { calcularFiabilidad } from '@/lib/fiabilidad';
 
@@ -77,6 +77,9 @@ export default function NotificacionesSection({
   const [notifs, setNotifs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState<Filtro>('todos');
+  const [busqueda, setBusqueda] = useState('');
+  const [sortCol, setSortCol] = useState<'cliente' | 'tipo' | 'estado' | 'fecha'>('fecha');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [periodoStats, setPeriodoStats] = useState<PeriodoStats>('mes');
   const [marcandoTodas, setMarcandoTodas] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -297,7 +300,27 @@ export default function NotificacionesSection({
   const maxAño = Math.max(...statsAño.map(s => s.total), 1);
 
   const noLeidas = notifs.filter(n => !n.leida).length;
-  const filtradas = filtro === 'todos' ? notifs : notifs.filter(n => n.estado === filtro);
+
+  const filtradas = useMemo(() => {
+    let result = filtro === 'todos' ? notifs : notifs.filter(n => n.estado === filtro);
+    if (busqueda.trim()) {
+      const q = busqueda.toLowerCase();
+      result = result.filter(n =>
+        (n.clientes?.nombre || '').toLowerCase().includes(q) ||
+        (n.mensaje || '').toLowerCase().includes(q) ||
+        (n.tipo || '').toLowerCase().includes(q)
+      );
+    }
+    result = [...result].sort((a, b) => {
+      let va = '', vb = '';
+      if (sortCol === 'cliente') { va = a.clientes?.nombre || ''; vb = b.clientes?.nombre || ''; }
+      else if (sortCol === 'tipo') { va = a.tipo || ''; vb = b.tipo || ''; }
+      else if (sortCol === 'estado') { va = a.estado || ''; vb = b.estado || ''; }
+      else { va = a.enviado_at || a.created_at || ''; vb = b.enviado_at || b.created_at || ''; }
+      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
+    return result;
+  }, [notifs, filtro, busqueda, sortCol, sortDir]);
 
   const FILTROS: { key: Filtro; label: string; shortLabel: string; color: string }[] = [
     { key: 'todos',         label: 'Todos',         shortLabel: 'Todo',    color: C.textMid },
@@ -306,16 +329,6 @@ export default function NotificacionesSection({
     { key: 'sin_respuesta', label: 'Sin respuesta', shortLabel: '⏳',      color: C.amber   },
     { key: 'enviado',       label: 'Enviados',      shortLabel: '📤',      color: C.blue    },
   ];
-
-  const grupos = useMemo(() => {
-    const g: Record<string, any[]> = {};
-    filtradas.forEach(n => {
-      const f = fmtFecha(n.created_at);
-      if (!g[f]) g[f] = [];
-      g[f].push(n);
-    });
-    return g;
-  }, [filtradas]);
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, color: C.text }}>
@@ -629,87 +642,186 @@ export default function NotificacionesSection({
           </div>
         )}
 
-        {/* FILTROS */}
-        <div style={{ display: 'flex', gap: isMobile ? 4 : 6, marginBottom: isMobile ? 10 : 14, overflowX: isMobile ? 'auto' : 'visible', flexWrap: isMobile ? 'nowrap' : 'wrap', paddingBottom: 2 }}>
-          {FILTROS.map(f => {
-            const count = f.key !== 'todos' ? notifs.filter(n => n.estado === f.key).length : 0;
-            return (
-              <button key={f.key} onClick={() => setFiltro(f.key)}
-                style={{
-                  padding: isMobile ? '5px 10px' : '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
-                  fontSize: isMobile ? 11 : 12, fontWeight: 600, flexShrink: 0,
-                  background: filtro === f.key ? f.color + '20' : C.panelAlt,
-                  color: filtro === f.key ? f.color : C.textMid,
-                  outline: filtro === f.key ? `1px solid ${f.color}44` : 'none',
-                  transition: 'all 0.12s', whiteSpace: 'nowrap',
-                }}>
-                {isMobile ? (f.key === 'todos' ? 'Todo' : f.label) : f.label}
-                {count > 0 && <span style={{ marginLeft: 4, opacity: 0.7 }}>{count}</span>}
-              </button>
-            );
-          })}
-        </div>
+        {/* ── HISTORIAL: cabecera con búsqueda y filtros ── */}
+        <div style={{ background: C.panel, borderRadius: isMobile ? 12 : 16, overflow: 'hidden' }}>
 
-        {/* LISTA */}
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: 60, color: C.textDim }}>
-            <RefreshCw size={24} style={{ animation: 'spin 1s linear infinite', marginBottom: 8 }} />
+          {/* Toolbar */}
+          <div style={{ padding: isMobile ? '12px 14px' : '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 8 : 12, alignItems: isMobile ? 'stretch' : 'center' }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: C.textDim, letterSpacing: 1, textTransform: 'uppercase' as const, margin: 0, flexShrink: 0 }}>
+              Historial · <span style={{ color: C.textMid }}>{filtradas.length}</span>
+            </p>
+
+            {/* Búsqueda */}
+            <div style={{ flex: 1, position: 'relative' }}>
+              <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: C.textDim, pointerEvents: 'none' }} />
+              <input
+                value={busqueda}
+                onChange={e => setBusqueda(e.target.value)}
+                placeholder="Buscar cliente o mensaje..."
+                style={{ width: '100%', background: C.panelAlt, border: `1px solid ${C.border}`, borderRadius: 8, padding: '6px 10px 6px 28px', color: C.text, fontSize: 12, outline: 'none', boxSizing: 'border-box' as const }}
+              />
+            </div>
+
+            {/* Filtros por estado */}
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'nowrap', overflowX: 'auto' }}>
+              {FILTROS.map(f => {
+                const count = f.key !== 'todos' ? notifs.filter(n => n.estado === f.key).length : notifs.length;
+                return (
+                  <button key={f.key} onClick={() => setFiltro(f.key)}
+                    style={{ padding: '4px 10px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600, flexShrink: 0, whiteSpace: 'nowrap' as const, background: filtro === f.key ? f.color + '20' : C.panelAlt, color: filtro === f.key ? f.color : C.textDim, outline: filtro === f.key ? `1px solid ${f.color}44` : 'none', transition: 'all 0.12s' }}>
+                    {isMobile && f.key !== 'todos' ? f.shortLabel : f.label}
+                    {count > 0 && <span style={{ marginLeft: 4, opacity: 0.6 }}>{count}</span>}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        ) : filtradas.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: isMobile ? 40 : 60, background: C.panel, borderRadius: isMobile ? 12 : 16 }}>
-            <Bell size={32} style={{ color: C.textDim, marginBottom: 10, opacity: 0.3 }} />
-            <p style={{ color: C.textMid, fontSize: 14 }}>Sin notificaciones</p>
-            <p style={{ color: C.textDim, fontSize: 12, marginTop: 4 }}>Las notificaciones aparecerán aquí cuando se envíen mensajes</p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {Object.entries(grupos).map(([fecha, items]) => (
-              <div key={fecha}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: C.textDim, letterSpacing: 0.8, padding: '8px 0 5px', textTransform: 'uppercase' }}>{fecha} · {items.length}</p>
-                <div style={{ background: C.panel, borderRadius: isMobile ? 10 : 14, overflow: 'hidden' }}>
-                  {items.map((n, i) => {
+
+          {/* Tabla */}
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 48, color: C.textDim }}>
+              <RefreshCw size={22} style={{ animation: 'spin 1s linear infinite' }} />
+            </div>
+          ) : filtradas.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: isMobile ? 40 : 56 }}>
+              <Bell size={28} style={{ color: C.textDim, marginBottom: 8, opacity: 0.3 }} />
+              <p style={{ color: C.textMid, fontSize: 13 }}>Sin registros</p>
+              <p style={{ color: C.textDim, fontSize: 11, marginTop: 3 }}>
+                {busqueda ? 'No hay resultados para esa búsqueda' : 'Las notificaciones aparecerán aquí cuando se envíen mensajes'}
+              </p>
+            </div>
+          ) : isMobile ? (
+            /* ── MÓVIL: cards ── */
+            <div>
+              {filtradas.map((n, i) => {
+                const cfg = ESTADO_CFG[n.estado] || ESTADO_CFG.enviado;
+                const Icon = cfg.icon;
+                const fecha = n.enviado_at || n.created_at;
+                return (
+                  <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', borderBottom: i < filtradas.length - 1 ? `1px solid ${C.border}` : 'none', background: n.leida ? 'transparent' : 'rgba(34,197,94,0.02)' }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                      <Icon size={15} style={{ color: cfg.color }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                        <span style={{ fontSize: 13, fontWeight: n.leida ? 400 : 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>
+                          {n.clientes?.nombre || 'Desconocido'}
+                        </span>
+                        {!n.leida && <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, flexShrink: 0 }} />}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 10, color: cfg.color, fontWeight: 600, background: cfg.bg, padding: '1px 6px', borderRadius: 4 }}>{cfg.label}</span>
+                        {n.intento === 2 && <span style={{ fontSize: 9, color: C.amber, fontWeight: 700, background: C.amberDim, padding: '1px 5px', borderRadius: 4 }}>2º</span>}
+                        <span style={{ fontSize: 10, color: C.textDim }}>{fecha ? new Date(fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}</span>
+                      </div>
+                      {n.mensaje && <p style={{ fontSize: 10, color: C.textDim, marginTop: 3, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>"{n.mensaje}"</p>}
+                    </div>
+                    {!n.leida && (
+                      <button onClick={() => marcarLeida(n.id)} style={{ fontSize: 10, color: C.green, background: C.greenDim, border: 'none', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontWeight: 600, flexShrink: 0 }}>✓</button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* ── DESKTOP: tabla ── */
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' as const, fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: C.panelAlt }}>
+                    {([
+                      { col: 'cliente', label: 'Cliente',  width: '22%' },
+                      { col: 'tipo',    label: 'Mensaje',  width: '20%' },
+                      { col: 'estado',  label: 'Estado',   width: '16%' },
+                      { col: 'fecha',   label: 'Fecha',    width: '18%' },
+                    ] as { col: typeof sortCol; label: string; width: string }[]).map(({ col, label, width }) => (
+                      <th key={col}
+                        onClick={() => { if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortCol(col); setSortDir('desc'); } }}
+                        style={{ padding: '10px 16px', textAlign: 'left' as const, fontWeight: 700, fontSize: 11, color: sortCol === col ? C.text : C.textDim, letterSpacing: 0.6, textTransform: 'uppercase' as const, cursor: 'pointer', userSelect: 'none' as const, width, whiteSpace: 'nowrap' as const, borderBottom: `1px solid ${C.border}` }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          {label}
+                          {sortCol === col
+                            ? (sortDir === 'asc' ? <ArrowUp size={11} style={{ color: C.green }} /> : <ArrowDown size={11} style={{ color: C.green }} />)
+                            : <ArrowUpDown size={11} style={{ opacity: 0.3 }} />
+                          }
+                        </div>
+                      </th>
+                    ))}
+                    <th style={{ padding: '10px 16px', width: '14%', borderBottom: `1px solid ${C.border}` }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtradas.map((n, i) => {
                     const cfg = ESTADO_CFG[n.estado] || ESTADO_CFG.enviado;
                     const Icon = cfg.icon;
+                    const fecha = n.enviado_at || n.created_at;
+                    const fechaFmt = fecha ? new Date(fecha).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }) + ' ' + new Date(fecha).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '—';
                     return (
-                      <div key={n.id} style={{
-                        display: 'flex', alignItems: 'flex-start', gap: isMobile ? 10 : 14,
-                        padding: isMobile ? '10px 12px' : '13px 18px',
-                        borderBottom: i < items.length - 1 ? `1px solid ${C.border}` : 'none',
-                        background: n.leida ? 'transparent' : 'rgba(34,197,94,0.02)',
-                      }}>
-                        <div style={{ width: isMobile ? 32 : 38, height: isMobile ? 32 : 38, borderRadius: isMobile ? 8 : 10, background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
-                          <Icon size={isMobile ? 15 : 18} style={{ color: cfg.color }} />
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontSize: isMobile ? 13 : 14, fontWeight: n.leida ? 400 : 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1, minWidth: 0 }}>
-                              {n.clientes?.nombre || 'Cliente desconocido'}
+                      <tr key={n.id} style={{ borderBottom: i < filtradas.length - 1 ? `1px solid ${C.border}` : 'none', background: n.leida ? 'transparent' : 'rgba(34,197,94,0.015)', transition: 'background 0.1s' }}
+                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.04)'}
+                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = n.leida ? 'transparent' : 'rgba(34,197,94,0.015)'}
+                      >
+                        {/* Cliente */}
+                        <td style={{ padding: '11px 16px', verticalAlign: 'middle' as const }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 8, background: C.panelAlt, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: C.textMid, flexShrink: 0 }}>
+                              {(n.clientes?.nombre || '?')[0]?.toUpperCase()}
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <p style={{ fontSize: 13, fontWeight: n.leida ? 400 : 700, color: C.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                                {n.clientes?.nombre || 'Desconocido'}
+                              </p>
+                              {n.clientes?.telefono && <p style={{ fontSize: 10, color: C.textDim, margin: 0 }}>{n.clientes.telefono}</p>}
+                            </div>
+                            {!n.leida && <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, flexShrink: 0 }} />}
+                          </div>
+                        </td>
+
+                        {/* Mensaje */}
+                        <td style={{ padding: '11px 16px', verticalAlign: 'middle' as const }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <span style={{ fontSize: 12, color: C.textMid, fontWeight: 600, textTransform: 'capitalize' as const }}>
+                              {n.tipo || 'Recordatorio'}
+                              {n.intento === 2 && <span style={{ marginLeft: 5, fontSize: 9, color: C.amber, fontWeight: 700, background: C.amberDim, padding: '1px 5px', borderRadius: 4 }}>2º aviso</span>}
                             </span>
-                            {!n.leida && <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.green, flexShrink: 0 }} />}
-                            <span style={{ fontSize: 10, color: C.textDim, flexShrink: 0 }}>{fmtHora(n.created_at)}</span>
+                            {n.mensaje && <p style={{ fontSize: 11, color: C.textDim, margin: 0, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, maxWidth: 200 }}>"{n.mensaje}"</p>}
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 11, color: cfg.color, fontWeight: 600 }}>{cfg.label}</span>
-                            {n.intento === 2 && <span style={{ fontSize: 9, color: C.amber, fontWeight: 700, background: C.amberDim, padding: '1px 5px', borderRadius: 4 }}>2º</span>}
-                            {n.citas?.hora_inicio && <span style={{ fontSize: 10, color: C.textDim, display: 'flex', alignItems: 'center', gap: 3 }}><Calendar size={9} /> {n.citas.hora_inicio.substring(11, 16)}</span>}
-                            {!isMobile && n.clientes?.telefono && <span style={{ fontSize: 10, color: C.textDim, display: 'flex', alignItems: 'center', gap: 3 }}><Phone size={9} /> {n.clientes.telefono}</span>}
+                        </td>
+
+                        {/* Estado */}
+                        <td style={{ padding: '11px 16px', verticalAlign: 'middle' as const }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: cfg.bg, padding: '4px 10px', borderRadius: 20, border: `1px solid ${cfg.color}22` }}>
+                            <Icon size={11} style={{ color: cfg.color, flexShrink: 0 }} />
+                            <span style={{ fontSize: 11, fontWeight: 700, color: cfg.color, whiteSpace: 'nowrap' as const }}>{cfg.label}</span>
                           </div>
-                          {n.mensaje && !isMobile && <p style={{ fontSize: 11, color: C.textDim, marginTop: 4, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>"{n.mensaje}"</p>}
-                        </div>
-                        {!n.leida && (
-                          <button onClick={() => marcarLeida(n.id)}
-                            style={{ fontSize: 10, color: C.green, background: C.greenDim, border: 'none', borderRadius: 6, padding: isMobile ? '4px 8px' : '3px 8px', cursor: 'pointer', fontWeight: 600, flexShrink: 0, marginTop: 2 }}>
-                            Leída
-                          </button>
-                        )}
-                      </div>
+                        </td>
+
+                        {/* Fecha */}
+                        <td style={{ padding: '11px 16px', verticalAlign: 'middle' as const }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <Calendar size={11} style={{ color: C.textDim, flexShrink: 0 }} />
+                            <span style={{ fontSize: 12, color: C.textMid }}>{fechaFmt}</span>
+                          </div>
+                        </td>
+
+                        {/* Acción */}
+                        <td style={{ padding: '11px 16px', verticalAlign: 'middle' as const, textAlign: 'right' as const }}>
+                          {!n.leida ? (
+                            <button onClick={() => marcarLeida(n.id)} style={{ fontSize: 11, color: C.green, background: C.greenDim, border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' as const }}>
+                              Leída
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: 11, color: C.textDim }}>✓</span>
+                          )}
+                        </td>
+                      </tr>
                     );
                   })}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
