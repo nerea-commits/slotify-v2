@@ -87,6 +87,11 @@ export default function NotificacionesSection({
   const [loadingRiesgo, setLoadingRiesgo] = useState(true);
   const [showRiesgo, setShowRiesgo] = useState(true);
 
+  // ── MÉTRICAS RENDIMIENTO ──
+  const [asistenciaReal, setAsistenciaReal] = useState<number | null>(null);
+  const [tiempoMedioRespuesta, setTiempoMedioRespuesta] = useState<number | null>(null);
+  const [loadingMetricas, setLoadingMetricas] = useState(true);
+
   useEffect(() => {
     function checkMobile() { setIsMobile(window.innerWidth < 768); }
     checkMobile();
@@ -98,6 +103,7 @@ export default function NotificacionesSection({
     if (empresaId) {
       load();
       loadClientesRiesgo();
+      loadMetricas();
     }
   }, [empresaId]);
 
@@ -182,6 +188,52 @@ export default function NotificacionesSection({
       console.error('Error cargando clientes riesgo:', e);
     }
     setLoadingRiesgo(false);
+  }
+
+  async function loadMetricas() {
+    setLoadingMetricas(true);
+    try {
+      // Últimos 90 días
+      const desde = new Date();
+      desde.setDate(desde.getDate() - 90);
+
+      const { data: citas } = await supabase
+        .from('citas')
+        .select('estado, confirmado_at, recordatorio_1_enviado_at')
+        .eq('empresa_id', empresaId)
+        .gte('hora_inicio', desde.toISOString())
+        .not('estado', 'eq', 'cancelada');
+
+      if (citas && citas.length > 0) {
+        // Asistencia real: completadas / total (excluye canceladas ya filtradas)
+        const completadas = citas.filter(c =>
+          (c.estado || '').toLowerCase() === 'completada'
+        ).length;
+        setAsistenciaReal(Math.round((completadas / citas.length) * 100));
+
+        // Tiempo medio de respuesta: diff entre recordatorio enviado y confirmación
+        const conRespuesta = citas.filter(c =>
+          c.confirmado_at && c.recordatorio_1_enviado_at
+        );
+        if (conRespuesta.length > 0) {
+          const tiempos = conRespuesta.map(c => {
+            const enviado = new Date(c.recordatorio_1_enviado_at).getTime();
+            const confirmado = new Date(c.confirmado_at).getTime();
+            return Math.max(0, (confirmado - enviado) / 60000); // minutos
+          });
+          const media = tiempos.reduce((a, b) => a + b, 0) / tiempos.length;
+          setTiempoMedioRespuesta(Math.round(media));
+        } else {
+          setTiempoMedioRespuesta(null);
+        }
+      } else {
+        setAsistenciaReal(null);
+        setTiempoMedioRespuesta(null);
+      }
+    } catch (e) {
+      console.error('Error cargando métricas:', e);
+    }
+    setLoadingMetricas(false);
   }
 
   async function marcarLeida(id: string) {
@@ -427,6 +479,88 @@ export default function NotificacionesSection({
               <div style={{ fontSize: isMobile ? 9 : 11, color: card.color, fontWeight: 600, marginTop: 3, opacity: 0.8, whiteSpace: 'nowrap' }}>{card.label}</div>
             </div>
           ))}
+        </div>
+
+        {/* ── MÉTRICAS DE RENDIMIENTO ── */}
+        <div style={{ display: 'flex', gap: isMobile ? 6 : 10, marginBottom: isMobile ? 10 : 16, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible' }}>
+          {/* Asistencia real */}
+          <div style={{
+            background: C.panel, border: `1px solid ${C.green}22`, borderRadius: isMobile ? 10 : 12,
+            padding: isMobile ? '10px 14px' : '14px 18px',
+            flex: '1 1 0', minWidth: isMobile ? 140 : 'auto',
+            display: 'flex', flexDirection: 'column', gap: 6,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 24, height: 24, borderRadius: 7, background: C.greenDim, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <TrendingUp size={12} style={{ color: C.green }} />
+              </div>
+              <span style={{ fontSize: isMobile ? 10 : 11, fontWeight: 700, color: C.textDim, letterSpacing: 0.5, textTransform: 'uppercase' as const }}>
+                Asistencia real
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+              {loadingMetricas ? (
+                <span style={{ fontSize: 22, fontWeight: 800, color: C.textDim }}>—</span>
+              ) : asistenciaReal !== null ? (
+                <>
+                  <span style={{ fontSize: isMobile ? 26 : 32, fontWeight: 800, color: asistenciaReal >= 80 ? C.green : asistenciaReal >= 60 ? C.amber : C.red, lineHeight: 1 }}>
+                    {asistenciaReal}
+                  </span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: C.textMid }}>%</span>
+                </>
+              ) : (
+                <span style={{ fontSize: 22, fontWeight: 800, color: C.textDim }}>—</span>
+              )}
+            </div>
+            <div style={{ height: 4, background: 'rgba(148,163,184,0.1)', borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{
+                height: '100%',
+                width: `${asistenciaReal ?? 0}%`,
+                background: asistenciaReal !== null && asistenciaReal >= 80 ? C.green : asistenciaReal !== null && asistenciaReal >= 60 ? C.amber : C.red,
+                borderRadius: 2, transition: 'width 0.6s ease',
+              }} />
+            </div>
+            <span style={{ fontSize: 10, color: C.textDim }}>Últimos 90 días</span>
+          </div>
+
+          {/* Tiempo medio de respuesta */}
+          <div style={{
+            background: C.panel, border: `1px solid ${C.blue}22`, borderRadius: isMobile ? 10 : 12,
+            padding: isMobile ? '10px 14px' : '14px 18px',
+            flex: '1 1 0', minWidth: isMobile ? 140 : 'auto',
+            display: 'flex', flexDirection: 'column', gap: 6,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 24, height: 24, borderRadius: 7, background: C.blueDim, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Clock size={12} style={{ color: C.blue }} />
+              </div>
+              <span style={{ fontSize: isMobile ? 10 : 11, fontWeight: 700, color: C.textDim, letterSpacing: 0.5, textTransform: 'uppercase' as const }}>
+                Tiempo respuesta
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+              {loadingMetricas ? (
+                <span style={{ fontSize: 22, fontWeight: 800, color: C.textDim }}>—</span>
+              ) : tiempoMedioRespuesta !== null ? (
+                <>
+                  <span style={{ fontSize: isMobile ? 26 : 32, fontWeight: 800, color: C.blue, lineHeight: 1 }}>
+                    {tiempoMedioRespuesta < 60
+                      ? tiempoMedioRespuesta
+                      : Math.round(tiempoMedioRespuesta / 60)}
+                  </span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: C.textMid }}>
+                    {tiempoMedioRespuesta < 60 ? 'min' : 'h'}
+                  </span>
+                </>
+              ) : (
+                <span style={{ fontSize: 22, fontWeight: 800, color: C.textDim }}>—</span>
+              )}
+            </div>
+            <div style={{ height: 4, background: 'rgba(148,163,184,0.1)', borderRadius: 2 }} />
+            <span style={{ fontSize: 10, color: C.textDim }}>
+              {tiempoMedioRespuesta !== null ? 'Promedio tras recordatorio' : 'Disponible con WhatsApp activo'}
+            </span>
+          </div>
         </div>
 
         {/* ── Stats toggle ── */}
