@@ -54,7 +54,8 @@ export default function Sidebar({
   function doChangeProfile() {
     localStorage.removeItem('slotify_profesional_id');
     localStorage.removeItem('slotify_rol');
-    window.location.replace('/login');
+    localStorage.setItem('slotify_select_profile', '1');
+    window.location.href = '/login';
   }
 
   function handleChangeProfile() {
