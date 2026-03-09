@@ -151,9 +151,6 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // FIX 1: Sincronizar estado local cuando llegan nuevos datos del padre
-  // Se usa empresa.id como dependencia para evitar loops, pero también
-  // re-sincronizamos si los campos concretos cambian (tras un guardado)
   useEffect(() => {
     setNombre(empresa?.nombre || '');
     setTelefono(empresa?.telefono || '');
@@ -175,7 +172,6 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
 
     const finalLogoUrl = (logoUrl && !logoUrl.startsWith('data:')) ? logoUrl.trim() : null;
 
-    // FIX 2: Un único update con TODOS los campos, incluyendo timezone y moneda
     const { data: d1, error: e1 } = await supabase.from('empresas')
       .update({
         nombre: nombre.trim(),
@@ -197,7 +193,6 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
     if (e1) { setError(`Error Supabase: ${e1.message} (code: ${e1.code})`); return; }
     if (!d1 || d1.length === 0) { setError('RLS bloqueó el guardado. Revisa políticas en Supabase.'); return; }
 
-    // FIX 3: onSaved recibe TODOS los campos para que el padre los persista correctamente
     onSaved({
       nombre: nombre.trim(),
       color_primario: colorPrimario,
@@ -342,6 +337,18 @@ function TabHorario({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
   const [error, setError] = useState('');
   const [newExc, setNewExc] = useState('');
 
+  // ✅ FIX: sincronizar cuando llegan los datos reales de Supabase
+  useEffect(() => {
+    setInicio(empresa?.horario_inicio || '09:00');
+    setFin(empresa?.horario_fin || '19:00');
+    setPausaActiva(empresa?.pausa_activa || false);
+    setPausaInicio(empresa?.horario_pausa_inicio || '14:00');
+    setPausaFin(empresa?.horario_pausa_fin || '16:00');
+    setBuffer(empresa?.buffer_minutos ?? 0);
+    setDurDef(empresa?.duracion_defecto ?? 60);
+    setExcepciones(empresa?.dias_excepciones || []);
+  }, [empresa?.id]);
+
   function validate(): string | null {
     if (inicio >= fin) return 'La hora de apertura debe ser anterior al cierre';
     if (pausaActiva && pausaInicio >= pausaFin) return 'El inicio de la pausa debe ser anterior al fin';
@@ -482,6 +489,11 @@ function TabDias({ empresa, onSaved }: { empresa: any; onSaved: (data: any) => v
 
   const [dias, setDias] = useState<boolean[]>(parseDias(empresa?.dias_laborables));
   const [loading, setLoading] = useState(false);
+
+  // ✅ FIX: sincronizar cuando llegan los datos reales de Supabase
+  useEffect(() => {
+    setDias(parseDias(empresa?.dias_laborables));
+  }, [empresa?.dias_laborables]);
 
   function toggle(i: number) { setDias(prev => prev.map((v, idx) => idx === i ? !v : v)); }
 
@@ -870,8 +882,6 @@ export default function ConfiguracionSection({
   const [mobileOpen, setMobileOpen] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
 
-  // FIX 4: Sincronizar empresa completa cuando el padre actualiza los props
-  // Antes era [empresaProp?.id] — solo reaccionaba al cambio de empresa, no de campos
   useEffect(() => {
     if (empresaProp) setEmpresa(empresaProp);
   }, [empresaProp]);
@@ -886,7 +896,6 @@ export default function ConfiguracionSection({
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 3500); }
 
   function handleSaved(tab: string, data: any) {
-    // FIX 5: merge completo — el padre recibe la empresa entera, no solo el delta
     const merged = { ...empresa, ...data };
     setEmpresa(merged);
     onEmpresaUpdated?.(merged);
