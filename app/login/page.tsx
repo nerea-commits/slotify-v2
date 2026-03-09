@@ -11,11 +11,9 @@ export default function LoginPage() {
   const router = useRouter();
   const [step, setStep] = useState<LoginStep>('email');
 
-  // Email login
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Profile selection
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [profesionales, setProfesionales] = useState<Profesional[]>([]);
   const [selectedProf, setSelectedProf] = useState<Profesional | null>(null);
@@ -24,13 +22,18 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // Al cargar: comprobar si ya hay sesión activa
   useEffect(() => {
     async function checkSession() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Ya tiene sesión → cargar empresa y mostrar perfiles
-        await loadEmpresaAndProfiles(session.user.id);
+        // Si viene de "Cambiar perfil", forzar selector
+        const forceSelect = localStorage.getItem('slotify_select_profile');
+        if (forceSelect) {
+          localStorage.removeItem('slotify_select_profile');
+          await loadEmpresaAndProfiles(session.user.id, true);
+        } else {
+          await loadEmpresaAndProfiles(session.user.id, false);
+        }
       } else {
         setLoading(false);
       }
@@ -38,8 +41,8 @@ export default function LoginPage() {
     checkSession();
   }, []);
 
- async function loadEmpresaAndProfiles(userId: string) {
-    // 1. Intentar como admin (tiene empresa propia)
+  async function loadEmpresaAndProfiles(userId: string, forceProfiles: boolean = false) {
+    // 1. Intentar como admin
     const { data: emp } = await supabase
       .from('empresas')
       .select('*')
@@ -47,7 +50,6 @@ export default function LoginPage() {
       .maybeSingle();
 
     if (emp) {
-      // Es admin — flujo normal con selector de perfiles
       setEmpresa(emp as Empresa);
       localStorage.setItem('slotify_empresa_id', emp.id);
       const { data: profs } = await supabase
@@ -55,12 +57,28 @@ export default function LoginPage() {
         .select('*')
         .eq('empresa_id', emp.id);
       setProfesionales((profs || []) as Profesional[]);
+
+      // Si viene de "Cambiar perfil" → mostrar selector siempre
+      if (forceProfiles) {
+        setStep('profiles');
+        setLoading(false);
+        return;
+      }
+
+      // Si ya tiene perfil guardado → ir al dashboard
+      const pidLS = localStorage.getItem('slotify_profesional_id');
+      if (pidLS) {
+        router.push('/dashboard');
+        return;
+      }
+
+      // Sin perfil guardado → mostrar selector
       setStep('profiles');
       setLoading(false);
       return;
     }
 
-    // 2. Intentar como empleado (tiene registro en profesionales)
+    // 2. Intentar como empleado
     const { data: prof } = await supabase
       .from('profesionales')
       .select('*, empresas(*)')
@@ -68,7 +86,6 @@ export default function LoginPage() {
       .maybeSingle();
 
     if (prof && prof.empresas) {
-      // Es empleado — ir directo al dashboard
       const empData = prof.empresas as any;
       setEmpresa(empData as Empresa);
       localStorage.setItem('slotify_empresa_id', prof.empresa_id);
@@ -78,7 +95,6 @@ export default function LoginPage() {
       return;
     }
 
-    // 3. No tiene nada — registro
     router.push('/register');
   }
 
@@ -87,10 +103,7 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
-    const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (authError) {
       setError(
@@ -103,7 +116,7 @@ export default function LoginPage() {
     }
 
     if (data.user) {
-      await loadEmpresaAndProfiles(data.user.id);
+      await loadEmpresaAndProfiles(data.user.id, false);
     }
   }
 
@@ -114,7 +127,6 @@ export default function LoginPage() {
       setPin('');
       setError('');
     } else {
-      // Sin PIN → entrar directo
       localStorage.setItem('slotify_profesional_id', prof.id);
       localStorage.setItem('slotify_rol', prof.rol);
       router.push('/dashboard');
@@ -143,14 +155,13 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
 
-      {/* ─── PASO 1: Email + Contraseña ─── */}
+      {/* PASO 1: Email + Contraseña */}
       {step === 'email' && (
         <div className="w-full max-w-sm space-y-6">
           <div className="text-center">
             <h1 className="text-2xl font-bold">Slotify</h1>
             <p className="text-gray-400 text-sm mt-2">Inicia sesión en tu negocio</p>
           </div>
-
           <div className="space-y-4">
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Email</label>
@@ -168,15 +179,12 @@ export default function LoginPage() {
                 onKeyDown={e => { if (e.key === 'Enter') handleEmailLogin(); }}
               />
             </div>
-
             {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-
             <button onClick={handleEmailLogin} disabled={loading}
               className="w-full py-3 bg-green-500 hover:bg-green-400 disabled:opacity-50 rounded-xl font-semibold text-sm flex items-center justify-center gap-2">
               <Mail className="w-4 h-4" />
               Entrar
             </button>
-
             <p className="text-center text-sm text-gray-400">
               ¿No tienes cuenta?{' '}
               <a href="/register" className="text-green-400 hover:underline">Crear negocio</a>
@@ -185,12 +193,11 @@ export default function LoginPage() {
         </div>
       )}
 
-      {/* ─── PASO 2: Selector de perfiles (tipo Netflix) ─── */}
+      {/* PASO 2: Selector de perfiles */}
       {step === 'profiles' && (
         <div className="w-full max-w-sm space-y-6">
           <h1 className="text-xl font-bold text-center">{empresa?.nombre || 'Slotify'}</h1>
           <p className="text-gray-400 text-sm text-center">¿Quién eres?</p>
-
           <div className="space-y-3">
             {profesionales.map(p => (
               <button key={p.id} onClick={() => handleSelectProfile(p)}
@@ -209,7 +216,7 @@ export default function LoginPage() {
         </div>
       )}
 
-      {/* ─── PASO 3: PIN ─── */}
+      {/* PASO 3: PIN */}
       {step === 'pin' && selectedProf && (
         <div className="w-full max-w-sm space-y-4">
           <p className="text-gray-400 text-sm text-center">PIN de {selectedProf.nombre}</p>
