@@ -585,6 +585,35 @@ export default function Dashboard() {
     return (estado || '').toLowerCase() === 'completada';
   }
 
+  // ── CONFIRMACIÓN: indicador visual ──
+  function renderConfirmacionDot(cita: any, size: number = 7): React.ReactNode {
+    const conf = (cita.confirmacion_estado || 'pendiente').toLowerCase();
+    // No mostrar si la cita está completada, cancelada o no-show
+    const estadoBase = (cita.estado || '').toLowerCase();
+    if (['completada', 'cancelada', 'no-show', 'no_show'].includes(estadoBase)) return null;
+
+    const config: Record<string, { color: string; title: string }> = {
+      pendiente:      { color: '#F59E0B', title: 'Pendiente de confirmar' },
+      confirmada:     { color: '#22C55E', title: 'Confirmada por el cliente' },
+      no_confirmada:  { color: '#EF4444', title: 'No confirmada — riesgo de no-show' },
+      cancelada:      { color: '#94A3B8', title: 'Cancelada por el cliente' },
+    };
+    const cfg = config[conf] || config['pendiente'];
+    return (
+      <div
+        title={cfg.title}
+        style={{
+          width: size, height: size,
+          borderRadius: '50%',
+          background: cfg.color,
+          flexShrink: 0,
+          boxShadow: conf === 'no_confirmada' ? `0 0 5px ${cfg.color}99` : 'none',
+          animation: conf === 'pendiente' ? 'confirmPulse 2s ease-in-out infinite' : 'none',
+        }}
+      />
+    );
+  }
+
   function isToday(d: Date) { return d.toDateString() === new Date().toDateString(); }
   function formatDate(d: Date) { return d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); }
   function formatMonth(d: Date) { return d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }); }
@@ -1486,6 +1515,7 @@ export default function Dashboard() {
                                         {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
                                         {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && <span style={{ marginLeft: 4, fontSize: 11 }}>{clientRiskCache[cita.cliente_id].icon}</span>}
                                       </p>
+                                      {renderConfirmacionDot(cita, isMobile ? 7 : 8)}
                                       {isMobile && (
                                         <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', flexShrink: 0 }}>
                                           {cita.hora_inicio?.substring(11, 16)}
@@ -1724,16 +1754,20 @@ export default function Dashboard() {
                                   )}
                                   {renderQuickActions(citaHere, true)}
                                   {/* Nombre cliente */}
-                                  <p style={{
-                                    fontSize: 10, fontWeight: 700, color: '#fff',
-                                    lineHeight: 1.3, textTransform: 'uppercase' as const,
-                                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const,
-                                  }}>
-                                    {citaHere.clientes?.nombre || citaHere.cliente_nombre_libre || 'Cliente'}
-                                    {citaHere.cliente_id && clientRiskCache[citaHere.cliente_id]?.show &&
-                                      <span style={{ marginLeft: 3, fontSize: 8 }}>{clientRiskCache[citaHere.cliente_id].icon}</span>
-                                    }
-                                  </p>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden' }}>
+                                    <p style={{
+                                      fontSize: 10, fontWeight: 700, color: '#fff',
+                                      lineHeight: 1.3, textTransform: 'uppercase' as const,
+                                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const,
+                                      flex: 1, minWidth: 0,
+                                    }}>
+                                      {citaHere.clientes?.nombre || citaHere.cliente_nombre_libre || 'Cliente'}
+                                      {citaHere.cliente_id && clientRiskCache[citaHere.cliente_id]?.show &&
+                                        <span style={{ marginLeft: 3, fontSize: 8 }}>{clientRiskCache[citaHere.cliente_id].icon}</span>
+                                      }
+                                    </p>
+                                    {renderConfirmacionDot(citaHere, 6)}
+                                  </div>
                                   {/* Servicio (compacto) */}
                                   {durSlots >= 2 && (() => {
                                     const svc = citaHere.servicios?.nombre || citaHere.servicio_nombre_libre || '';
@@ -2030,10 +2064,13 @@ export default function Dashboard() {
                                   <span style={{ position: 'absolute', top: 2, left: 4, fontSize: 9, color: C.textSec, fontWeight: 700, opacity: 0.8 }}>✓</span>
                                 )}
                                 {!isMobile && renderQuickActions(cita, true)}
-                                <p style={{ fontSize: isMobile ? 12 : 11, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, textTransform: 'uppercase' as const, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-                                  {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
-                                  {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && <span style={{ marginLeft: 3, fontSize: 9 }}>{clientRiskCache[cita.cliente_id].icon}</span>}
-                                </p>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden' }}>
+                                  <p style={{ fontSize: isMobile ? 12 : 11, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, textTransform: 'uppercase' as const, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1, minWidth: 0 }}>
+                                    {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
+                                    {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && <span style={{ marginLeft: 3, fontSize: 9 }}>{clientRiskCache[cita.cliente_id].icon}</span>}
+                                  </p>
+                                  {renderConfirmacionDot(cita, 6)}
+                                </div>
                                 {(() => {
                                   const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
                                   const notas = cita.notas || '';
@@ -2228,6 +2265,24 @@ export default function Dashboard() {
                     <span style={{ color: citaColor(selectedCita.estado), background: citaColor(selectedCita.estado) + '22', padding: '2px 8px', borderRadius: 10, fontSize: 12, fontWeight: 600 }}>
                       {citaEstadoNombre(selectedCita.estado)}
                     </span>
+                  </p>
+                  <p style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ color: C.textSec }}>Confirmación: </span>
+                    {(() => {
+                      const conf = (selectedCita.confirmacion_estado || 'pendiente').toLowerCase();
+                      const map: Record<string, { label: string; color: string }> = {
+                        pendiente:     { label: '🟡 Pendiente', color: '#F59E0B' },
+                        confirmada:    { label: '🟢 Confirmada', color: '#22C55E' },
+                        no_confirmada: { label: '🔴 No confirmada', color: '#EF4444' },
+                        cancelada:     { label: '⚫ Cancelada', color: '#94A3B8' },
+                      };
+                      const cfg = map[conf] || map['pendiente'];
+                      return (
+                        <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 10, color: cfg.color, background: cfg.color + '18' }}>
+                          {cfg.label}
+                        </span>
+                      );
+                    })()}
                   </p>
                   {selectedCita.cliente_id && clientRiskCache[selectedCita.cliente_id]?.show && (
                     <p style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
@@ -2517,6 +2572,10 @@ export default function Dashboard() {
         @keyframes agendaSlideRight {
           from { opacity: 0; transform: translateX(-18px); }
           to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes confirmPulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(0.85); }
         }
       `}</style>
     </div>
