@@ -3,6 +3,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
+const DIAS_SEMANA = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+const DIAS_IDX    = [1, 2, 3, 4, 5, 6, 0];
+
 export default function RegisterPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
@@ -17,6 +20,8 @@ export default function RegisterPage() {
   const [telefono, setTelefono] = useState('');
   const [horarioInicio, setHorarioInicio] = useState('09:00');
   const [horarioFin, setHorarioFin] = useState('18:00');
+  // Días laborables: por defecto Lun–Vie
+  const [diasSeleccionados, setDiasSeleccionados] = useState<boolean[]>([true, true, true, true, true, false, false]);
 
   // Step 3: Admin
   const [adminNombre, setAdminNombre] = useState('');
@@ -24,6 +29,10 @@ export default function RegisterPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  function toggleDia(i: number) {
+    setDiasSeleccionados(prev => prev.map((v, idx) => idx === i ? !v : v));
+  }
 
   function validateStep1() {
     if (!email.includes('@')) { setError('Introduce un email válido'); return false; }
@@ -35,6 +44,7 @@ export default function RegisterPage() {
 
   function validateStep2() {
     if (!nombre.trim()) { setError('El nombre del negocio es obligatorio'); return false; }
+    if (!diasSeleccionados.some(Boolean)) { setError('Selecciona al menos un día laborable'); return false; }
     setError('');
     return true;
   }
@@ -47,6 +57,9 @@ export default function RegisterPage() {
     setLoading(true);
     setError('');
 
+    // Convertir días seleccionados a array de índices enteros
+    const diasLaborables = DIAS_IDX.filter((_, i) => diasSeleccionados[i]);
+
     try {
       // 1. Crear usuario en Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -58,19 +71,20 @@ export default function RegisterPage() {
 
       const userId = authData.user.id;
 
-      // 2. Crear empresa vinculada al usuario auth
+      // 2. Crear empresa vinculada al usuario auth (con días laborables)
       const { data: emp, error: errEmp } = await supabase.from('empresas')
         .insert({
           nombre,
           telefono,
           horario_inicio: horarioInicio,
           horario_fin: horarioFin,
+          dias_laborables: diasLaborables,
           auth_user_id: userId,
         })
         .select().single();
       if (errEmp) throw errEmp;
 
-     // 3. Crear profesional admin
+      // 3. Crear profesional admin
       const { data: admin, error: errAdmin } = await supabase.from('profesionales')
         .insert({
           nombre: adminNombre,
@@ -82,7 +96,7 @@ export default function RegisterPage() {
         .select().single();
       if (errAdmin) throw errAdmin;
 
-      // 4. Guardar en localStorage para compatibilidad con el sistema actual
+      // 4. Guardar en localStorage
       localStorage.setItem('slotify_empresa_id', emp.id);
       localStorage.setItem('slotify_profesional_id', admin.id);
       localStorage.setItem('slotify_rol', 'admin');
@@ -108,7 +122,6 @@ export default function RegisterPage() {
           <p className="text-gray-400 text-sm mt-2">
             Paso {step} de 3 — {step === 1 ? 'Tu cuenta' : step === 2 ? 'Tu negocio' : 'Tu perfil'}
           </p>
-          {/* Indicador de progreso */}
           <div className="flex gap-2 mt-4 justify-center">
             {[1, 2, 3].map(s => (
               <div key={s} style={{
@@ -154,7 +167,7 @@ export default function RegisterPage() {
         {step === 2 && (
           <div className="space-y-4">
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Nombre del negocio</label>
+              <label className="text-xs text-gray-400 mb-1 block">Nombre del negocio *</label>
               <input className="w-full bg-gray-800 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-green-500"
                 placeholder="Mi peluquería" value={nombre}
                 onChange={e => setNombre(e.target.value)} />
@@ -177,6 +190,49 @@ export default function RegisterPage() {
                   value={horarioFin} onChange={e => setHorarioFin(e.target.value)} />
               </div>
             </div>
+
+            {/* Días laborables */}
+            <div>
+              <label className="text-xs text-gray-400 mb-2 block">Días laborables *</label>
+              <div className="flex gap-1 mb-2">
+                {['Lun–Vie', 'Todos'].map((label, i) => (
+                  <button key={label} type="button"
+                    onClick={() => setDiasSeleccionados(i === 0
+                      ? [true, true, true, true, true, false, false]
+                      : [true, true, true, true, true, true, true]
+                    )}
+                    className="text-xs px-3 py-1 rounded-lg border border-gray-600 text-gray-400 hover:border-green-500 hover:text-green-400">
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {DIAS_SEMANA.map((dia, i) => (
+                  <button key={dia} type="button" onClick={() => toggleDia(i)}
+                    style={{
+                      padding: '10px 4px',
+                      borderRadius: 10,
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: diasSeleccionados[i] ? 'rgba(34,197,94,0.15)' : '#1F2937',
+                      outline: diasSeleccionados[i] ? '2px solid rgba(34,197,94,0.5)' : 'none',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: diasSeleccionados[i] ? '#22C55E' : '#6B7280' }}>{dia}</span>
+                    <span style={{ fontSize: 8, color: diasSeleccionados[i] ? '#22C55E' : '#4B5563', fontWeight: 600 }}>
+                      {diasSeleccionados[i] ? 'Abierto' : 'Cerrado'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              {!diasSeleccionados.some(Boolean) && (
+                <p className="text-amber-400 text-xs mt-1">⚠ Selecciona al menos un día</p>
+              )}
+            </div>
+
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <button onClick={() => { if (validateStep2()) setStep(3); }}
               className="w-full py-3 bg-green-500 hover:bg-green-400 rounded-xl font-semibold text-sm">
