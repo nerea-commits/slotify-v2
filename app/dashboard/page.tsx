@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { ChevronLeft, ChevronRight, Plus, X, Edit2 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
@@ -90,8 +91,16 @@ export default function Dashboard() {
   const [allCitas, setAllCitas] = useState<any[]>([]);
   const [empresa, setEmpresa] = useState<any>(null);
   const [profesional, setProfesional] = useState<any>(null);
+  const router = useRouter();
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminPin, setAdminPin] = useState<string | null>(null);
+
+  function handleCambiarPerfil() {
+    localStorage.removeItem('slotify_profesional_id');
+    localStorage.removeItem('slotify_rol');
+    localStorage.setItem('slotify_select_profile', '1');
+    router.push('/login');
+  }
   const [selectedCita, setSelectedCita] = useState<any>(null);
   const [editingCita, setEditingCita] = useState<any>(null);
   const [preselectedTime, setPreselectedTime] = useState('');
@@ -1169,6 +1178,7 @@ export default function Dashboard() {
         onNavigate={setActiveSection}
         activeSection={activeSection}
         adminPin={adminPin}
+        onCambiarPerfil={handleCambiarPerfil}
       />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }} className="main-content-desktop">
