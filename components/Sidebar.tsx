@@ -38,10 +38,10 @@ export default function Sidebar({
     ...(isAdmin || permisos.ver_estadisticas ? [{ id: 'estadisticas', label: 'Estadísticas', icon: BarChart3 }] : []),
   ];
 
-  const sysItems = isAdmin ? [
-    { id: 'notificaciones', label: 'Notificaciones', icon: Bell     },
-    { id: 'configuracion',  label: 'Configuración',  icon: Settings },
-  ] : [];
+  const sysItems = [
+  ...(isAdmin ? [{ id: 'notificaciones', label: 'Notificaciones', icon: Bell }] : []),
+  { id: 'configuracion', label: 'Configuración', icon: Settings },
+];
 
   function logout() {
     supabase.auth.signOut().then(() => {
