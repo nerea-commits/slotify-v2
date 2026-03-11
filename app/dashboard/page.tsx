@@ -887,6 +887,7 @@ export default function Dashboard() {
 
   function renderQuickActions(cita: any): React.ReactNode {
     if (hoveredCitaId !== cita.id || !quickActionsPos) return null;
+    if (isCompletada(cita.estado)) return null;
     const tel = cita.clientes?.telefono || '';
     const yaCancelada = (cita.estado || '').toLowerCase() === 'cancelada';
     const yaCompletada = isCompletada(cita.estado);
@@ -1544,8 +1545,9 @@ export default function Dashboard() {
                                       transition: 'opacity 0.15s',
                                     }}>
                                     {isCompletada(cita.estado) && (
-                                      <div style={{ position: 'absolute', top: 4, right: 6, display: 'flex', alignItems: 'center', gap: 3, background: 'rgba(74,222,128,0.18)', borderRadius: 6, padding: '2px 6px' }}>
-                                        <span style={{ fontSize: 9, color: '#4ADE80', fontWeight: 700 }}>✓ Completada</span>
+                                      <div style={{ position: 'absolute', top: 5, right: 8, display: 'flex', alignItems: 'center', gap: 3, background: 'rgba(74,222,128,0.22)', border: '1px solid rgba(74,222,128,0.35)', borderRadius: 7, padding: '3px 8px' }}>
+                                        <span style={{ fontSize: 11, color: '#4ADE80', fontWeight: 800 }}>✓</span>
+                                        <span style={{ fontSize: 10, color: '#4ADE80', fontWeight: 700, letterSpacing: 0.2 }}>Completada</span>
                                       </div>
                                     )}
                                     {!isMobile && renderQuickActions(cita)}
@@ -1787,8 +1789,8 @@ export default function Dashboard() {
                                   }}
                                 >
                                   {isCompletada(citaHere.estado) && (
-                                    <div style={{ position: 'absolute', top: 3, right: 4, background: 'rgba(74,222,128,0.18)', borderRadius: 5, padding: '1px 5px' }}>
-                                      <span style={{ fontSize: 8, color: '#4ADE80', fontWeight: 700 }}>✓</span>
+                                    <div style={{ position: 'absolute', top: 3, right: 4, background: 'rgba(74,222,128,0.22)', border: '1px solid rgba(74,222,128,0.35)', borderRadius: 5, padding: '2px 6px' }}>
+                                      <span style={{ fontSize: 9, color: '#4ADE80', fontWeight: 800 }}>✓</span>
                                     </div>
                                   )}
                                   {renderQuickActions(citaHere)}
@@ -2107,8 +2109,8 @@ export default function Dashboard() {
                                 onMouseLeave={() => { setHoveredCitaId(null); setQuickActionsPos(null); setPhoneTooltipId(null); }}
                                 style={{ position: 'absolute', inset: 0, background: isCompletada(cita.estado) ? 'rgba(74,222,128,0.12)' : `${citaColor(cita.estado)}22`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 4, padding: isMobile ? '4px 6px' : '6px 8px', cursor: isCompletada(cita.estado) ? 'pointer' : (isMobile ? 'pointer' : 'grab'), boxSizing: 'border-box' as const, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'visible', opacity: moveDrag?.cita?.id === cita.id ? 0.3 : 1, transition: 'opacity 0.15s' }}>
                                 {isCompletada(cita.estado) && (
-                                  <div style={{ position: 'absolute', top: 3, right: 4, background: 'rgba(74,222,128,0.18)', borderRadius: 5, padding: '1px 5px' }}>
-                                    <span style={{ fontSize: 8, color: '#4ADE80', fontWeight: 700 }}>✓</span>
+                                  <div style={{ position: 'absolute', top: 3, right: 4, background: 'rgba(74,222,128,0.22)', border: '1px solid rgba(74,222,128,0.35)', borderRadius: 5, padding: '2px 6px' }}>
+                                    <span style={{ fontSize: 9, color: '#4ADE80', fontWeight: 800 }}>✓</span>
                                   </div>
                                 )}
                                 {!isMobile && renderQuickActions(cita)}
