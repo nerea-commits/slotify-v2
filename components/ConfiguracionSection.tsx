@@ -149,22 +149,24 @@ function Toast({ msg, onClose }: { msg: string; onClose: () => void }) {
 // ══════════════════════════════════════════════════════
 function TabMiPerfil({ profesional, onSaved }: { profesional: any; onSaved: (data: any) => void }) {
   const [nombre, setNombre] = useState(profesional?.nombre || '');
-  const [color, setColor] = useState(profesional?.color || AVATAR_COLORS[0]);
-  const [pin, setPin] = useState('');
-  const [pinConfirm, setPinConfirm] = useState('');
-  const [currentPin, setCurrentPin] = useState(profesional?.pin || '');
-  const [showPinForm, setShowPinForm] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [pinLoading, setPinLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [pinError, setPinError] = useState('');
-  const [pinSuccess, setPinSuccess] = useState('');
+const [color, setColor] = useState(profesional?.color || AVATAR_COLORS[0]);
+const [fotoUrl, setFotoUrl] = useState(profesional?.foto_url || '');
+const [pin, setPin] = useState('');
+const [pinConfirm, setPinConfirm] = useState('');
+const [currentPin, setCurrentPin] = useState(profesional?.pin || '');
+const [showPinForm, setShowPinForm] = useState(false);
+const [loading, setLoading] = useState(false);
+const [pinLoading, setPinLoading] = useState(false);
+const [error, setError] = useState('');
+const [pinError, setPinError] = useState('');
+const [pinSuccess, setPinSuccess] = useState('');
 
-  useEffect(() => {
-    setNombre(profesional?.nombre || '');
-    setColor(profesional?.color || AVATAR_COLORS[0]);
-    setCurrentPin(profesional?.pin || '');
-  }, [profesional?.id]);
+useEffect(() => {
+  setNombre(profesional?.nombre || '');
+  setColor(profesional?.color || AVATAR_COLORS[0]);
+  setCurrentPin(profesional?.pin || '');
+  setFotoUrl(profesional?.foto_url || '');
+}, [profesional?.id]);
 
   async function saveProfile() {
     if (!nombre.trim()) { setError('El nombre es obligatorio'); return; }
@@ -210,16 +212,52 @@ function TabMiPerfil({ profesional, onSaved }: { profesional: any; onSaved: (dat
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
       <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-        <div style={{
-          width: 72, height: 72, borderRadius: 18,
-          background: color,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 28, fontWeight: 800, color: '#fff',
-          boxShadow: `0 4px 16px ${color}55`,
-          transition: 'all 0.2s',
-        }}>
-          {nombre?.[0]?.toUpperCase() || '?'}
-        </div>
+        <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => document.getElementById('foto-upload')?.click()}>
+  <div style={{
+    width: 72, height: 72, borderRadius: 18,
+    background: color,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 28, fontWeight: 800, color: '#fff',
+    boxShadow: `0 4px 16px ${color}55`,
+    overflow: 'hidden',
+    transition: 'all 0.2s',
+  }}>
+    {fotoUrl
+      ? <img src={fotoUrl} alt="foto" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+      : nombre?.[0]?.toUpperCase() || '?'
+    }
+  </div>
+  <div style={{
+    position: 'absolute', bottom: -4, right: -4,
+    width: 22, height: 22, borderRadius: 6,
+    background: '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+  }}>
+    <Upload size={11} style={{ color: '#fff' }}/>
+  </div>
+  <input id="foto-upload" type="file" accept="image/*" style={{ display: 'none' }}
+    onChange={async e => {
+      const file = e.target.files?.[0];
+      if (!file || !profesional?.id) return;
+      setLoading(true);
+      try {
+        const ext = file.name.split('.').pop() || 'jpg';
+        const path = `${profesional.id}/foto_${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from('fotos-perfil').upload(path, file, { upsert: true });
+        if (upErr) throw upErr;
+        const { data: urlData } = supabase.storage.from('fotos-perfil').getPublicUrl(path);
+        const newUrl = urlData.publicUrl;
+        await supabase.from('profesionales').update({ foto_url: newUrl }).eq('id', profesional.id);
+        setFotoUrl(newUrl);
+        onSaved({ foto_url: newUrl });
+      } catch (err: any) {
+        setError('Error al subir foto: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    }}
+  />
+</div>
         <div>
           <p style={{ fontSize: 18, fontWeight: 700, color: C.text }}>{nombre || 'Sin nombre'}</p>
           <p style={{ fontSize: 12, color: C.textMid, marginTop: 2 }}>{profesional?.email || 'Sin email'}</p>
