@@ -169,13 +169,14 @@ useEffect(() => {
 }, [profesional?.id]);
 
   async function saveProfile() {
-    if (!nombre.trim()) { setError('El nombre es obligatorio'); return; }
-    setLoading(true); setError('');
+  if (!nombre.trim()) { setError('El nombre es obligatorio'); return; }
+  setLoading(true); setError('');
 
-    const { error: e } = await supabase.from('profesionales').update({
-      nombre: nombre.trim(),
-      color,
-    }).eq('id', profesional.id);
+  const { error: e } = await supabase.from('profesionales').update({
+    nombre: nombre.trim(),
+    color,
+    foto_url: fotoUrl || null,
+  }).eq('id', profesional.id);
 
     setLoading(false);
     if (e) { setError('Error al guardar: ' + e.message); return; }
