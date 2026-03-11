@@ -179,10 +179,14 @@ export default function LoginPage() {
                 onKeyDown={e => { if (e.key === 'Enter') handleEmailLogin(); }}
               />
             </div>
+            <div className="text-right">
+              <a href="/login?reset=1" className="text-xs text-gray-400 hover:text-green-400 hover:underline transition-colors">
+                ¿Olvidaste tu contraseña?
+              </a>
+            </div>
             {error && <p className="text-red-400 text-sm text-center">{error}</p>}
             <button onClick={handleEmailLogin} disabled={loading}
               className="w-full py-3 bg-green-500 hover:bg-green-400 disabled:opacity-50 rounded-xl font-semibold text-sm flex items-center justify-center gap-2">
-              <Mail className="w-4 h-4" />
               Entrar
             </button>
             <p className="text-center text-sm text-gray-400">
