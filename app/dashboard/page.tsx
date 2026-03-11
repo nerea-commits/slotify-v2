@@ -369,14 +369,7 @@ export default function Dashboard() {
 
   async function autoCompletarCitasPasadas(eid: string, pid: string | null) {
     const ahora = new Date().toISOString();
-    const estadosProtegidos = ['cancelada', 'no-show', 'no_show', 'completada'];
-    const estadoCompletadaObj = estadosCita.find(e =>
-      (e.nombre_defecto || '').toLowerCase() === 'completada' ||
-      (e.nombre_personalizado || '').toLowerCase() === 'completada'
-    );
-    const estadoCompletada = estadoCompletadaObj
-      ? (estadoCompletadaObj.nombre_personalizado || estadoCompletadaObj.nombre_defecto)
-      : 'Completada';
+    const estadosProtegidos = ['cancelada', 'no-show', 'no_show', 'completada', 'no presentacion'];
 
     let q = supabase.from('citas')
       .select('id, estado')
@@ -393,7 +386,7 @@ export default function Dashboard() {
 
     const ids = aCompletar.map(c => c.id);
     await supabase.from('citas')
-      .update({ estado: estadoCompletada, blocks_time: false })
+      .update({ estado: 'Completada', blocks_time: false })
       .in('id', ids);
   }
 
