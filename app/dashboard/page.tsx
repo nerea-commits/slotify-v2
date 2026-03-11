@@ -58,7 +58,6 @@ const C = {
 
 type ViewMode = 'day' | 'team' | 'week' | 'month';
 
-// ── DRAG STATE ──
 interface DragState {
   active: boolean;
   dayIndex: number;
@@ -68,7 +67,6 @@ interface DragState {
   hasConflict: boolean;
 }
 
-// ── MOVE DRAG STATE ──
 interface MoveDragState {
   active: boolean;
   cita: any;
@@ -94,6 +92,9 @@ export default function Dashboard() {
   const router = useRouter();
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminPin, setAdminPin] = useState<string | null>(null);
+
+  // ── NUEVO: hover de columna ──
+  const [hoveredColIdx, setHoveredColIdx] = useState<number | null>(null);
 
   function handleCambiarPerfil() {
     localStorage.removeItem('slotify_profesional_id');
@@ -148,7 +149,6 @@ export default function Dashboard() {
   const [selectedProfId, setSelectedProfId] = useState<string | null>(null);
   const [profesionales, setProfesionales] = useState<any[]>([]);
 
-  // ── REF para auto-scroll a hora actual ──
   const dayScrollRef = useRef<HTMLDivElement | null>(null);
   const hasAutoScrolled = useRef(false);
 
@@ -273,10 +273,8 @@ export default function Dashboard() {
   useEffect(() => { loadAllCitas(); }, [selectedDate, view]);
   useEffect(() => { if (profesional) { profesionalIdRef.current = profesional.id; loadAllCitas(); } }, [profesional]);
 
-  // ── Auto-scroll a la hora actual en vista día ──
   useEffect(() => {
     if (view !== 'day' || currentMinutes < 0) return;
-    // Solo auto-scroll en el día de hoy
     const today = new Date();
     if (selectedDate.toDateString() !== today.toDateString()) return;
 
@@ -1130,6 +1128,12 @@ export default function Dashboard() {
   const WEEK_SLOT_H = 44;
   const DAY_SLOT_H = 40;
 
+  // ── Helper: calcula background de celda con hover sutil ──
+  function colBg(baseBg: string, colIdx: number): string {
+    if (isMobile || hoveredColIdx !== colIdx) return baseBg;
+    return `color-mix(in srgb, ${baseBg} 94%, white 6%)`;
+  }
+
   function renderCitaBlock(cita: any, style: React.CSSProperties) {
     const name = cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente';
     const svc = cita.servicios?.nombre || cita.servicio_nombre_libre || '';
@@ -1474,21 +1478,12 @@ export default function Dashboard() {
                                 const endLabel = minutesToTime(endM);
                                 return (
                                   <div style={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: 4,
-                                    right: 4,
+                                    position: 'absolute', top: 0, left: 4, right: 4,
                                     height: spanSlots * MIN_H,
                                     background: dayDrag.hasConflict ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)',
                                     border: `2px dashed ${dayDrag.hasConflict ? C.red : C.green}`,
-                                    borderRadius: 8,
-                                    zIndex: 25,
-                                    pointerEvents: 'none',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: 2,
+                                    borderRadius: 8, zIndex: 25, pointerEvents: 'none',
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
                                   }}>
                                     {spanSlots >= 2 && (
                                       <span style={{ fontSize: 12, fontWeight: 700, color: dayDrag.hasConflict ? C.red : C.green }}>
@@ -1588,7 +1583,7 @@ export default function Dashboard() {
           </>)}
 
 
-          {/* ── VISTA EQUIPO (día por columnas de empleado) ── */}
+          {/* ── VISTA EQUIPO ── */}
           {view === 'team' && (() => {
             const profsVisibles = selectedProfId
               ? profesionales.filter(p => p.id === selectedProfId)
@@ -1611,7 +1606,7 @@ export default function Dashboard() {
                   minWidth: '100%',
                 }}>
                   <div style={{ borderRight: `1px solid ${C.surfaceAlt}` }} />
-                  {profsVisibles.map(prof => {
+                  {profsVisibles.map((prof, di) => {
                     const profCitas = allCitas.filter(c =>
                       c.profesional_id === prof.id &&
                       rawDate(c.hora_inicio) === toDS(selectedDate) &&
@@ -1627,12 +1622,18 @@ export default function Dashboard() {
                     }).length;
                     const av = getAvailability(libre);
                     return (
-                      <div key={prof.id} style={{
-                        padding: '8px 10px',
-                        borderRight: `1px solid ${C.surfaceAlt}`,
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                        background: selectedProfId === prof.id ? `${prof.color || C.green}18` : 'transparent',
-                      }}>
+                      <div key={prof.id}
+                        onMouseEnter={() => !isMobile && setHoveredColIdx(di)}
+                        onMouseLeave={() => setHoveredColIdx(null)}
+                        style={{
+                          padding: '8px 10px',
+                          borderRight: `1px solid ${C.surfaceAlt}`,
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                          background: hoveredColIdx === di && !isMobile
+                            ? 'rgba(255,255,255,0.04)'
+                            : selectedProfId === prof.id ? `${prof.color || C.green}18` : 'transparent',
+                          transition: 'background 0.15s',
+                        }}>
                         <div style={{
                           width: 28, height: 28, borderRadius: '50%',
                           background: prof.color || C.green,
@@ -1704,9 +1705,10 @@ export default function Dashboard() {
                           })() : 1;
 
                           const slotAbsProf = isSlotInAbsence(slot, selectedDate);
-                          const cellBg = slotAbsProf?.scope === 'company'
+                          const baseCellBg = slotAbsProf?.scope === 'company'
                             ? 'rgba(239,68,68,0.05)'
                             : C.surface;
+                          const cellBg = colBg(baseCellBg, di);
 
                           return (
                             <div
@@ -1714,6 +1716,8 @@ export default function Dashboard() {
                               data-slot-idx={si}
                               data-day-idx={di}
                               data-date={toDS(selectedDate)}
+                              onMouseEnter={() => !isMobile && setHoveredColIdx(di)}
+                              onMouseLeave={() => setHoveredColIdx(null)}
                               style={{
                                 height: citaHere ? durSlots * TEAM_SLOT_H : TEAM_SLOT_H,
                                 gridRow: citaHere && durSlots > 1 ? `span ${durSlots}` : undefined,
@@ -1721,6 +1725,7 @@ export default function Dashboard() {
                                 borderRight: `1px solid rgba(148,163,184,0.08)`,
                                 borderLeft: `1px solid rgba(148,163,184,0.06)`,
                                 background: cellBg,
+                                transition: 'background 0.15s',
                                 position: 'relative',
                                 userSelect: 'none' as const,
                               }}
@@ -1824,7 +1829,6 @@ export default function Dashboard() {
             );
           })()}
 
-          {/* The rest of the views (week, month, modals) remain identical - truncated for brevity but included in full file */}
           {/* ── VISTA SEMANA ── */}
           {view === 'week' && (
             <div className="flex-1 flex overflow-hidden" style={{ minHeight: 0 }}>
@@ -1955,14 +1959,26 @@ export default function Dashboard() {
                       const dayAnotaciones = anotacionesForDate(day);
                       const dayCompanyClosures = absencesForDate(day).filter(a => a.scope === 'company');
                       const isSel = isMobile && day.toDateString() === selectedDate.toDateString();
+                      const isHovered = !isMobile && hoveredColIdx === di;
+
+                      const headerBg = isSel ? 'rgba(34,197,94,0.25)'
+                        : today ? 'rgba(34,197,94,0.2)'
+                        : dayCompanyClosures.length > 0 ? 'rgba(239,68,68,0.1)'
+                        : working
+                          ? (isHovered ? 'rgba(255,255,255,0.06)' : C.surfaceAlt)
+                          : (isHovered ? 'rgba(255,255,255,0.03)' : 'rgba(15,23,42,0.4)');
+
                       cells.push(
-                        <div key={`th-${di}`} onClick={() => {
+                        <div key={`th-${di}`}
+                          onMouseEnter={() => !isMobile && setHoveredColIdx(di)}
+                          onMouseLeave={() => setHoveredColIdx(null)}
+                          onClick={() => {
                             const hasEmpAbsence = !isAdmin && absenceBlocksForDate(day).length > 0;
                             if (hasEmpAbsence) { openModal(day); }
                             else if (working) { goToDay(day); }
                             else { setAnotacionModal({ open: true, date: day }); }
                           }}
-                          style={{ gridColumn: di + 2, gridRow: 1, minHeight: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: isSel ? 'rgba(34,197,94,0.25)' : today ? 'rgba(34,197,94,0.2)' : dayCompanyClosures.length > 0 ? 'rgba(239,68,68,0.1)' : working ? C.surfaceAlt : 'rgba(15,23,42,0.4)', borderRadius: '10px 10px 0 0', borderTop: isSel || today ? `1px solid ${C.green}55` : dayCompanyClosures.length > 0 ? '1px solid rgba(239,68,68,0.25)' : `1px solid rgba(148,163,184,0.12)`, borderLeft: isSel || today ? `1px solid ${C.green}55` : `1px solid rgba(148,163,184,0.12)`, borderRight: isSel || today ? `1px solid ${C.green}55` : `1px solid rgba(148,163,184,0.12)`, borderBottom: `1px solid rgba(148,163,184,0.08)`, cursor: 'pointer', padding: '4px 2px' }}>
+                          style={{ gridColumn: di + 2, gridRow: 1, minHeight: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: headerBg, transition: 'background 0.15s', borderRadius: '10px 10px 0 0', borderTop: isSel || today ? `1px solid ${C.green}55` : dayCompanyClosures.length > 0 ? '1px solid rgba(239,68,68,0.25)' : `1px solid rgba(148,163,184,0.12)`, borderLeft: isSel || today ? `1px solid ${C.green}55` : `1px solid rgba(148,163,184,0.12)`, borderRight: isSel || today ? `1px solid ${C.green}55` : `1px solid rgba(148,163,184,0.12)`, borderBottom: `1px solid rgba(148,163,184,0.08)`, cursor: 'pointer', padding: '4px 2px' }}>
                           <div style={{ fontSize: isMobile ? 10 : 9, fontWeight: 700, color: working ? C.textSec : 'rgba(148,163,184,0.5)', letterSpacing: 0.8 }}>
                             {isMobile
                               ? day.toLocaleDateString('es-ES', { weekday: 'short' }).toUpperCase().substring(0, 3)
@@ -2012,9 +2028,10 @@ export default function Dashboard() {
                         const weekSlotAbsence = isSlotInAbsence(slot, day);
                         const isCompanyClosure = weekSlotAbsence && weekSlotAbsence.scope === 'company';
 
-                        const weekCellBg = isCompanyClosure
+                        const baseWeekCellBg = isCompanyClosure
                           ? 'rgba(239,68,68,0.05)'
                           : (working ? C.surface : 'rgba(15,23,42,0.35)');
+                        const weekCellBg = colBg(baseWeekCellBg, di);
 
                         const dragBlockStyle = !isMobile ? getDragBlockStyle(si, di) : null;
                         const isDragActive = drag?.active && drag.dayIndex === di;
@@ -2028,7 +2045,9 @@ export default function Dashboard() {
                             data-slot-idx={si}
                             data-day-idx={di}
                             data-date={toDS(day)}
-                            style={{ gridColumn: di + 2, gridRow: spanSlots > 1 ? `${rowIdx} / span ${spanSlots}` : `${rowIdx}`, background: weekCellBg, borderBottom: `1px solid ${isHour ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.06)'}`, borderLeft: `1px solid ${today ? C.green + '55' : isCompanyClosure ? 'rgba(239,68,68,0.25)' : 'rgba(148,163,184,0.12)'}`, borderRight: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`, position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: cita ? 'center' : 'flex-start', boxSizing: 'border-box' as const, overflow: 'visible', userSelect: 'none' }}
+                            onMouseEnter={() => !isMobile && setHoveredColIdx(di)}
+                            onMouseLeave={() => setHoveredColIdx(null)}
+                            style={{ gridColumn: di + 2, gridRow: spanSlots > 1 ? `${rowIdx} / span ${spanSlots}` : `${rowIdx}`, background: weekCellBg, transition: 'background 0.15s', borderBottom: `1px solid ${isHour ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.06)'}`, borderLeft: `1px solid ${today ? C.green + '55' : isCompanyClosure ? 'rgba(239,68,68,0.25)' : 'rgba(148,163,184,0.12)'}`, borderRight: `1px solid ${today ? C.green + '55' : 'rgba(148,163,184,0.12)'}`, position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: cita ? 'center' : 'flex-start', boxSizing: 'border-box' as const, overflow: 'visible', userSelect: 'none' }}
                           >
                             {moveDrag?.active && moveDrag.targetDayIdx === di && moveDrag.targetSlotIdx === si && (() => {
                               const ghostH = moveDrag.durSlots * WEEK_SLOT_H;
