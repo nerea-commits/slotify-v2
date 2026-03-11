@@ -1088,13 +1088,14 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
 // MAIN
 // ══════════════════════════════════════════════════════
 export default function ConfiguracionSection({
-  empresa: empresaProp, profesional: profesionalProp, isAdmin = false, onEmpresaUpdated,
+  empresa: empresaProp, profesional: profesionalProp, isAdmin = false, onEmpresaUpdated, onProfesionalUpdated,
 }: {
   empresa: any;
   profesional: any;
   isAdmin?: boolean;
   onEmpresaUpdated?: (data: any) => void;
-}) {
+  onProfesionalUpdated?: (data: any) => void;
+})
   const tabs = isAdmin ? ADMIN_TABS : EMPLOYEE_TABS;
   const [activeTab, setActiveTab] = useState(tabs[0].id);
   const [empresa, setEmpresa] = useState<any>(empresaProp);
@@ -1122,10 +1123,11 @@ export default function ConfiguracionSection({
 
   function handleSaved(tab: string, data: any) {
     if (tab === 'miperfil') {
-      setProfesionalActual((prev: any) => ({ ...prev, ...data }));
-      showToast('Perfil actualizado');
-      return;
-    }
+  setProfesionalActual((prev: any) => ({ ...prev, ...data }));
+  onProfesionalUpdated?.(data);
+  showToast('Perfil actualizado');
+  return;
+}
     const merged = { ...empresa, ...data };
     setEmpresa(merged);
     onEmpresaUpdated?.(merged);
