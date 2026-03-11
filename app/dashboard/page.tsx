@@ -1343,7 +1343,7 @@ export default function Dashboard() {
             {activeSection === 'estadisticas' && <EstadisticasSection empresaId={empresa?.id || ''} />}
             {activeSection === 'ausencias' && <AusenciasSection empresaId={empresa?.id || ''} isAdmin={isAdmin} />}
             {activeSection === 'notificaciones' && <NotificacionesSection empresaId={empresa?.id || ''} onNavigate={setActiveSection} />}
-            {activeSection === 'configuracion' && empresa && <ConfiguracionSection empresa={empresa} profesional={profesional} onEmpresaUpdated={(data: any) => setEmpresa((prev: any) => ({ ...prev, ...data }))} />}
+            {activeSection === 'configuracion' && empresa && <ConfiguracionSection empresa={empresa} profesional={profesional} isAdmin={isAdmin} onEmpresaUpdated={(data: any) => setEmpresa((prev: any) => ({ ...prev, ...data }))} />}
           </div>
         )}
 
