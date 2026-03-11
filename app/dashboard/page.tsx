@@ -189,10 +189,15 @@ export default function Dashboard() {
         .maybeSingle();
 
       if (emp) {
-        setEmpresa(emp);
-        empresaIdRef.current = emp.id;
-        setIsAdmin(true);
-        isAdminRef.current = true;
+  setEmpresa(emp);
+  empresaIdRef.current = emp.id;
+
+  // Calcular isAdmin desde el profesional seleccionado en localStorage
+  const pidLS = localStorage.getItem('slotify_profesional_id');
+  const rolLS = (localStorage.getItem('slotify_rol') || '').toLowerCase();
+  const isAdm = !pidLS || rolLS === 'admin' || rolLS === 'owner';
+  setIsAdmin(isAdm);
+  isAdminRef.current = isAdm;
 
         supabase.from('estados_cita').select('*').eq('empresa_id', emp.id).eq('activo', true).order('orden')
           .then(({ data }) => { if (data) setEstadosCita(data); });
