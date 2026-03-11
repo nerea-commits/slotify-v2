@@ -52,6 +52,7 @@ function rawTimeMin(s: string): number {
 const C = {
   bg: '#0F172A', surface: '#1E293B', surfaceAlt: '#243247', occupied: '#334155',
   green: '#22C55E', greenSel: '#16A34A', greenBg: 'rgba(34,197,94,0.12)',
+  greenDone: '#4ADE80',
   yellow: '#F59E0B', orange: '#FB923C', red: '#EF4444',
   text: '#F1F5F9', textSec: '#94A3B8',
 };
@@ -598,7 +599,7 @@ export default function Dashboard() {
     if (estadoNombre === 'no-show' || estadoNombre === 'no_show') return C.orange;
     if (estadoNombre === 'lista de espera') return '#8B5CF6';
     if (estadoNombre === 'en proceso') return '#3B82F6';
-    if (estadoNombre === 'completada') return C.textSec;
+    if (estadoNombre === 'completada') return C.greenDone;
     return C.green;
   }
 
@@ -745,6 +746,7 @@ export default function Dashboard() {
 
   function handleCitaMouseDown(e: React.MouseEvent, cita: any, slotIdx: number, dayIdx: number, date: Date) {
     if (isMobile) return;
+    if (isCompletada(cita.estado)) return;
     e.preventDefault();
     e.stopPropagation();
     const citaStartM = rawTimeMin(cita.hora_inicio);
@@ -873,47 +875,72 @@ export default function Dashboard() {
     window.open(`https://wa.me/${num}`, '_blank');
   }
 
-  function renderQuickActions(cita: any, compact: boolean): React.ReactNode {
-    if (hoveredCitaId !== cita.id) return null;
+  // ── Tooltip flotante de acciones rápidas (fuera del bloque de cita) ──
+  const [quickActionsPos, setQuickActionsPos] = useState<{ top: number; left: number } | null>(null);
+
+  function handleCitaMouseEnter(e: React.MouseEvent, citaId: string) {
+    if (isMobile) return;
+    setHoveredCitaId(citaId);
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setQuickActionsPos({ top: rect.top, left: rect.right + 6 });
+  }
+
+  function renderQuickActions(cita: any): React.ReactNode {
+    if (hoveredCitaId !== cita.id || !quickActionsPos) return null;
     const tel = cita.clientes?.telefono || '';
     const yaCancelada = (cita.estado || '').toLowerCase() === 'cancelada';
+    const yaCompletada = isCompletada(cita.estado);
     const btnBase: React.CSSProperties = {
-      width: compact ? 20 : 24,
-      height: compact ? 20 : 24,
-      borderRadius: 6,
+      width: 26, height: 26,
+      borderRadius: 7,
       border: 'none',
       cursor: 'pointer',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontSize: compact ? 10 : 12,
+      fontSize: 13,
       flexShrink: 0,
     };
     return (
       <div
-        style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 3, zIndex: 40 }}
+        style={{
+          position: 'fixed',
+          top: quickActionsPos.top,
+          left: quickActionsPos.left,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 4,
+          zIndex: 200,
+          background: '#1E293B',
+          border: '1px solid rgba(148,163,184,0.15)',
+          borderRadius: 10,
+          padding: 6,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+        }}
+        onMouseEnter={() => setHoveredCitaId(cita.id)}
+        onMouseLeave={() => { setHoveredCitaId(null); setQuickActionsPos(null); setPhoneTooltipId(null); }}
         onClick={e => e.stopPropagation()}
       >
         <button title="Editar" onClick={e => { e.stopPropagation(); openEdit(cita); }}
-          style={{ ...btnBase, background: 'rgba(148,163,184,0.25)', color: '#F1F5F9' }}>✏️</button>
-        {!yaCancelada && (cita.estado || '').toLowerCase() !== 'no-show' && (cita.estado || '').toLowerCase() !== 'no_show' && (
+          style={{ ...btnBase, background: 'rgba(148,163,184,0.15)', color: '#F1F5F9' }}>✏️</button>
+        {!yaCancelada && !yaCompletada && (cita.estado || '').toLowerCase() !== 'no-show' && (cita.estado || '').toLowerCase() !== 'no_show' && (
           <button title="No-show" onClick={e => { e.stopPropagation(); marcarNoShow(cita.id); }}
-            style={{ ...btnBase, background: 'rgba(251,146,60,0.25)', color: '#FB923C', fontWeight: 700, fontSize: compact ? 12 : 14 }}>👻</button>
+            style={{ ...btnBase, background: 'rgba(251,146,60,0.15)', color: '#FB923C' }}>👻</button>
         )}
-        {!yaCancelada && (
+        {!yaCancelada && !yaCompletada && (
           <button title="Cancelar cita" onClick={e => { e.stopPropagation(); cancelarCita(cita.id); }}
-            style={{ ...btnBase, background: 'rgba(239,68,68,0.25)', color: '#EF4444', fontWeight: 700, fontSize: compact ? 12 : 14 }}>✕</button>
+            style={{ ...btnBase, background: 'rgba(239,68,68,0.15)', color: '#EF4444' }}>✕</button>
         )}
         {tel && (
           <button title="WhatsApp" onClick={e => { e.stopPropagation(); abrirWhatsApp(tel); }}
-            style={{ ...btnBase, background: 'rgba(37,211,102,0.25)', color: '#25D366' }}>💬</button>
+            style={{ ...btnBase, background: 'rgba(37,211,102,0.15)', color: '#25D366' }}>💬</button>
         )}
         {tel && (
           <div style={{ position: 'relative' }}>
             <button title={tel} onClick={e => { e.stopPropagation(); setPhoneTooltipId(phoneTooltipId === cita.id ? null : cita.id); }}
-              style={{ ...btnBase, background: 'rgba(96,165,250,0.25)', color: '#60A5FA' }}>📞</button>
+              style={{ ...btnBase, background: 'rgba(96,165,250,0.15)', color: '#60A5FA' }}>📞</button>
             {phoneTooltipId === cita.id && (
-              <div style={{ position: 'absolute', top: compact ? 22 : 26, right: 0, background: '#1E293B', border: '1px solid rgba(148,163,184,0.2)', borderRadius: 8, padding: '6px 10px', whiteSpace: 'nowrap', fontSize: 12, fontWeight: 600, color: '#F1F5F9', zIndex: 50, boxShadow: '0 4px 12px rgba(0,0,0,0.4)' }}>
+              <div style={{ position: 'absolute', top: 0, left: 34, background: '#1E293B', border: '1px solid rgba(148,163,184,0.2)', borderRadius: 8, padding: '6px 10px', whiteSpace: 'nowrap', fontSize: 12, fontWeight: 600, color: '#F1F5F9', zIndex: 210, boxShadow: '0 4px 12px rgba(0,0,0,0.4)' }}>
                 <a href={`tel:${tel}`} style={{ color: '#60A5FA', textDecoration: 'none' }}>{tel}</a>
               </div>
             )}
@@ -1502,24 +1529,26 @@ export default function Dashboard() {
                                   <div key={cita.id}
                                     onClick={() => { if (!moveDrag) setSelectedCita(cita); }}
                                     onMouseDown={e => handleCitaMouseDown(e, cita, si, 0, selectedDate)}
-                                    onMouseEnter={() => !isMobile && setHoveredCitaId(cita.id)}
-                                    onMouseLeave={() => { setHoveredCitaId(null); setPhoneTooltipId(null); }}
+                                    onMouseEnter={e => handleCitaMouseEnter(e, cita.id)}
+                                    onMouseLeave={() => { setHoveredCitaId(null); setQuickActionsPos(null); setPhoneTooltipId(null); }}
                                     style={{
-                                      background: `${citaColor(cita.estado)}22`,
+                                      background: isCompletada(cita.estado) ? 'rgba(74,222,128,0.12)' : `${citaColor(cita.estado)}22`,
                                       borderLeft: `3px solid ${citaColor(cita.estado)}`,
                                       borderRadius: isMobile ? 8 : 10,
                                       padding: isMobile ? '8px 10px' : '10px 14px',
                                       margin: isMobile ? '1px 4px' : '3px 8px',
-                                      cursor: isMobile ? 'pointer' : 'grab',
+                                      cursor: isCompletada(cita.estado) ? 'pointer' : (isMobile ? 'pointer' : 'grab'),
                                       boxSizing: 'border-box' as const,
                                       position: 'relative' as const,
-                                      opacity: (isCompletada(cita.estado) ? 0.45 : 1) * (moveDrag?.cita?.id === cita.id ? 0.3 : 1),
+                                      opacity: moveDrag?.cita?.id === cita.id ? 0.3 : 1,
                                       transition: 'opacity 0.15s',
                                     }}>
                                     {isCompletada(cita.estado) && (
-                                      <span style={{ position: 'absolute', top: 4, left: 6, fontSize: 10, color: C.textSec, fontWeight: 700, opacity: 0.7 }}>✓</span>
+                                      <div style={{ position: 'absolute', top: 4, right: 6, display: 'flex', alignItems: 'center', gap: 3, background: 'rgba(74,222,128,0.18)', borderRadius: 6, padding: '2px 6px' }}>
+                                        <span style={{ fontSize: 9, color: '#4ADE80', fontWeight: 700 }}>✓ Completada</span>
+                                      </div>
                                     )}
-                                    {!isMobile && renderQuickActions(cita, false)}
+                                    {!isMobile && renderQuickActions(cita)}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                       <p style={{ fontSize: isMobile ? 13 : 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, letterSpacing: 0.2, textTransform: 'uppercase' as const, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
                                         {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
@@ -1741,26 +1770,28 @@ export default function Dashboard() {
                                 <div
                                   onClick={() => setSelectedCita(citaHere)}
                                   onMouseDown={e => handleCitaMouseDown(e, citaHere, si, di, selectedDate)}
-                                  onMouseEnter={() => !isMobile && setHoveredCitaId(citaHere.id)}
-                                  onMouseLeave={() => { setHoveredCitaId(null); setPhoneTooltipId(null); }}
+                                  onMouseEnter={e => handleCitaMouseEnter(e, citaHere.id)}
+                                  onMouseLeave={() => { setHoveredCitaId(null); setQuickActionsPos(null); setPhoneTooltipId(null); }}
                                   style={{
                                     position: 'absolute', inset: 2,
-                                    background: `${citaColor(citaHere.estado)}22`,
+                                    background: isCompletada(citaHere.estado) ? 'rgba(74,222,128,0.12)' : `${citaColor(citaHere.estado)}22`,
                                     borderLeft: `3px solid ${citaColor(citaHere.estado)}`,
                                     borderRadius: 6,
                                     padding: '4px 6px',
-                                    cursor: 'grab',
+                                    cursor: isCompletada(citaHere.estado) ? 'pointer' : 'grab',
                                     boxSizing: 'border-box' as const,
                                     display: 'flex', flexDirection: 'column', justifyContent: 'flex-start',
                                     overflow: 'hidden',
-                                    opacity: (isCompletada(citaHere.estado) ? 0.45 : 1) * (moveDrag?.cita?.id === citaHere.id ? 0.3 : 1),
+                                    opacity: moveDrag?.cita?.id === citaHere.id ? 0.3 : 1,
                                     transition: 'opacity 0.15s',
                                   }}
                                 >
                                   {isCompletada(citaHere.estado) && (
-                                    <span style={{ position: 'absolute', top: 2, left: 4, fontSize: 9, color: C.textSec, fontWeight: 700, opacity: 0.8 }}>✓</span>
+                                    <div style={{ position: 'absolute', top: 3, right: 4, background: 'rgba(74,222,128,0.18)', borderRadius: 5, padding: '1px 5px' }}>
+                                      <span style={{ fontSize: 8, color: '#4ADE80', fontWeight: 700 }}>✓</span>
+                                    </div>
                                   )}
-                                  {renderQuickActions(citaHere, true)}
+                                  {renderQuickActions(citaHere)}
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden' }}>
                                     <p style={{
                                       fontSize: 10, fontWeight: 700, color: '#fff',
@@ -2072,13 +2103,15 @@ export default function Dashboard() {
                               <div
                                 onClick={() => { if (!moveDrag) setSelectedCita(cita); }}
                                 onMouseDown={e => handleCitaMouseDown(e, cita, si, di, day)}
-                                onMouseEnter={() => !isMobile && setHoveredCitaId(cita.id)}
-                                onMouseLeave={() => { setHoveredCitaId(null); setPhoneTooltipId(null); }}
-                                style={{ position: 'absolute', inset: 0, background: `${citaColor(cita.estado)}22`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 4, padding: isMobile ? '4px 6px' : '6px 8px', cursor: isMobile ? 'pointer' : 'grab', boxSizing: 'border-box' as const, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'visible', opacity: (isCompletada(cita.estado) ? 0.45 : 1) * (moveDrag?.cita?.id === cita.id ? 0.3 : 1), transition: 'opacity 0.15s' }}>
+                                onMouseEnter={e => handleCitaMouseEnter(e, cita.id)}
+                                onMouseLeave={() => { setHoveredCitaId(null); setQuickActionsPos(null); setPhoneTooltipId(null); }}
+                                style={{ position: 'absolute', inset: 0, background: isCompletada(cita.estado) ? 'rgba(74,222,128,0.12)' : `${citaColor(cita.estado)}22`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 4, padding: isMobile ? '4px 6px' : '6px 8px', cursor: isCompletada(cita.estado) ? 'pointer' : (isMobile ? 'pointer' : 'grab'), boxSizing: 'border-box' as const, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'visible', opacity: moveDrag?.cita?.id === cita.id ? 0.3 : 1, transition: 'opacity 0.15s' }}>
                                 {isCompletada(cita.estado) && (
-                                  <span style={{ position: 'absolute', top: 2, left: 4, fontSize: 9, color: C.textSec, fontWeight: 700, opacity: 0.8 }}>✓</span>
+                                  <div style={{ position: 'absolute', top: 3, right: 4, background: 'rgba(74,222,128,0.18)', borderRadius: 5, padding: '1px 5px' }}>
+                                    <span style={{ fontSize: 8, color: '#4ADE80', fontWeight: 700 }}>✓</span>
+                                  </div>
                                 )}
-                                {!isMobile && renderQuickActions(cita, true)}
+                                {!isMobile && renderQuickActions(cita)}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden' }}>
                                   <p style={{ fontSize: isMobile ? 12 : 11, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, textTransform: 'uppercase' as const, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1, minWidth: 0 }}>
                                     {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
@@ -2554,6 +2587,12 @@ export default function Dashboard() {
           preselectedEndTime={preselectedEndTime}
         />
       </div>
+
+      {/* ── TOOLTIP FLOTANTE ACCIONES RÁPIDAS ── */}
+      {hoveredCitaId && (() => {
+        const cita = allCitas.find(c => c.id === hoveredCitaId);
+        return cita ? renderQuickActions(cita) : null;
+      })()}
 
       <BottomNav
         activeSection={activeSection}
