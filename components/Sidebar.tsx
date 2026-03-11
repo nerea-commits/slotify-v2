@@ -34,7 +34,7 @@ export default function Sidebar({
     { id: 'agenda',       label: 'Agenda',      icon: Calendar  },
     { id: 'clientes',     label: 'Clientes',    icon: Users     },
     { id: 'servicios',    label: 'Servicios',   icon: Scissors  },
-    ...(isAdmin ? [{ id: 'ausencias', label: 'Ausencias', icon: Palmtree }] : []),
+    { id: 'ausencias', label: 'Ausencias', icon: Palmtree },
     ...(isAdmin || permisos.ver_estadisticas ? [{ id: 'estadisticas', label: 'Estadísticas', icon: BarChart3 }] : []),
   ];
 
