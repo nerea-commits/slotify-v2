@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
   Building2, Clock, Calendar, Users, Check, X, AlertTriangle,
-  Plus, Trash2, RefreshCw, Shield, UserCircle, Mail, ChevronDown, ChevronUp, Upload
+  Plus, Trash2, RefreshCw, Shield, UserCircle, Mail, ChevronDown, ChevronUp, Upload, User
 } from 'lucide-react';
 
 const C = {
@@ -17,11 +17,15 @@ const C = {
   borderHover: 'rgba(148,163,184,0.18)',
 };
 
-const TABS = [
+const ADMIN_TABS = [
   { id: 'empresa',   label: 'Empresa',        icon: Building2 },
   { id: 'horario',   label: 'Horario',         icon: Clock     },
   { id: 'dias',      label: 'Días laborables', icon: Calendar  },
   { id: 'empleados', label: 'Empleados',       icon: Users     },
+];
+
+const EMPLOYEE_TABS = [
+  { id: 'miperfil',  label: 'Mi perfil',      icon: User      },
 ];
 
 const DIAS_SEMANA = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
@@ -53,6 +57,13 @@ const PERMISOS_DEF = [
   { key: 'gestionar_clientes',    label: 'Gestionar clientes',       desc: 'Acceso completo a todos los clientes, no solo los suyos' },
   { key: 'editar_servicios',      label: 'Editar servicios',         desc: 'Puede crear, editar y eliminar servicios' },
   { key: 'ver_estadisticas',      label: 'Ver estadísticas propias', desc: 'Acceso a su panel de estadísticas personales' },
+];
+
+const AVATAR_COLORS = [
+  '#22C55E', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B',
+  '#EF4444', '#14B8A6', '#F97316', '#6366F1', '#64748B',
+  '#0EA5E9', '#D946EF', '#84CC16', '#FB7185', '#A78BFA',
+  '#34D399',
 ];
 
 function defaultPermisos(): Record<string, boolean> {
@@ -112,12 +123,12 @@ function TimeInput({ value, onChange }: { value: string; onChange: (v: string) =
   );
 }
 
-function SaveBtn({ onClick, loading, disabled }: { onClick: () => void; loading: boolean; disabled?: boolean }) {
+function SaveBtn({ onClick, loading, disabled, label }: { onClick: () => void; loading: boolean; disabled?: boolean; label?: string }) {
   return (
     <button onClick={onClick} disabled={loading || disabled}
       style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 20px', borderRadius:10, border:'none', background: disabled ? C.panelAlt : C.green, color: disabled ? C.textDim : '#fff', cursor: disabled ? 'default' : 'pointer', fontSize:13, fontWeight:700, transition:'all 0.15s' }}>
       {loading ? <RefreshCw size={14} style={{ animation:'spin 1s linear infinite' }}/> : <Check size={14}/>}
-      {loading ? 'Guardando...' : 'Guardar'}
+      {loading ? 'Guardando...' : (label || 'Guardar')}
     </button>
   );
 }
@@ -131,6 +142,183 @@ function Toast({ msg, onClose }: { msg: string; onClose: () => void }) {
     </div>
   );
 }
+
+
+// ══════════════════════════════════════════════════════
+// TAB: MI PERFIL (para empleados)
+// ══════════════════════════════════════════════════════
+function TabMiPerfil({ profesional, onSaved }: { profesional: any; onSaved: (data: any) => void }) {
+  const [nombre, setNombre] = useState(profesional?.nombre || '');
+  const [color, setColor] = useState(profesional?.color || AVATAR_COLORS[0]);
+  const [pin, setPin] = useState('');
+  const [pinConfirm, setPinConfirm] = useState('');
+  const [currentPin, setCurrentPin] = useState(profesional?.pin || '');
+  const [showPinForm, setShowPinForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [pinLoading, setPinLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [pinSuccess, setPinSuccess] = useState('');
+
+  useEffect(() => {
+    setNombre(profesional?.nombre || '');
+    setColor(profesional?.color || AVATAR_COLORS[0]);
+    setCurrentPin(profesional?.pin || '');
+  }, [profesional?.id]);
+
+  async function saveProfile() {
+    if (!nombre.trim()) { setError('El nombre es obligatorio'); return; }
+    setLoading(true); setError('');
+
+    const { error: e } = await supabase.from('profesionales').update({
+      nombre: nombre.trim(),
+      color,
+    }).eq('id', profesional.id);
+
+    setLoading(false);
+    if (e) { setError('Error al guardar: ' + e.message); return; }
+    onSaved({ nombre: nombre.trim(), color });
+  }
+
+  async function savePin() {
+    setPinError(''); setPinSuccess('');
+    if (pin.length < 4) { setPinError('El PIN debe tener al menos 4 dígitos'); return; }
+    if (pin !== pinConfirm) { setPinError('Los PINs no coinciden'); return; }
+    if (!/^\d+$/.test(pin)) { setPinError('El PIN solo puede contener números'); return; }
+
+    setPinLoading(true);
+    const { error: e } = await supabase.from('profesionales').update({ pin }).eq('id', profesional.id);
+    setPinLoading(false);
+
+    if (e) { setPinError('Error al guardar PIN'); return; }
+    setCurrentPin(pin);
+    setPin(''); setPinConfirm('');
+    setShowPinForm(false);
+    setPinSuccess('PIN actualizado');
+    setTimeout(() => setPinSuccess(''), 3000);
+  }
+
+  async function removePin() {
+    setPinLoading(true);
+    await supabase.from('profesionales').update({ pin: null }).eq('id', profesional.id);
+    setPinLoading(false);
+    setCurrentPin('');
+    setPinSuccess('PIN eliminado');
+    setTimeout(() => setPinSuccess(''), 3000);
+  }
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
+      {/* Avatar preview */}
+      <div style={{ display:'flex', alignItems:'center', gap:16 }}>
+        <div style={{
+          width: 72, height: 72, borderRadius: 18,
+          background: color,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 28, fontWeight: 800, color: '#fff',
+          boxShadow: `0 4px 16px ${color}55`,
+          transition: 'all 0.2s',
+        }}>
+          {nombre?.[0]?.toUpperCase() || '?'}
+        </div>
+        <div>
+          <p style={{ fontSize: 18, fontWeight: 700, color: C.text }}>{nombre || 'Sin nombre'}</p>
+          <p style={{ fontSize: 12, color: C.textMid, marginTop: 2 }}>{profesional?.email || 'Sin email'}</p>
+          <p style={{ fontSize: 11, color: C.textDim, marginTop: 2 }}>
+            {profesional?.rol === 'admin' || profesional?.rol === 'owner' ? 'Administrador' : 'Empleado'}
+          </p>
+        </div>
+      </div>
+
+      {/* Nombre */}
+      <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+        <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase', marginBottom:4 }}>Nombre</p>
+        <Input value={nombre} onChange={setNombre} placeholder="Tu nombre"/>
+      </div>
+
+      {/* Color del avatar */}
+      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase', marginBottom:4 }}>Color de tu avatar</p>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+          {AVATAR_COLORS.map(c => (
+            <button key={c} onClick={() => setColor(c)}
+              style={{
+                width: 36, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer',
+                background: c,
+                outline: color === c ? `3px solid ${c}` : 'none',
+                outlineOffset: 2,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'transform 0.1s',
+                transform: color === c ? 'scale(1.1)' : 'scale(1)',
+              }}>
+              {color === c && <Check size={16} style={{ color: '#fff' }}/>}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {error && <p style={{ color: C.red, fontSize:13 }}>{error}</p>}
+      <SaveBtn onClick={saveProfile} loading={loading} label="Guardar perfil"/>
+
+      {/* Separador */}
+      <div style={{ height: 1, background: C.border, margin: '4px 0' }} />
+
+      {/* PIN */}
+      <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div>
+            <p style={{ fontSize:13, fontWeight:600, color: C.text }}>PIN de acceso</p>
+            <p style={{ fontSize:11, color: C.textDim, marginTop:2 }}>
+              {currentPin ? 'Tienes un PIN configurado' : 'No tienes PIN configurado'}
+            </p>
+          </div>
+          <div style={{ display:'flex', gap:6 }}>
+            {currentPin && !showPinForm && (
+              <button onClick={removePin} disabled={pinLoading}
+                style={{ padding:'7px 12px', borderRadius:8, border:`1px solid ${C.border}`, background:'transparent', color: C.red, cursor:'pointer', fontSize:12, fontWeight:600 }}>
+                Quitar PIN
+              </button>
+            )}
+            <button onClick={() => { setShowPinForm(!showPinForm); setPin(''); setPinConfirm(''); setPinError(''); }}
+              style={{ padding:'7px 12px', borderRadius:8, border:`1px solid ${C.border}`, background: showPinForm ? C.panelAlt : 'transparent', color: C.textMid, cursor:'pointer', fontSize:12, fontWeight:600 }}>
+              {showPinForm ? 'Cancelar' : currentPin ? 'Cambiar PIN' : 'Establecer PIN'}
+            </button>
+          </div>
+        </div>
+
+        {showPinForm && (
+          <div style={{ background: C.panelAlt, borderRadius:12, padding:16, display:'flex', flexDirection:'column', gap:12 }}>
+            <div>
+              <p style={{ fontSize:11, color: C.textMid, fontWeight:600, marginBottom:5 }}>Nuevo PIN (mínimo 4 dígitos)</p>
+              <input type="password" maxLength={6} value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
+                placeholder="····"
+                style={{ width:'100%', padding:'10px 13px', background: C.panel, border:`1px solid ${C.border}`, borderRadius:10, color: C.text, fontSize:18, textAlign:'center', letterSpacing:8, outline:'none', boxSizing:'border-box' }}/>
+            </div>
+            <div>
+              <p style={{ fontSize:11, color: C.textMid, fontWeight:600, marginBottom:5 }}>Confirmar PIN</p>
+              <input type="password" maxLength={6} value={pinConfirm} onChange={e => setPinConfirm(e.target.value.replace(/\D/g, ''))}
+                placeholder="····"
+                style={{ width:'100%', padding:'10px 13px', background: C.panel, border:`1px solid ${C.border}`, borderRadius:10, color: C.text, fontSize:18, textAlign:'center', letterSpacing:8, outline:'none', boxSizing:'border-box' }}/>
+            </div>
+            {pinError && <p style={{ color: C.red, fontSize:12 }}>{pinError}</p>}
+            <button onClick={savePin} disabled={pinLoading}
+              style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'10px 16px', borderRadius:10, border:'none', background: C.green, color:'#fff', cursor:'pointer', fontSize:13, fontWeight:700, opacity: pinLoading ? 0.7 : 1 }}>
+              <Check size={14}/> {pinLoading ? 'Guardando...' : 'Guardar PIN'}
+            </button>
+          </div>
+        )}
+
+        {pinSuccess && (
+          <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background: C.greenDim, borderRadius:8 }}>
+            <Check size={14} style={{ color: C.green }}/>
+            <p style={{ fontSize:12, color: C.green, fontWeight:600 }}>{pinSuccess}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 // ══════════════════════════════════════════════════════
 // TAB: EMPRESA
@@ -337,7 +525,6 @@ function TabHorario({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
   const [error, setError] = useState('');
   const [newExc, setNewExc] = useState('');
 
-  // ✅ FIX: sincronizar cuando llegan los datos reales de Supabase
   useEffect(() => {
     setInicio(empresa?.horario_inicio || '09:00');
     setFin(empresa?.horario_fin || '19:00');
@@ -490,7 +677,6 @@ function TabDias({ empresa, onSaved }: { empresa: any; onSaved: (data: any) => v
   const [dias, setDias] = useState<boolean[]>(parseDias(empresa?.dias_laborables));
   const [loading, setLoading] = useState(false);
 
-  // ✅ FIX: sincronizar cuando llegan los datos reales de Supabase
   useEffect(() => {
     setDias(parseDias(empresa?.dias_laborables));
   }, [empresa?.dias_laborables]);
@@ -538,7 +724,7 @@ function TabDias({ empresa, onSaved }: { empresa: any; onSaved: (data: any) => v
 }
 
 // ══════════════════════════════════════════════════════
-// TAB: EMPLEADOS
+// TAB: EMPLEADOS (solo admin)
 // ══════════════════════════════════════════════════════
 function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesionalActual: any }) {
   const [empleados, setEmpleados] = useState<any[]>([]);
@@ -733,7 +919,6 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
                       </div>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                         <span style={{ fontSize:10, color: rolColor(emp.rol), fontWeight:700, textTransform:'uppercase' as const, letterSpacing:0.5 }}>{rolLabel(emp.rol)}</span>
-                        {!isMobile && emp.email && <span style={{ fontSize:11, color: C.textDim, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{emp.email}</span>}
                         {!emp.activo && <span style={{ fontSize:9, color: C.amber, fontWeight:700 }}>INACTIVO</span>}
                       </div>
                     </div>
@@ -869,15 +1054,17 @@ function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesiona
 // MAIN
 // ══════════════════════════════════════════════════════
 export default function ConfiguracionSection({
-  empresa: empresaProp, profesional: profesionalProp, onEmpresaUpdated,
+  empresa: empresaProp, profesional: profesionalProp, isAdmin = false, onEmpresaUpdated,
 }: {
   empresa: any;
   profesional: any;
+  isAdmin?: boolean;
   onEmpresaUpdated?: (data: any) => void;
 }) {
-  const [activeTab, setActiveTab] = useState('empresa');
+  const tabs = isAdmin ? ADMIN_TABS : EMPLOYEE_TABS;
+  const [activeTab, setActiveTab] = useState(tabs[0].id);
   const [empresa, setEmpresa] = useState<any>(empresaProp);
-  const [profesionalActual] = useState<any>(profesionalProp);
+  const [profesionalActual, setProfesionalActual] = useState<any>(profesionalProp);
   const [toast, setToast] = useState('');
   const [mobileOpen, setMobileOpen] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -885,6 +1072,10 @@ export default function ConfiguracionSection({
   useEffect(() => {
     if (empresaProp) setEmpresa(empresaProp);
   }, [empresaProp]);
+
+  useEffect(() => {
+    if (profesionalProp) setProfesionalActual(profesionalProp);
+  }, [profesionalProp]);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -896,6 +1087,12 @@ export default function ConfiguracionSection({
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 3500); }
 
   function handleSaved(tab: string, data: any) {
+    if (tab === 'miperfil') {
+      // Update local profesional state
+      setProfesionalActual((prev: any) => ({ ...prev, ...data }));
+      showToast('Perfil actualizado');
+      return;
+    }
     const merged = { ...empresa, ...data };
     setEmpresa(merged);
     onEmpresaUpdated?.(merged);
@@ -910,6 +1107,7 @@ export default function ConfiguracionSection({
 
   function renderTabContent(id: string) {
     switch (id) {
+      case 'miperfil':  return <TabMiPerfil profesional={profesionalActual} onSaved={d => handleSaved('miperfil', d)}/>;
       case 'empresa':   return <TabEmpresa empresa={empresa} onSaved={d => handleSaved('empresa', d)}/>;
       case 'horario':   return <TabHorario empresa={empresa} onSaved={d => handleSaved('horario', d)}/>;
       case 'dias':      return <TabDias    empresa={empresa} onSaved={d => handleSaved('dias', d)}/>;
@@ -918,30 +1116,36 @@ export default function ConfiguracionSection({
     }
   }
 
+  const headerTitle = isAdmin ? 'Configuración' : 'Mi perfil';
+  const headerSubtitle = isAdmin ? empresa?.nombre : profesionalActual?.nombre || '';
+
   return (
     <div style={{ background: C.bg, color: C.text }}>
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
 
       <div style={{ background: C.panel, borderBottom:`1px solid ${C.border}`, padding:'16px 20px', flexShrink:0 }}>
-        <h2 style={{ fontSize:18, fontWeight:700 }}>Configuración</h2>
-        <p style={{ fontSize:12, color: C.textMid, marginTop:2 }}>{empresa?.nombre}</p>
+        <h2 style={{ fontSize:18, fontWeight:700 }}>{headerTitle}</h2>
+        <p style={{ fontSize:12, color: C.textMid, marginTop:2 }}>{headerSubtitle}</p>
       </div>
 
       {/* DESKTOP */}
       <div style={{ maxWidth:900, margin:'0 auto', padding:24, gap:24, alignItems:'flex-start', display: isMobile ? 'none' : 'flex' }}>
-        <div style={{ width:200, flexShrink:0, display:'flex', flexDirection:'column', gap:2 }}>
-          {TABS.map(tab => {
-            const active = activeTab === tab.id;
-            const Icon = tab.icon;
-            return (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:10, border:'none', cursor:'pointer', background: active ? C.greenDim : 'transparent', color: active ? C.green : C.textMid, fontWeight: active ? 600 : 400, fontSize:13, borderLeft: active ? `3px solid ${C.green}` : '3px solid transparent', transition:'all 0.12s', textAlign:'left' as const }}>
-                <Icon size={15} style={{ flexShrink:0 }}/>
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
+        {/* Only show sidebar nav if more than 1 tab */}
+        {tabs.length > 1 && (
+          <div style={{ width:200, flexShrink:0, display:'flex', flexDirection:'column', gap:2 }}>
+            {tabs.map(tab => {
+              const active = activeTab === tab.id;
+              const Icon = tab.icon;
+              return (
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                  style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:10, border:'none', cursor:'pointer', background: active ? C.greenDim : 'transparent', color: active ? C.green : C.textMid, fontWeight: active ? 600 : 400, fontSize:13, borderLeft: active ? `3px solid ${C.green}` : '3px solid transparent', transition:'all 0.12s', textAlign:'left' as const }}>
+                  <Icon size={15} style={{ flexShrink:0 }}/>
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
         <div style={{ flex:1, background: C.panel, borderRadius:16, padding:24, minWidth:0, paddingBottom:40 }}>
           {renderTabContent(activeTab)}
         </div>
@@ -949,27 +1153,35 @@ export default function ConfiguracionSection({
 
       {/* MOBILE */}
       <div style={{ padding:'12px 16px 80px', flexDirection:'column', gap:6, display: isMobile ? 'flex' : 'none' }}>
-        {TABS.map(tab => {
-          const open = mobileOpen === tab.id;
-          const Icon = tab.icon;
-          return (
-            <div key={tab.id} style={{ background: C.panel, borderRadius:14, overflow:'hidden', border:`1px solid ${open ? C.green+'33' : C.border}` }}>
-              <button onClick={() => setMobileOpen(open ? null : tab.id)}
-                style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px', background:'transparent', border:'none', cursor:'pointer', color: open ? C.green : C.text }}>
-                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <Icon size={16} style={{ color: open ? C.green : C.textMid }}/>
-                  <span style={{ fontSize:14, fontWeight:600 }}>{tab.label}</span>
-                </div>
-                {open ? <ChevronUp size={15} style={{ color: C.textMid }}/> : <ChevronDown size={15} style={{ color: C.textMid }}/>}
-              </button>
-              {open && (
-                <div style={{ padding:'0 16px 20px' }}>
-                  {renderTabContent(tab.id)}
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {tabs.length === 1 ? (
+          /* Single tab (employee) - render directly without accordion */
+          <div style={{ background: C.panel, borderRadius:14, padding:16 }}>
+            {renderTabContent(tabs[0].id)}
+          </div>
+        ) : (
+          /* Multiple tabs (admin) - accordion */
+          tabs.map(tab => {
+            const open = mobileOpen === tab.id;
+            const Icon = tab.icon;
+            return (
+              <div key={tab.id} style={{ background: C.panel, borderRadius:14, overflow:'hidden', border:`1px solid ${open ? C.green+'33' : C.border}` }}>
+                <button onClick={() => setMobileOpen(open ? null : tab.id)}
+                  style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px', background:'transparent', border:'none', cursor:'pointer', color: open ? C.green : C.text }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    <Icon size={16} style={{ color: open ? C.green : C.textMid }}/>
+                    <span style={{ fontSize:14, fontWeight:600 }}>{tab.label}</span>
+                  </div>
+                  {open ? <ChevronUp size={15} style={{ color: C.textMid }}/> : <ChevronDown size={15} style={{ color: C.textMid }}/>}
+                </button>
+                {open && (
+                  <div style={{ padding:'0 16px 20px' }}>
+                    {renderTabContent(tab.id)}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
       </div>
 
       {toast && <Toast msg={toast} onClose={() => setToast('')}/>}
