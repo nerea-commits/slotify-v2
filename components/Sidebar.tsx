@@ -157,40 +157,38 @@ export default function Sidebar({
 
         {/* NAV */}
         <nav style={{ flex: 1, minHeight: 0, padding: collapsed ? '10px 4px' : '10px 8px', display: 'flex', flexDirection: 'column', gap: 1, overflowY: 'auto' }}>
-          {!collapsed && <p style={{ fontSize: 10, color: '#334155', fontWeight: 700, letterSpacing: 1.2, padding: '4px 12px 6px', textTransform: 'uppercase' as const }}>Navegación</p>}
           {navItems.map(i => renderNav(i.id, i.label, i.icon))}
           {sysItems.length > 0 && <>
             <div style={{ height: 1, background: 'rgba(148,163,184,0.07)', margin: '8px 0' }} />
-            {!collapsed && <p style={{ fontSize: 10, color: '#334155', fontWeight: 700, letterSpacing: 1.2, padding: '4px 12px 6px', textTransform: 'uppercase' as const }}>Sistema</p>}
             {sysItems.map(i => renderNav(i.id, i.label, i.icon))}
           </>}
         </nav>
 
         {/* BOTTOM */}
-        <div style={{ borderTop: '1px solid rgba(148,163,184,0.07)', flexShrink: 0, background: '#0F172A', paddingBottom: 16 }}>
+        <div style={{ borderTop: '1px solid rgba(148,163,184,0.07)', flexShrink: 0, background: '#0F172A', padding: '8px 0 4px' }}>
           <button onClick={handleChangeProfile} title="Cambiar perfil"
-            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, justifyContent: collapsed ? 'center' : 'flex-start', padding: collapsed ? '10px 0' : '9px 12px', border: 'none', cursor: 'pointer', background: 'transparent', color: '#64748B', fontSize: 13 }}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, justifyContent: collapsed ? 'center' : 'flex-start', padding: collapsed ? '10px 0' : '9px 12px', border: 'none', cursor: 'pointer', background: 'transparent', color: '#94A3B8', fontSize: 13, fontWeight: 500 }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.06)'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
           >
-            <UserCircle size={16} style={{ flexShrink: 0, color: '#64748B' }} />
+            <UserCircle size={16} style={{ flexShrink: 0, color: '#94A3B8' }} />
             {!collapsed && <span>Cambiar perfil</span>}
           </button>
           <button onClick={logout} title="Cerrar sesión"
-            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, justifyContent: collapsed ? 'center' : 'flex-start', padding: collapsed ? '10px 0' : '9px 12px', border: 'none', cursor: 'pointer', background: 'transparent', color: '#EF4444', fontSize: 13 }}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, justifyContent: collapsed ? 'center' : 'flex-start', padding: collapsed ? '10px 0' : '9px 12px', border: 'none', cursor: 'pointer', background: 'transparent', color: '#EF4444', fontSize: 13, fontWeight: 500 }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.07)'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
           >
             <LogOut size={16} style={{ flexShrink: 0, color: '#EF4444' }} />
             {!collapsed && <span>Cerrar sesión</span>}
           </button>
+          <div style={{ height: 1, background: 'rgba(148,163,184,0.07)', margin: '4px 0' }} />
           <button onClick={onToggleCollapse} title={collapsed ? 'Expandir' : 'Contraer'}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, justifyContent: collapsed ? 'center' : 'flex-start', padding: collapsed ? '10px 0' : '9px 12px', border: 'none', borderTop: '1px solid rgba(148,163,184,0.07)', cursor: 'pointer', background: 'transparent', color: '#475569', fontSize: 13 }}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 0', border: 'none', cursor: 'pointer', background: 'transparent', color: '#475569', fontSize: 13 }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.06)'; (e.currentTarget as HTMLElement).style.color = '#94A3B8'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#475569'; }}
           >
             {collapsed ? <ChevronRight size={16} style={{ flexShrink: 0 }} /> : <ChevronLeft size={16} style={{ flexShrink: 0 }} />}
-            {!collapsed && <span>Contraer menú</span>}
           </button>
         </div>
       </aside>
