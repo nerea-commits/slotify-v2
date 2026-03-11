@@ -192,10 +192,9 @@ export default function Dashboard() {
   setEmpresa(emp);
   empresaIdRef.current = emp.id;
 
-  // Calcular isAdmin desde el profesional seleccionado en localStorage
-  const pidLS = localStorage.getItem('slotify_profesional_id');
   const rolLS = (localStorage.getItem('slotify_rol') || '').toLowerCase();
-  const isAdm = !pidLS || rolLS === 'admin' || rolLS === 'owner';
+  const pidCheck = localStorage.getItem('slotify_profesional_id');
+  const isAdm = !pidCheck || rolLS === 'admin' || rolLS === 'owner';
   setIsAdmin(isAdm);
   isAdminRef.current = isAdm;
 
