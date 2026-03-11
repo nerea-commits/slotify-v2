@@ -1308,9 +1308,12 @@ export default function Dashboard() {
                   <p style={{ fontSize: 10, color: C.textSec, lineHeight: 1.2 }}>{isAdmin ? 'Admin' : 'Empleado'}</p>
                 )}
               </div>
-              <div className="hidden-mobile" style={{ width: 30, height: 30, borderRadius: 8, background: C.green, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff' }}>
-                {profesional?.nombre?.[0]?.toUpperCase() || empresa?.nombre?.[0]?.toUpperCase() || '?'}
-              </div>
+              <div className="hidden-mobile" style={{ width: 30, height: 30, borderRadius: 8, background: profesional?.foto_url ? 'transparent' : (profesional?.color || C.green), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff', overflow: 'hidden' }}>
+  {profesional?.foto_url
+    ? <img src={profesional.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+    : profesional?.nombre?.[0]?.toUpperCase() || empresa?.nombre?.[0]?.toUpperCase() || '?'
+  }
+</div>
             </div>
           </div>
 
@@ -1347,7 +1350,7 @@ export default function Dashboard() {
             {activeSection === 'estadisticas' && <EstadisticasSection empresaId={empresa?.id || ''} />}
             {activeSection === 'ausencias' && <AusenciasSection empresaId={empresa?.id || ''} isAdmin={isAdmin} />}
             {activeSection === 'notificaciones' && <NotificacionesSection empresaId={empresa?.id || ''} onNavigate={setActiveSection} />}
-            {activeSection === 'configuracion' && empresa && <ConfiguracionSection empresa={empresa} profesional={profesional} isAdmin={isAdmin} onEmpresaUpdated={(data: any) => setEmpresa((prev: any) => ({ ...prev, ...data }))} />}
+            {activeSection === 'configuracion' && empresa && <ConfiguracionSection empresa={empresa} profesional={profesional} isAdmin={isAdmin} onEmpresaUpdated={(data: any) => setEmpresa((prev: any) => ({ ...prev, ...data }))} onProfesionalUpdated={(data: any) => setProfesional((prev: any) => ({ ...prev, ...data }))} />}
           </div>
         )}
 
