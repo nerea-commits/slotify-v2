@@ -209,7 +209,6 @@ function TabMiPerfil({ profesional, onSaved }: { profesional: any; onSaved: (dat
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
-      {/* Avatar preview */}
       <div style={{ display:'flex', alignItems:'center', gap:16 }}>
         <div style={{
           width: 72, height: 72, borderRadius: 18,
@@ -230,13 +229,11 @@ function TabMiPerfil({ profesional, onSaved }: { profesional: any; onSaved: (dat
         </div>
       </div>
 
-      {/* Nombre */}
       <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
         <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase', marginBottom:4 }}>Nombre</p>
         <Input value={nombre} onChange={setNombre} placeholder="Tu nombre"/>
       </div>
 
-      {/* Color del avatar */}
       <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
         <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase', marginBottom:4 }}>Color de tu avatar</p>
         <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
@@ -260,10 +257,8 @@ function TabMiPerfil({ profesional, onSaved }: { profesional: any; onSaved: (dat
       {error && <p style={{ color: C.red, fontSize:13 }}>{error}</p>}
       <SaveBtn onClick={saveProfile} loading={loading} label="Guardar perfil"/>
 
-      {/* Separador */}
       <div style={{ height: 1, background: C.border, margin: '4px 0' }} />
 
-      {/* PIN */}
       <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div>
@@ -292,13 +287,13 @@ function TabMiPerfil({ profesional, onSaved }: { profesional: any; onSaved: (dat
               <p style={{ fontSize:11, color: C.textMid, fontWeight:600, marginBottom:5 }}>Nuevo PIN (mínimo 4 dígitos)</p>
               <input type="password" maxLength={6} value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
                 placeholder="····"
-                style={{ width:'100%', padding:'10px 13px', background: C.panel, border:`1px solid ${C.border}`, borderRadius:10, color: C.text, fontSize:18, textAlign:'center', letterSpacing:8, outline:'none', boxSizing:'border-box' }}/>
+                style={{ width:'100%', padding:'10px 13px', background: C.panel, border:`1px solid ${C.border}`, borderRadius:10, color: C.text, fontSize:18, textAlign:'center', letterSpacing:8, outline:'none', boxSizing:'border-box' as const }}/>
             </div>
             <div>
               <p style={{ fontSize:11, color: C.textMid, fontWeight:600, marginBottom:5 }}>Confirmar PIN</p>
               <input type="password" maxLength={6} value={pinConfirm} onChange={e => setPinConfirm(e.target.value.replace(/\D/g, ''))}
                 placeholder="····"
-                style={{ width:'100%', padding:'10px 13px', background: C.panel, border:`1px solid ${C.border}`, borderRadius:10, color: C.text, fontSize:18, textAlign:'center', letterSpacing:8, outline:'none', boxSizing:'border-box' }}/>
+                style={{ width:'100%', padding:'10px 13px', background: C.panel, border:`1px solid ${C.border}`, borderRadius:10, color: C.text, fontSize:18, textAlign:'center', letterSpacing:8, outline:'none', boxSizing:'border-box' as const }}/>
             </div>
             {pinError && <p style={{ color: C.red, fontSize:12 }}>{pinError}</p>}
             <button onClick={savePin} disabled={pinLoading}
@@ -1088,7 +1083,6 @@ export default function ConfiguracionSection({
 
   function handleSaved(tab: string, data: any) {
     if (tab === 'miperfil') {
-      // Update local profesional state
       setProfesionalActual((prev: any) => ({ ...prev, ...data }));
       showToast('Perfil actualizado');
       return;
@@ -1130,7 +1124,6 @@ export default function ConfiguracionSection({
 
       {/* DESKTOP */}
       <div style={{ maxWidth:900, margin:'0 auto', padding:24, gap:24, alignItems:'flex-start', display: isMobile ? 'none' : 'flex' }}>
-        {/* Only show sidebar nav if more than 1 tab */}
         {tabs.length > 1 && (
           <div style={{ width:200, flexShrink:0, display:'flex', flexDirection:'column', gap:2 }}>
             {tabs.map(tab => {
@@ -1154,12 +1147,10 @@ export default function ConfiguracionSection({
       {/* MOBILE */}
       <div style={{ padding:'12px 16px 80px', flexDirection:'column', gap:6, display: isMobile ? 'flex' : 'none' }}>
         {tabs.length === 1 ? (
-          /* Single tab (employee) - render directly without accordion */
           <div style={{ background: C.panel, borderRadius:14, padding:16 }}>
             {renderTabContent(tabs[0].id)}
           </div>
         ) : (
-          /* Multiple tabs (admin) - accordion */
           tabs.map(tab => {
             const open = mobileOpen === tab.id;
             const Icon = tab.icon;
