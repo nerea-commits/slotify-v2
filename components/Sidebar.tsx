@@ -179,7 +179,7 @@ export default function Sidebar({
         <div
           style={{
             flexShrink: 0,
-            padding: collapsed ? '20px 0 16px' : '24px 16px 18px',
+            padding: collapsed ? '20px 0 16px' : '28px 16px 20px',
             borderBottom: '1px solid rgba(148,163,184,0.07)',
             display: 'flex',
             flexDirection: 'column',
@@ -191,9 +191,9 @@ export default function Sidebar({
           {/* Logo */}
           <div
             style={{
-              width: collapsed ? 34 : 56,
-              height: collapsed ? 34 : 56,
-              borderRadius: collapsed ? 10 : 16,
+              width: collapsed ? 34 : 88,
+              height: collapsed ? 34 : 88,
+              borderRadius: collapsed ? 10 : 20,
               flexShrink: 0,
               background: empresaLogo
                 ? '#0F172A'
@@ -201,7 +201,7 @@ export default function Sidebar({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: collapsed ? 14 : 24,
+              fontSize: collapsed ? 14 : 36,
               fontWeight: 800,
               color: '#fff',
               overflow: 'hidden',
