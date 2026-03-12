@@ -97,43 +97,48 @@ export default function LoginPage() {
   }
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#07090F' }}>
+    <div style={{ minHeight: '100vh', background: '#07090F', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ width: 36, height: 36, border: '2px solid rgba(201,169,110,0.2)', borderTopColor: '#C9A96E', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6"
-      style={{ background: 'radial-gradient(ellipse 80% 60% at 50% -10%, #141C2E 0%, #07090F 70%)', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif' }}>
+    <div style={{
+      minHeight: '100vh',
+      background: 'radial-gradient(ellipse 80% 60% at 50% -10%, #141C2E 0%, #07090F 70%)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '32px 16px',
+      fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
+    }}>
       <style>{`
         @keyframes spin{to{transform:rotate(360deg)}}
-        @keyframes up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
         .pcard:focus-visible{outline:2px solid #C9A96E;outline-offset:3px;border-radius:16px}
-        .linput:focus{border-color:#C9A96E !important;box-shadow:0 0 0 3px rgba(201,169,110,0.15) !important;outline:none}
+        .linput:focus{border-color:#C9A96E !important;box-shadow:0 0 0 3px rgba(201,169,110,0.14) !important;outline:none}
       `}</style>
 
       {/* ── EMAIL ── */}
       {step === 'email' && (
-        <div className="w-full" style={{ maxWidth: 420, animation: 'up 0.3s ease' }}>
-          <div className="text-center mb-10">
+        <div style={{ width: '100%', maxWidth: 420, animation: 'up 0.3s ease' }}>
+          <div style={{ textAlign: 'center', marginBottom: 36 }}>
             <h1 style={{ fontSize: 28, fontWeight: 700, color: '#F1F5F9', margin: '0 0 6px', letterSpacing: -0.5 }}>Bienvenido</h1>
             <p style={{ fontSize: 14, color: '#4B5563', margin: 0 }}>Accede al panel de gestión</p>
           </div>
           <div style={{ background: 'linear-gradient(160deg,#0F1826,#0A0E1A)', border: '1px solid rgba(201,169,110,0.2)', borderRadius: 22, padding: '36px 32px', boxShadow: '0 32px 80px rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: '#4B5563', letterSpacing: 1, textTransform: 'uppercase' as const }}>Email</label>
-              <input className="linput w-full" type="email" value={email} placeholder="tu@email.com"
+              <input className="linput" type="email" value={email} placeholder="tu@email.com"
                 onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleEmailLogin()}
-                style={{ padding: '12px 14px', background: '#131B2B', border: '1px solid rgba(148,163,184,0.1)', borderRadius: 12, color: '#F1F5F9', fontSize: 14, transition: 'all 0.15s', boxSizing: 'border-box' as const }} />
+                style={{ width: '100%', padding: '12px 14px', background: '#131B2B', border: '1px solid rgba(148,163,184,0.1)', borderRadius: 12, color: '#F1F5F9', fontSize: 14, boxSizing: 'border-box' as const, transition: 'all 0.15s' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: '#4B5563', letterSpacing: 1, textTransform: 'uppercase' as const }}>Contraseña</label>
               <div style={{ position: 'relative' }}>
-                <input className="linput w-full" type={showPassword ? 'text' : 'password'} value={password} placeholder="Tu contraseña"
+                <input className="linput" type={showPassword ? 'text' : 'password'} value={password} placeholder="Tu contraseña"
                   onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleEmailLogin()}
-                  style={{ padding: '12px 44px 12px 14px', background: '#131B2B', border: '1px solid rgba(148,163,184,0.1)', borderRadius: 12, color: '#F1F5F9', fontSize: 14, transition: 'all 0.15s', boxSizing: 'border-box' as const, width: '100%' }} />
-                <button onClick={() => setShowPassword(s => !s)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'flex' }}>
+                  style={{ width: '100%', padding: '12px 44px 12px 14px', background: '#131B2B', border: '1px solid rgba(148,163,184,0.1)', borderRadius: 12, color: '#F1F5F9', fontSize: 14, boxSizing: 'border-box' as const, transition: 'all 0.15s' }} />
+                <button onClick={() => setShowPassword(s => !s)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'flex', padding: 4 }}>
                   {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
@@ -145,9 +150,11 @@ export default function LoginPage() {
                 ¿Olvidaste tu contraseña?
               </a>
             </div>
-            {error && <div style={{ padding: '10px 14px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 10 }}><p style={{ fontSize: 13, color: '#EF4444', margin: 0 }}>{error}</p></div>}
+            {error && <div style={{ padding: '10px 14px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 10 }}>
+              <p style={{ fontSize: 13, color: '#EF4444', margin: 0 }}>{error}</p>
+            </div>}
             <button onClick={handleEmailLogin} disabled={loading}
-              style={{ padding: '13px', background: 'linear-gradient(135deg,#C9A96E,#A8813E)', border: 'none', borderRadius: 12, color: '#07090F', fontSize: 14, fontWeight: 700, cursor: 'pointer', letterSpacing: 0.3, opacity: loading ? 0.7 : 1 }}>
+              style={{ padding: '13px', background: 'linear-gradient(135deg,#C9A96E,#A8813E)', border: 'none', borderRadius: 12, color: '#07090F', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: loading ? 0.7 : 1 }}>
               Entrar
             </button>
             <p style={{ textAlign: 'center', fontSize: 13, color: '#374151', margin: 0 }}>
@@ -159,44 +166,62 @@ export default function LoginPage() {
 
       {/* ── PERFILES ── */}
       {step === 'profiles' && (
-        <div className="w-full" style={{ maxWidth: 500, animation: 'up 0.3s ease' }}>
+        <div style={{ width: '100%', maxWidth: 520, animation: 'up 0.3s ease' }}>
           <div style={{
             background: 'linear-gradient(170deg,#0E1724 0%,#090D18 100%)',
             border: '1px solid rgba(201,169,110,0.22)',
-            borderRadius: 26,
-            padding: '48px 40px',
-            boxShadow: '0 40px 100px rgba(0,0,0,0.7), inset 0 1px 0 rgba(201,169,110,0.07)',
+            borderRadius: 28,
+            padding: '52px 44px',
+            boxShadow: '0 48px 120px rgba(0,0,0,0.75), inset 0 1px 0 rgba(201,169,110,0.06)',
           }}>
 
-            {/* Header branding */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, marginBottom: 36 }}>
+            {/* ── HEADER ── */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, marginBottom: 38 }}>
+
+              {/* Logo */}
               {(empresa as any)?.logo_url ? (
-                <div style={{ width: 112, height: 112, borderRadius: 24, overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <img src={(empresa as any).logo_url} alt={empresa?.nombre}
-                    style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', filter: 'drop-shadow(0 6px 20px rgba(0,0,0,0.7))' }} />
+                <div style={{ marginBottom: 20 }}>
+                  <img
+                    src={(empresa as any).logo_url}
+                    alt={empresa?.nombre}
+                    style={{
+                      maxHeight: 96, maxWidth: 200,
+                      width: 'auto', height: 'auto',
+                      objectFit: 'contain', display: 'block',
+                      filter: 'drop-shadow(0 6px 24px rgba(0,0,0,0.7))',
+                    }}
+                  />
                 </div>
               ) : (
-                <div style={{ width: 80, height: 80, borderRadius: 22, background: 'rgba(201,169,110,0.1)', border: '1px solid rgba(201,169,110,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 800, color: '#C9A96E' }}>
+                <div style={{ width: 80, height: 80, borderRadius: 22, background: 'rgba(201,169,110,0.1)', border: '1px solid rgba(201,169,110,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 800, color: '#C9A96E', marginBottom: 20 }}>
                   {empresa?.nombre?.[0]?.toUpperCase() || 'B'}
                 </div>
               )}
-              <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: '#C9A96E', letterSpacing: 3, textTransform: 'uppercase' as const, margin: '0 0 10px' }}>
-                  {empresa?.nombre || 'Tu negocio'}
-                </p>
-                <h1 style={{ fontSize: 24, fontWeight: 700, color: '#F1F5F9', margin: '0 0 6px', letterSpacing: -0.4 }}>
-                  Selecciona tu perfil
-                </h1>
-                <p style={{ fontSize: 14, color: '#64748B', margin: 0, fontWeight: 400 }}>
-                  Elige un usuario para continuar
-                </p>
-              </div>
+
+              {/* Nombre de marca */}
+              <p style={{
+                fontSize: 20, fontWeight: 700, color: '#E2C97E',
+                margin: '0 0 10px', letterSpacing: 0.2,
+                textShadow: '0 2px 12px rgba(201,169,110,0.2)',
+              }}>
+                {empresa?.nombre || 'Tu negocio'}
+              </p>
+
+              {/* Título acción */}
+              <h1 style={{ fontSize: 26, fontWeight: 700, color: '#F1F5F9', margin: '0 0 7px', letterSpacing: -0.4, textAlign: 'center' as const }}>
+                Selecciona tu perfil
+              </h1>
+
+              {/* Subtítulo */}
+              <p style={{ fontSize: 14, color: '#8899AA', margin: 0, fontWeight: 400, textAlign: 'center' as const }}>
+                Elige un usuario para continuar
+              </p>
             </div>
 
             {/* Divisor */}
-            <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,rgba(201,169,110,0.2),transparent)', marginBottom: 28 }} />
+            <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,rgba(201,169,110,0.18),transparent)', marginBottom: 30 }} />
 
-            {/* Cards */}
+            {/* ── CARDS ── */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {profesionales.map(p => {
                 const isAdmin = p.rol === 'admin' || p.rol === 'owner';
@@ -214,21 +239,20 @@ export default function LoginPage() {
                       width: '100%', display: 'flex', alignItems: 'center', gap: 16,
                       padding: '16px 18px',
                       background: isHov ? 'rgba(201,169,110,0.07)' : 'rgba(255,255,255,0.03)',
-                      border: `1px solid ${isHov ? 'rgba(201,169,110,0.3)' : 'rgba(255,255,255,0.05)'}`,
+                      border: `1px solid ${isHov ? 'rgba(201,169,110,0.28)' : 'rgba(255,255,255,0.05)'}`,
                       borderRadius: 16, cursor: 'pointer',
                       transition: 'all 0.15s ease',
                       transform: isHov ? 'translateY(-2px)' : 'none',
-                      boxShadow: isHov ? '0 8px 24px rgba(0,0,0,0.35)' : 'none',
+                      boxShadow: isHov ? '0 10px 28px rgba(0,0,0,0.4)' : 'none',
                       textAlign: 'left' as const,
                     }}>
 
-                    {/* Avatar — foto o inicial */}
+                    {/* Avatar */}
                     <div style={{
                       width: 48, height: 48, borderRadius: 13, flexShrink: 0,
-                      background: foto ? 'transparent' : avatarColor,
-                      overflow: 'hidden',
-                      boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
-                      position: 'relative',
+                      background: foto ? '#0A0E1A' : avatarColor,
+                      overflow: 'hidden', position: 'relative',
+                      boxShadow: '0 2px 10px rgba(0,0,0,0.45)',
                     }}>
                       {foto
                         ? <img src={foto} alt={p.nombre} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
@@ -240,28 +264,26 @@ export default function LoginPage() {
 
                     {/* Info */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 15, fontWeight: 600, color: '#F1F5F9', margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                      <p style={{ fontSize: 15, fontWeight: 600, color: '#F1F5F9', margin: '0 0 5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
                         {p.nombre}
                       </p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {isProtected && (
-                          <Lock size={10} style={{ color: '#C9A96E', flexShrink: 0 }} />
-                        )}
-                        <p style={{ fontSize: 12, color: isProtected ? '#C9A96E' : '#374151', margin: 0, fontWeight: isProtected ? 600 : 400 }}>
-                          {isAdmin ? 'Administrador · PIN requerido' : p.pin ? 'Acceso protegido · PIN requerido' : 'Empleado'}
-                        </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        {isProtected && <Lock size={10} style={{ color: '#C9A96E', flexShrink: 0 }} />}
+                        <span style={{ fontSize: 12, color: isProtected ? '#C9A96E' : '#4B5563', fontWeight: isProtected ? 600 : 400, lineHeight: 1.3 }}>
+                          {isAdmin ? 'Administrador · Requiere PIN' : p.pin ? 'Acceso protegido · Requiere PIN' : 'Empleado'}
+                        </span>
                       </div>
                     </div>
 
                     {/* Chevron */}
                     <div style={{
-                      width: 32, height: 32, borderRadius: 9, flexShrink: 0,
+                      width: 34, height: 34, borderRadius: 10, flexShrink: 0,
                       background: isHov ? 'rgba(201,169,110,0.12)' : 'rgba(255,255,255,0.04)',
-                      border: `1px solid ${isHov ? 'rgba(201,169,110,0.25)' : 'rgba(255,255,255,0.06)'}`,
+                      border: `1px solid ${isHov ? 'rgba(201,169,110,0.22)' : 'rgba(255,255,255,0.06)'}`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       transition: 'all 0.15s',
                     }}>
-                      <ChevronRight size={15} style={{ color: isHov ? '#C9A96E' : '#374151', transition: 'color 0.15s' }} />
+                      <ChevronRight size={15} style={{ color: isHov ? '#C9A96E' : '#2D3748', transition: 'color 0.15s' }} />
                     </div>
                   </button>
                 );
@@ -273,7 +295,7 @@ export default function LoginPage() {
 
       {/* ── PIN ── */}
       {step === 'pin' && selectedProf && (
-        <div className="w-full" style={{ maxWidth: 400, animation: 'up 0.3s ease' }}>
+        <div style={{ width: '100%', maxWidth: 400, animation: 'up 0.3s ease' }}>
           <div style={{
             background: 'linear-gradient(170deg,#0E1724,#090D18)',
             border: '1px solid rgba(201,169,110,0.22)',
@@ -281,30 +303,24 @@ export default function LoginPage() {
             boxShadow: '0 40px 100px rgba(0,0,0,0.7)',
             display: 'flex', flexDirection: 'column', alignItems: 'center',
           }}>
-            {/* Avatar */}
-            <div style={{ width: 60, height: 60, borderRadius: 16, background: (selectedProf as any).foto_url ? 'transparent' : ((selectedProf as any).color || '#C9A96E'), overflow: 'hidden', border: '1px solid rgba(201,169,110,0.25)', boxShadow: '0 4px 20px rgba(0,0,0,0.5)', marginBottom: 14, position: 'relative', flexShrink: 0 }}>
+            <div style={{ width: 60, height: 60, borderRadius: 16, background: (selectedProf as any).foto_url ? '#0A0E1A' : ((selectedProf as any).color || '#C9A96E'), overflow: 'hidden', border: '1px solid rgba(201,169,110,0.25)', boxShadow: '0 4px 20px rgba(0,0,0,0.5)', marginBottom: 14, position: 'relative', flexShrink: 0 }}>
               {(selectedProf as any).foto_url
                 ? <img src={(selectedProf as any).foto_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                 : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color: '#fff' }}>{selectedProf.nombre?.[0]?.toUpperCase()}</div>
               }
             </div>
-
             <p style={{ fontSize: 18, fontWeight: 700, color: '#F1F5F9', margin: '0 0 5px' }}>{selectedProf.nombre}</p>
             <p style={{ fontSize: 12, color: '#C9A96E', fontWeight: 600, margin: '0 0 30px', letterSpacing: 0.3 }}>Introduce tu PIN para continuar</p>
-
-            <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,rgba(201,169,110,0.2),transparent)', width: '100%', marginBottom: 24 }} />
-
+            <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,rgba(201,169,110,0.18),transparent)', width: '100%', marginBottom: 24 }} />
             <input className="linput" type="password" maxLength={6} value={pin} autoFocus
               onChange={e => setPin(e.target.value)} onKeyDown={e => e.key === 'Enter' && handlePin()}
               placeholder="· · · ·"
               style={{ width: '100%', padding: '15px', background: '#131B2B', border: '1px solid rgba(148,163,184,0.1)', borderRadius: 12, color: '#F1F5F9', fontSize: 28, textAlign: 'center' as const, letterSpacing: 14, outline: 'none', boxSizing: 'border-box' as const, marginBottom: 14, transition: 'all 0.15s' }} />
-
             {error && <div style={{ width: '100%', padding: '10px 14px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 10, marginBottom: 14 }}>
               <p style={{ fontSize: 13, color: '#EF4444', margin: 0, textAlign: 'center' as const }}>{error}</p>
             </div>}
-
             <button onClick={handlePin}
-              style={{ width: '100%', padding: '13px', background: 'linear-gradient(135deg,#C9A96E,#A8813E)', border: 'none', borderRadius: 12, color: '#07090F', fontSize: 14, fontWeight: 700, cursor: 'pointer', marginBottom: 10, letterSpacing: 0.3 }}>
+              style={{ width: '100%', padding: '13px', background: 'linear-gradient(135deg,#C9A96E,#A8813E)', border: 'none', borderRadius: 12, color: '#07090F', fontSize: 14, fontWeight: 700, cursor: 'pointer', marginBottom: 10 }}>
               Entrar
             </button>
             <button onClick={() => { setStep('profiles'); setSelectedProf(null); setError(''); }}
