@@ -145,39 +145,37 @@ function Toast({ msg, onClose }: { msg: string; onClose: () => void }) {
 
 
 // ══════════════════════════════════════════════════════
-// TAB: MI PERFIL (para empleados)
+// TAB: MI PERFIL
 // ══════════════════════════════════════════════════════
 function TabMiPerfil({ profesional, onSaved }: { profesional: any; onSaved: (data: any) => void }) {
   const [nombre, setNombre] = useState(profesional?.nombre || '');
-const [color, setColor] = useState(profesional?.color || AVATAR_COLORS[0]);
-const [fotoUrl, setFotoUrl] = useState(profesional?.foto_url || '');
-const [pin, setPin] = useState('');
-const [pinConfirm, setPinConfirm] = useState('');
-const [currentPin, setCurrentPin] = useState(profesional?.pin || '');
-const [showPinForm, setShowPinForm] = useState(false);
-const [loading, setLoading] = useState(false);
-const [pinLoading, setPinLoading] = useState(false);
-const [error, setError] = useState('');
-const [pinError, setPinError] = useState('');
-const [pinSuccess, setPinSuccess] = useState('');
+  const [color, setColor] = useState(profesional?.color || AVATAR_COLORS[0]);
+  const [fotoUrl, setFotoUrl] = useState(profesional?.foto_url || '');
+  const [pin, setPin] = useState('');
+  const [pinConfirm, setPinConfirm] = useState('');
+  const [currentPin, setCurrentPin] = useState(profesional?.pin || '');
+  const [showPinForm, setShowPinForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [pinLoading, setPinLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [pinSuccess, setPinSuccess] = useState('');
 
-useEffect(() => {
-  setNombre(profesional?.nombre || '');
-  setColor(profesional?.color || AVATAR_COLORS[0]);
-  setCurrentPin(profesional?.pin || '');
-  setFotoUrl(profesional?.foto_url || '');
-}, [profesional?.id]);
+  useEffect(() => {
+    setNombre(profesional?.nombre || '');
+    setColor(profesional?.color || AVATAR_COLORS[0]);
+    setCurrentPin(profesional?.pin || '');
+    setFotoUrl(profesional?.foto_url || '');
+  }, [profesional?.id]);
 
   async function saveProfile() {
-  if (!nombre.trim()) { setError('El nombre es obligatorio'); return; }
-  setLoading(true); setError('');
-
-  const { error: e } = await supabase.from('profesionales').update({
-    nombre: nombre.trim(),
-    color,
-    foto_url: fotoUrl || null,
-  }).eq('id', profesional.id);
-
+    if (!nombre.trim()) { setError('El nombre es obligatorio'); return; }
+    setLoading(true); setError('');
+    const { error: e } = await supabase.from('profesionales').update({
+      nombre: nombre.trim(),
+      color,
+      foto_url: fotoUrl || null,
+    }).eq('id', profesional.id);
     setLoading(false);
     if (e) { setError('Error al guardar: ' + e.message); return; }
     onSaved({ nombre: nombre.trim(), color });
@@ -188,11 +186,9 @@ useEffect(() => {
     if (pin.length < 4) { setPinError('El PIN debe tener al menos 4 dígitos'); return; }
     if (pin !== pinConfirm) { setPinError('Los PINs no coinciden'); return; }
     if (!/^\d+$/.test(pin)) { setPinError('El PIN solo puede contener números'); return; }
-
     setPinLoading(true);
     const { error: e } = await supabase.from('profesionales').update({ pin }).eq('id', profesional.id);
     setPinLoading(false);
-
     if (e) { setPinError('Error al guardar PIN'); return; }
     setCurrentPin(pin);
     setPin(''); setPinConfirm('');
@@ -214,51 +210,35 @@ useEffect(() => {
     <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
       <div style={{ display:'flex', alignItems:'center', gap:16 }}>
         <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => document.getElementById('foto-upload')?.click()}>
-  <div style={{
-    width: 72, height: 72, borderRadius: 18,
-    background: color,
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: 28, fontWeight: 800, color: '#fff',
-    boxShadow: `0 4px 16px ${color}55`,
-    overflow: 'hidden',
-    transition: 'all 0.2s',
-  }}>
-    {fotoUrl
-      ? <img src={fotoUrl} alt="foto" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
-      : nombre?.[0]?.toUpperCase() || '?'
-    }
-  </div>
-  <div style={{
-    position: 'absolute', bottom: -4, right: -4,
-    width: 22, height: 22, borderRadius: 6,
-    background: '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-  }}>
-    <Upload size={11} style={{ color: '#fff' }}/>
-  </div>
-  <input id="foto-upload" type="file" accept="image/*" style={{ display: 'none' }}
-    onChange={async e => {
-      const file = e.target.files?.[0];
-      if (!file || !profesional?.id) return;
-      setLoading(true);
-      try {
-        const ext = file.name.split('.').pop() || 'jpg';
-        const path = `${profesional.id}/foto_${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from('fotos-perfil').upload(path, file, { upsert: true });
-        if (upErr) throw upErr;
-        const { data: urlData } = supabase.storage.from('fotos-perfil').getPublicUrl(path);
-        const newUrl = urlData.publicUrl;
-        await supabase.from('profesionales').update({ foto_url: newUrl }).eq('id', profesional.id);
-        setFotoUrl(newUrl);
-        onSaved({ foto_url: newUrl });
-      } catch (err: any) {
-        setError('Error al subir foto: ' + err.message);
-      } finally {
-        setLoading(false);
-      }
-    }}
-  />
-</div>
+          <div style={{ width: 72, height: 72, borderRadius: 18, background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 800, color: '#fff', boxShadow: `0 4px 16px ${color}55`, overflow: 'hidden', transition: 'all 0.2s' }}>
+            {fotoUrl ? <img src={fotoUrl} alt="foto" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/> : nombre?.[0]?.toUpperCase() || '?'}
+          </div>
+          <div style={{ position: 'absolute', bottom: -4, right: -4, width: 22, height: 22, borderRadius: 6, background: '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>
+            <Upload size={11} style={{ color: '#fff' }}/>
+          </div>
+          <input id="foto-upload" type="file" accept="image/*" style={{ display: 'none' }}
+            onChange={async e => {
+              const file = e.target.files?.[0];
+              if (!file || !profesional?.id) return;
+              setLoading(true);
+              try {
+                const ext = file.name.split('.').pop() || 'jpg';
+                const path = `${profesional.id}/foto_${Date.now()}.${ext}`;
+                const { error: upErr } = await supabase.storage.from('fotos-perfil').upload(path, file, { upsert: true });
+                if (upErr) throw upErr;
+                const { data: urlData } = supabase.storage.from('fotos-perfil').getPublicUrl(path);
+                const newUrl = urlData.publicUrl;
+                await supabase.from('profesionales').update({ foto_url: newUrl }).eq('id', profesional.id);
+                setFotoUrl(newUrl);
+                onSaved({ foto_url: newUrl });
+              } catch (err: any) {
+                setError('Error al subir foto: ' + err.message);
+              } finally {
+                setLoading(false);
+              }
+            }}
+          />
+        </div>
         <div>
           <p style={{ fontSize: 18, fontWeight: 700, color: C.text }}>{nombre || 'Sin nombre'}</p>
           <p style={{ fontSize: 12, color: C.textMid, marginTop: 2 }}>{profesional?.email || 'Sin email'}</p>
@@ -278,15 +258,7 @@ useEffect(() => {
         <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
           {AVATAR_COLORS.map(c => (
             <button key={c} onClick={() => setColor(c)}
-              style={{
-                width: 36, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer',
-                background: c,
-                outline: color === c ? `3px solid ${c}` : 'none',
-                outlineOffset: 2,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'transform 0.1s',
-                transform: color === c ? 'scale(1.1)' : 'scale(1)',
-              }}>
+              style={{ width: 36, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer', background: c, outline: color === c ? `3px solid ${c}` : 'none', outlineOffset: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform 0.1s', transform: color === c ? 'scale(1.1)' : 'scale(1)' }}>
               {color === c && <Check size={16} style={{ color: '#fff' }}/>}
             </button>
           ))}
@@ -302,9 +274,7 @@ useEffect(() => {
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div>
             <p style={{ fontSize:13, fontWeight:600, color: C.text }}>PIN de acceso</p>
-            <p style={{ fontSize:11, color: C.textDim, marginTop:2 }}>
-              {currentPin ? 'Tienes un PIN configurado' : 'No tienes PIN configurado'}
-            </p>
+            <p style={{ fontSize:11, color: C.textDim, marginTop:2 }}>{currentPin ? 'Tienes un PIN configurado' : 'No tienes PIN configurado'}</p>
           </div>
           <div style={{ display:'flex', gap:6 }}>
             {currentPin && !showPinForm && (
@@ -392,8 +362,6 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
     if (!empresa?.id) { setError('Error: empresa sin ID'); return; }
     setLoading(true); setError('');
 
-    const finalLogoUrl = (logoUrl && !logoUrl.startsWith('data:')) ? logoUrl.trim() : null;
-
     const { data: d1, error: e1 } = await supabase.from('empresas')
       .update({
         nombre: nombre.trim(),
@@ -411,14 +379,13 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
       .select();
 
     setLoading(false);
-
     if (e1) { setError(`Error Supabase: ${e1.message} (code: ${e1.code})`); return; }
     if (!d1 || d1.length === 0) { setError('RLS bloqueó el guardado. Revisa políticas en Supabase.'); return; }
 
     onSaved({
       nombre: nombre.trim(),
       color_primario: colorPrimario,
-      logo_url: finalLogoUrl,
+      logo_url: logoUrl || null,
       telefono: telefono.trim() || null,
       email: email.trim() || null,
       direccion: direccion.trim() || null,
@@ -544,7 +511,7 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
 }
 
 // ══════════════════════════════════════════════════════
-// TAB: HORARIO
+// TAB: HORARIO — FIXED
 // ══════════════════════════════════════════════════════
 function TabHorario({ empresa, onSaved }: { empresa: any; onSaved: (data: any) => void }) {
   const [inicio, setInicio] = useState(empresa?.horario_inicio || '09:00');
@@ -553,12 +520,14 @@ function TabHorario({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
   const [pausaInicio, setPausaInicio] = useState(empresa?.horario_pausa_inicio || '14:00');
   const [pausaFin, setPausaFin] = useState(empresa?.horario_pausa_fin || '16:00');
   const [buffer, setBuffer] = useState(empresa?.buffer_minutos ?? 0);
-  const [durDef, setDurDef] = useState(empresa?.duracion_defecto ?? 60);
+  const [durDef, setDurDef] = useState(empresa?.duracion_defecto ?? null);
   const [excepciones, setExcepciones] = useState<string[]>(empresa?.dias_excepciones || []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [newExc, setNewExc] = useState('');
 
+  // FIX 1: el useEffect reacciona a cualquier cambio en empresa, no solo al id
+  // Así si el padre actualiza empresa con datos completos, el form se repopula
   useEffect(() => {
     setInicio(empresa?.horario_inicio || '09:00');
     setFin(empresa?.horario_fin || '19:00');
@@ -566,9 +535,19 @@ function TabHorario({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
     setPausaInicio(empresa?.horario_pausa_inicio || '14:00');
     setPausaFin(empresa?.horario_pausa_fin || '16:00');
     setBuffer(empresa?.buffer_minutos ?? 0);
-    setDurDef(empresa?.duracion_defecto ?? 60);
+    setDurDef(empresa?.duracion_defecto ?? null);
     setExcepciones(empresa?.dias_excepciones || []);
-  }, [empresa?.id]);
+  }, [
+    empresa?.id,
+    empresa?.horario_inicio,
+    empresa?.horario_fin,
+    empresa?.pausa_activa,
+    empresa?.horario_pausa_inicio,
+    empresa?.horario_pausa_fin,
+    empresa?.buffer_minutos,
+    empresa?.duracion_defecto,
+    empresa?.dias_excepciones,
+  ]);
 
   function validate(): string | null {
     if (inicio >= fin) return 'La hora de apertura debe ser anterior al cierre';
@@ -581,17 +560,25 @@ function TabHorario({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
     const err = validate();
     if (err) { setError(err); return; }
     setLoading(true); setError('');
-    const { error: e } = await supabase.from('empresas').update({
-      horario_inicio: inicio, horario_fin: fin,
+
+    const payload = {
+      horario_inicio: inicio,
+      horario_fin: fin,
       pausa_activa: pausaActiva,
       horario_pausa_inicio: pausaActiva ? pausaInicio : null,
       horario_pausa_fin: pausaActiva ? pausaFin : null,
-      buffer_minutos: buffer, duracion_defecto: durDef,
+      buffer_minutos: buffer,
+      duracion_defecto: durDef,
       dias_excepciones: excepciones,
-    }).eq('id', empresa.id);
+    };
+
+    const { error: e } = await supabase.from('empresas').update(payload).eq('id', empresa.id);
     setLoading(false);
-    if (e) { setError('Error al guardar'); return; }
-    onSaved({ horario_inicio: inicio, horario_fin: fin });
+    if (e) { setError('Error al guardar: ' + e.message); return; }
+
+    // FIX 2: devolver TODOS los campos del payload para que el padre
+    // actualice empresa completo y el useEffect repopule correctamente
+    onSaved(payload);
   }
 
   function addExcepcion() {
@@ -644,7 +631,7 @@ function TabHorario({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
       <div style={{ display:'flex', flexDirection:'column' as const, gap:6 }}>
         <p style={{ fontSize:11, fontWeight:700, color: C.textDim, letterSpacing:1, textTransform:'uppercase' as const, marginBottom:7 }}>Duración por defecto</p>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' as const, alignItems:'center' }}>
-          <button onClick={() => setDurDef(null as any)}
+          <button onClick={() => setDurDef(null)}
             style={{ padding:'8px 12px', borderRadius:9, border:`1px solid ${durDef == null ? C.green+'66' : C.border}`, cursor:'pointer', fontSize:12, fontWeight:600, background: durDef == null ? 'rgba(34,197,94,0.08)' : 'transparent', color: durDef == null ? C.green : C.textDim }}>
             Sin definir
           </button>
@@ -758,7 +745,7 @@ function TabDias({ empresa, onSaved }: { empresa: any; onSaved: (data: any) => v
 }
 
 // ══════════════════════════════════════════════════════
-// TAB: EMPLEADOS (solo admin)
+// TAB: EMPLEADOS
 // ══════════════════════════════════════════════════════
 function TabEmpleados({ empresa, profesionalActual }: { empresa: any; profesionalActual: any }) {
   const [empleados, setEmpleados] = useState<any[]>([]);
@@ -1123,11 +1110,13 @@ export default function ConfiguracionSection({
 
   function handleSaved(tab: string, data: any) {
     if (tab === 'miperfil') {
-  setProfesionalActual((prev: any) => ({ ...prev, ...data }));
-  onProfesionalUpdated?.(data);
-  showToast('Perfil actualizado');
-  return;
-}
+      setProfesionalActual((prev: any) => ({ ...prev, ...data }));
+      onProfesionalUpdated?.(data);
+      showToast('Perfil actualizado');
+      return;
+    }
+    // FIX: merge completo para que todos los campos queden en empresa
+    // y los useEffect de los tabs puedan leerlos correctamente
     const merged = { ...empresa, ...data };
     setEmpresa(merged);
     onEmpresaUpdated?.(merged);
