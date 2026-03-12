@@ -18,12 +18,12 @@ const C = {
 };
 
 const ADMIN_TABS = [
-  { id: 'empresa',   label: 'Empresa',        icon: Building2 },
+  { id: 'miperfil',  label: 'Mi perfil',       icon: User      },
+  { id: 'empresa',   label: 'Empresa',         icon: Building2 },
   { id: 'horario',   label: 'Horario',         icon: Clock     },
   { id: 'dias',      label: 'Días laborables', icon: Calendar  },
   { id: 'empleados', label: 'Empleados',       icon: Users     },
 ];
-
 const EMPLOYEE_TABS = [
   { id: 'miperfil',  label: 'Mi perfil',      icon: User      },
 ];
