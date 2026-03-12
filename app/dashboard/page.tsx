@@ -1203,7 +1203,9 @@ export default function Dashboard() {
         onNavigate={setActiveSection}
         activeSection={activeSection}
         adminPin={adminPin}
-        onCambiarPerfil={handleCambiarPerfil}
+onCambiarPerfil={handleCambiarPerfil}
+profesionalFoto={profesional?.foto_url || ''}
+profesionalColor={profesional?.color || ''}
       />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }} className="main-content-desktop">
@@ -1292,28 +1294,6 @@ export default function Dashboard() {
 
             <div style={{ flex: 1 }} />
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ textAlign: 'right' }} className="hidden-mobile">
-                <p style={{ fontSize: 12, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>{profesional?.nombre || empresa?.nombre || ''}</p>
-                {activeSection === 'agenda' && (() => {
-                  const absStatus = activeAbsenceStatus();
-                  if (!absStatus) return <p style={{ fontSize: 10, color: C.textSec, lineHeight: 1.2 }}>{isAdmin ? 'Admin' : 'Empleado'}</p>;
-                  return (
-                    <p style={{ fontSize: 10, color: '#F59E0B', lineHeight: 1.2, fontWeight: 600 }}>
-                      {absStatus.icon} {absStatus.label} · {absStatus.range}
-                    </p>
-                  );
-                })()}
-                {activeSection !== 'agenda' && (
-                  <p style={{ fontSize: 10, color: C.textSec, lineHeight: 1.2 }}>{isAdmin ? 'Admin' : 'Empleado'}</p>
-                )}
-              </div>
-              <div className="hidden-mobile" style={{ width: 30, height: 30, borderRadius: 8, background: profesional?.foto_url ? 'transparent' : (profesional?.color || C.green), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff', overflow: 'hidden' }}>
-  {profesional?.foto_url
-    ? <img src={profesional.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
-    : profesional?.nombre?.[0]?.toUpperCase() || empresa?.nombre?.[0]?.toUpperCase() || '?'
-  }
-</div>
             </div>
           </div>
 
