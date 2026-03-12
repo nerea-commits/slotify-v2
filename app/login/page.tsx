@@ -201,14 +201,8 @@ export default function LoginPage() {
       {step === 'profiles' && (
   <div className="w-full max-w-sm space-y-6">
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-      {(empresa as any)?.logo_url ? (
-        <div style={{ width: 72, height: 72, borderRadius: 18, overflow: 'hidden', background: '#1F2937', flexShrink: 0 }}>
-          <img src={(empresa as any).logo_url} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
-        </div>
-      ) : (
-        <div style={{ width: 72, height: 72, borderRadius: 18, background: '#1F2937', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 800, color: '#6B7280' }}>
-          {empresa?.nombre?.[0]?.toUpperCase() || '?'}
-        </div>
+      {(empresa as any)?.logo_url && (
+        <img src={(empresa as any).logo_url} alt="logo" style={{ width: 110, height: 110, objectFit: 'contain' }}/>
       )}
       <h1 className="text-xl font-bold text-center">{empresa?.nombre || 'Slotify'}</h1>
     </div>
@@ -227,7 +221,7 @@ export default function LoginPage() {
       border: '2px solid rgba(255,255,255,0.06)',
     }}>
       {(p as any).foto_url
-        ? <img src={(p as any).foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+        ? <img src={(p as any).foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}/>
         : p.nombre?.[0]?.toUpperCase() || '?'
       }
     </div>
