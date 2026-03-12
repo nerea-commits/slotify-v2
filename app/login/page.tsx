@@ -205,15 +205,35 @@ export default function LoginPage() {
           <div className="space-y-3">
             {profesionales.map(p => (
               <button key={p.id} onClick={() => handleSelectProfile(p)}
-                className="w-full flex items-center justify-between bg-gray-800 hover:bg-gray-700 rounded-xl px-4 py-4 transition-all">
-                <div className="flex items-center gap-3">
-                  {p.rol === 'admin' ? <Shield className="w-5 h-5 text-yellow-400" /> : <div className="w-5 h-5" />}
-                  <span className="font-medium">{p.nombre}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {(p.rol === 'admin' || p.pin) && <Lock className="w-4 h-4 text-gray-500" />}
-                  <ChevronRight className="w-4 h-4 text-gray-500" />
-                </div>
+  className="w-full flex items-center justify-between bg-gray-800 hover:bg-gray-700 rounded-xl px-4 py-4 transition-all">
+  <div className="flex items-center gap-3">
+    <div style={{
+      width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+      background: (p as any).foto_url ? 'transparent' : ((p as any).color || '#22C55E'),
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: 15, fontWeight: 800, color: '#fff',
+      overflow: 'hidden',
+    }}>
+      {(p as any).foto_url
+        ? <img src={(p as any).foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+        : p.nombre?.[0]?.toUpperCase() || '?'
+      }
+    </div>
+    <div style={{ textAlign: 'left' }}>
+      <span className="font-medium">{p.nombre}</span>
+      {p.rol === 'admin' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+          <Shield className="w-3 h-3" style={{ color: '#FBBF24' }}/>
+          <span style={{ fontSize: 11, color: '#FBBF24', fontWeight: 600 }}>Admin</span>
+        </div>
+      )}
+    </div>
+  </div>
+  <div className="flex items-center gap-2">
+    {(p.rol === 'admin' || p.pin) && <Lock className="w-4 h-4 text-gray-500" />}
+    <ChevronRight className="w-4 h-4 text-gray-500" />
+  </div>
+</button>
               </button>
             ))}
           </div>
