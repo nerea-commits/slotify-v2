@@ -94,7 +94,6 @@ export default function Dashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminPin, setAdminPin] = useState<string | null>(null);
 
-  // ── NUEVO: hover de columna ──
   const [hoveredColIdx, setHoveredColIdx] = useState<number | null>(null);
 
   function handleCambiarPerfil() {
@@ -189,14 +188,14 @@ export default function Dashboard() {
         .maybeSingle();
 
       if (emp) {
-  setEmpresa(emp);
-  empresaIdRef.current = emp.id;
+        setEmpresa(emp);
+        empresaIdRef.current = emp.id;
 
-  const rolLS = (localStorage.getItem('slotify_rol') || '').toLowerCase();
-  const pidCheck = localStorage.getItem('slotify_profesional_id');
-  const isAdm = !pidCheck || rolLS === 'admin' || rolLS === 'owner';
-  setIsAdmin(isAdm);
-  isAdminRef.current = isAdm;
+        const rolLS = (localStorage.getItem('slotify_rol') || '').toLowerCase();
+        const pidCheck = localStorage.getItem('slotify_profesional_id');
+        const isAdm = !pidCheck || rolLS === 'admin' || rolLS === 'owner';
+        setIsAdmin(isAdm);
+        isAdminRef.current = isAdm;
 
         supabase.from('estados_cita').select('*').eq('empresa_id', emp.id).eq('activo', true).order('orden')
           .then(({ data }) => { if (data) setEstadosCita(data); });
@@ -879,7 +878,6 @@ export default function Dashboard() {
     window.open(`https://wa.me/${num}`, '_blank');
   }
 
-  // ── Tooltip flotante de acciones rápidas (fuera del bloque de cita) ──
   const [quickActionsPos, setQuickActionsPos] = useState<{ top: number; left: number } | null>(null);
 
   function handleCitaMouseEnter(e: React.MouseEvent, citaId: string) {
@@ -1160,7 +1158,6 @@ export default function Dashboard() {
   const WEEK_SLOT_H = 44;
   const DAY_SLOT_H = 40;
 
-  // ── Helper: calcula background de celda con hover sutil ──
   function colBg(baseBg: string, colIdx: number): string {
     if (isMobile || hoveredColIdx !== colIdx) return baseBg;
     return `color-mix(in srgb, ${baseBg} 94%, white 6%)`;
@@ -1203,14 +1200,16 @@ export default function Dashboard() {
         onNavigate={setActiveSection}
         activeSection={activeSection}
         adminPin={adminPin}
-onCambiarPerfil={handleCambiarPerfil}
-profesionalFoto={profesional?.foto_url || ''}
-profesionalColor={profesional?.color || ''}
+        onCambiarPerfil={handleCambiarPerfil}
+        profesionalFoto={profesional?.foto_url || ''}
+        profesionalColor={profesional?.color || ''}
       />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }} className="main-content-desktop">
+
         {/* ── HEADER ── */}
         <div style={{ background: C.surface, borderBottom: `1px solid ${C.surfaceAlt}`, flexShrink: 0 }}>
+          {/* Fila principal */}
           <div style={{ height: 52, display: 'flex', alignItems: 'center', padding: '0 14px', gap: 8 }}>
             <div className="show-mobile-flex" style={{ alignItems: 'center', gap: 8, marginRight: 4, flexShrink: 0 }}>
               {empresa?.logo_url ? (
@@ -1293,21 +1292,10 @@ profesionalColor={profesional?.color || ''}
             )}
 
             <div style={{ flex: 1 }} />
-
           </div>
-        </div>
 
-        {activeSection === 'agenda' && (
-```
-
-El problema es que al eliminar el bloque del perfil te quedaron **dos `</div>` extras**. La estructura correcta del header es:
-```
-<div style={{ background: C.surface ... }}>   ← outer (borde)
-  <div style={{ height: 52 ... }}>            ← inner row
-    ... botones de vista, fecha, filtros ...
-    <div style={{ flex: 1 }} />
-  </div>                                       ← cierra inner
-</div>                                         ← cierra outer
+          {/* Barra móvil de navegación de fecha */}
+          {activeSection === 'agenda' && (
             <div className="show-mobile-only" style={{ height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, borderTop: `1px solid ${C.surfaceAlt}`, padding: '0 8px' }}>
               <button onClick={() => view === 'day' ? changeDay(-1) : view === 'week' ? changeWeek(-1) : changeMonth(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textSec, padding: 6, borderRadius: 6, display: 'flex' }}>
                 <ChevronLeft className="w-4 h-4" />
@@ -1332,6 +1320,7 @@ El problema es que al eliminar el bloque del perfil te quedaron **dos `</div>` e
             </div>
           )}
         </div>
+        {/* ── FIN HEADER ── */}
 
         {activeSection !== 'agenda' && (
           <div className="flex-1 overflow-y-auto" style={{ background: C.bg, paddingBottom: 80 }}>
