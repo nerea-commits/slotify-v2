@@ -199,9 +199,20 @@ export default function LoginPage() {
 
       {/* PASO 2: Selector de perfiles */}
       {step === 'profiles' && (
-        <div className="w-full max-w-sm space-y-6">
-          <h1 className="text-xl font-bold text-center">{empresa?.nombre || 'Slotify'}</h1>
-          <p className="text-gray-400 text-sm text-center">¿Quién eres?</p>
+  <div className="w-full max-w-sm space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+      {(empresa as any)?.logo_url ? (
+        <div style={{ width: 72, height: 72, borderRadius: 18, overflow: 'hidden', background: '#1F2937', flexShrink: 0 }}>
+          <img src={(empresa as any).logo_url} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+        </div>
+      ) : (
+        <div style={{ width: 72, height: 72, borderRadius: 18, background: '#1F2937', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 800, color: '#6B7280' }}>
+          {empresa?.nombre?.[0]?.toUpperCase() || '?'}
+        </div>
+      )}
+      <h1 className="text-xl font-bold text-center">{empresa?.nombre || 'Slotify'}</h1>
+    </div>
+    <p className="text-gray-400 text-sm text-center">¿Quién eres?</p>
           <div className="space-y-3">
             {profesionales.map(p => (
               <button key={p.id} onClick={() => handleSelectProfile(p)}
@@ -209,10 +220,11 @@ export default function LoginPage() {
   <div className="flex items-center gap-3">
     <div style={{
       width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-      background: (p as any).foto_url ? 'transparent' : ((p as any).color || '#22C55E'),
+      background: (p as any).foto_url ? '#1F2937' : ((p as any).color || '#22C55E'),
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: 15, fontWeight: 800, color: '#fff',
       overflow: 'hidden',
+      border: '2px solid rgba(255,255,255,0.06)',
     }}>
       {(p as any).foto_url
         ? <img src={(p as any).foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
