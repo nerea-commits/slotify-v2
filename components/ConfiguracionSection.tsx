@@ -178,7 +178,7 @@ function TabMiPerfil({ profesional, onSaved }: { profesional: any; onSaved: (dat
     }).eq('id', profesional.id);
     setLoading(false);
     if (e) { setError('Error al guardar: ' + e.message); return; }
-    onSaved({ nombre: nombre.trim(), color });
+    onSaved({ nombre: nombre.trim(), color, foto_url: fotoUrl || null });
   }
 
   async function savePin() {
@@ -428,7 +428,19 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
                   const { data: urlData } = supabase.storage.from('logos').getPublicUrl(path);
                   setLogoUrl(urlData.publicUrl);
                   await supabase.from('empresas').update({ logo_url: urlData.publicUrl }).eq('id', empresa.id);
-                  onSaved({ nombre, color_primario: colorPrimario, logo_url: urlData.publicUrl });
+                  onSaved({
+                    nombre: nombre.trim(),
+                    color_primario: colorPrimario,
+                    logo_url: urlData.publicUrl,
+                    telefono: telefono.trim() || null,
+                    email: email.trim() || null,
+                    direccion: direccion.trim() || null,
+                    sector: sector.trim() || null,
+                    cif: cif.trim() || null,
+                    timezone,
+                    moneda,
+                    mostrar_importe: mostrarImporte,
+                  });
                 } catch (err: any) {
                   setError('Error al subir logo: ' + err.message);
                 } finally {
@@ -440,7 +452,19 @@ function TabEmpresa({ empresa, onSaved }: { empresa: any; onSaved: (data: any) =
               <button onClick={async () => {
                 setLogoUrl('');
                 await supabase.from('empresas').update({ logo_url: null }).eq('id', empresa.id);
-                onSaved({ nombre, color_primario: colorPrimario, logo_url: null });
+                onSaved({
+                  nombre: nombre.trim(),
+                  color_primario: colorPrimario,
+                  logo_url: null,
+                  telefono: telefono.trim() || null,
+                  email: email.trim() || null,
+                  direccion: direccion.trim() || null,
+                  sector: sector.trim() || null,
+                  cif: cif.trim() || null,
+                  timezone,
+                  moneda,
+                  mostrar_importe: mostrarImporte,
+                });
               }} style={{ background:'none', border:'none', cursor:'pointer', color: C.textDim, fontSize:12, textAlign:'left' as const }}>
                 Quitar logo
               </button>
