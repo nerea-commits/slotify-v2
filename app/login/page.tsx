@@ -26,7 +26,6 @@ export default function LoginPage() {
     async function checkSession() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Si viene de "Cambiar perfil", forzar selector
         const forceSelect = localStorage.getItem('slotify_select_profile');
         if (forceSelect) {
           localStorage.removeItem('slotify_select_profile');
@@ -42,7 +41,6 @@ export default function LoginPage() {
   }, []);
 
   async function loadEmpresaAndProfiles(userId: string, forceProfiles: boolean = false) {
-    // 1. Intentar como admin
     const { data: emp } = await supabase
       .from('empresas')
       .select('*')
@@ -58,27 +56,23 @@ export default function LoginPage() {
         .eq('empresa_id', emp.id);
       setProfesionales((profs || []) as Profesional[]);
 
-      // Si viene de "Cambiar perfil" → mostrar selector siempre
       if (forceProfiles) {
         setStep('profiles');
         setLoading(false);
         return;
       }
 
-      // Si ya tiene perfil guardado → ir al dashboard
       const pidLS = localStorage.getItem('slotify_profesional_id');
       if (pidLS) {
         router.push('/dashboard');
         return;
       }
 
-      // Sin perfil guardado → mostrar selector
       setStep('profiles');
       setLoading(false);
       return;
     }
 
-    // 2. Intentar como empleado
     const { data: prof } = await supabase
       .from('profesionales')
       .select('*, empresas(*)')
@@ -199,47 +193,50 @@ export default function LoginPage() {
 
       {/* PASO 2: Selector de perfiles */}
       {step === 'profiles' && (
-  <div className="w-full max-w-sm space-y-6">
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-      {(empresa as any)?.logo_url && (
-        <img src={(empresa as any).logo_url} alt="logo" style={{ width: 160, height: 160, objectFit: 'contain' }}/>
-      )}
-      <h1 className="text-xl font-bold text-center">{empresa?.nombre || 'Slotify'}</h1>
-    </div>
-    <p className="text-gray-400 text-sm text-center">¿Quién eres?</p>
+        <div className="w-full max-w-sm space-y-6">
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            {(empresa as any)?.logo_url && (
+              <img
+                src={(empresa as any).logo_url}
+                alt="logo"
+                style={{ maxWidth: '60%', maxHeight: 120, width: 'auto', height: 'auto', objectFit: 'contain' }}
+              />
+            )}
+            <h1 className="text-xl font-bold text-center">{empresa?.nombre || 'Slotify'}</h1>
+          </div>
+          <p className="text-gray-400 text-sm text-center">¿Quién eres?</p>
           <div className="space-y-3">
             {profesionales.map(p => (
               <button key={p.id} onClick={() => handleSelectProfile(p)}
-  className="w-full flex items-center justify-between bg-gray-800 hover:bg-gray-700 rounded-xl px-4 py-4 transition-all">
-  <div className="flex items-center gap-3">
-    <div style={{
-      width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-      background: (p as any).foto_url ? '#1F2937' : ((p as any).color || '#22C55E'),
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 15, fontWeight: 800, color: '#fff',
-      overflow: 'hidden',
-      border: '2px solid rgba(255,255,255,0.06)',
-    }}>
-      {(p as any).foto_url
-        ? <img src={(p as any).foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}/>
-        : p.nombre?.[0]?.toUpperCase() || '?'
-      }
-    </div>
-    <div style={{ textAlign: 'left' }}>
-      <span className="font-medium">{p.nombre}</span>
-      {p.rol === 'admin' && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-          <Shield className="w-3 h-3" style={{ color: '#FBBF24' }}/>
-          <span style={{ fontSize: 11, color: '#FBBF24', fontWeight: 600 }}>Admin</span>
-        </div>
-      )}
-    </div>
-  </div>
-  <div className="flex items-center gap-2">
-    {(p.rol === 'admin' || p.pin) && <Lock className="w-4 h-4 text-gray-500" />}
-    <ChevronRight className="w-4 h-4 text-gray-500" />
-  </div>
-</button>
+                className="w-full flex items-center justify-between bg-gray-800 hover:bg-gray-700 rounded-xl px-4 py-4 transition-all">
+                <div className="flex items-center gap-3">
+                  <div style={{
+                    width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+                    background: (p as any).foto_url ? 'transparent' : ((p as any).color || '#22C55E'),
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 15, fontWeight: 800, color: '#fff',
+                    overflow: 'hidden',
+                  }}>
+                    {(p as any).foto_url
+                      ? <img src={(p as any).foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}/>
+                      : p.nombre?.[0]?.toUpperCase() || '?'
+                    }
+                  </div>
+                  <div style={{ textAlign: 'left' }}>
+                    <span className="font-medium">{p.nombre}</span>
+                    {p.rol === 'admin' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                        <Shield className="w-3 h-3" style={{ color: '#FBBF24' }}/>
+                        <span style={{ fontSize: 11, color: '#FBBF24', fontWeight: 600 }}>Admin</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {(p.rol === 'admin' || p.pin) && <Lock className="w-4 h-4 text-gray-500" />}
+                  <ChevronRight className="w-4 h-4 text-gray-500" />
+                </div>
+              </button>
             ))}
           </div>
         </div>
