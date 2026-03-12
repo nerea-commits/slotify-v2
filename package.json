@@ -14,8 +14,9 @@
     "react-dom": "^18",
     "@supabase/supabase-js": "^2.39.0",
     "@supabase/ssr": "^0.1.0",
-    "lucide-react": "^0.312.0"
-  },
+    "lucide-react": "^0.312.0",
+"@phosphor-icons/react": "^2.1.7"
+},
   "devDependencies": {
     "typescript": "^5",
     "@types/node": "^20",
