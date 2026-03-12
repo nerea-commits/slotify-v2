@@ -3,12 +3,12 @@
 import { useState } from 'react';
 import {
   CalendarDots,
-  AddressBook,
-  Briefcase,
-  CalendarSlash,
+  UsersThree,
+  Sparkle,
+  Umbrella,
   ChartLineUp,
   BellRinging,
-  GearSix,
+  Sliders,
   SignOut,
   UserCircle,
   CaretLeft,
@@ -57,10 +57,10 @@ export default function Sidebar({
   const [pinError, setPinError] = useState('');
 
   const navItems = [
-    { id: 'agenda',     label: 'Agenda',       icon: CalendarDots  },
-    { id: 'clientes',   label: 'Clientes',     icon: AddressBook   },
-    { id: 'servicios',  label: 'Servicios',    icon: Briefcase     },
-    { id: 'ausencias',  label: 'Ausencias',    icon: CalendarSlash },
+    { id: 'agenda',     label: 'Agenda',       icon: CalendarDots },
+    { id: 'clientes',   label: 'Clientes',     icon: UsersThree   },
+    { id: 'servicios',  label: 'Servicios',    icon: Sparkle      },
+    { id: 'ausencias',  label: 'Ausencias',    icon: Umbrella     },
     ...(isAdmin || permisos.ver_estadisticas
       ? [{ id: 'estadisticas', label: 'Estadísticas', icon: ChartLineUp }]
       : []),
@@ -68,7 +68,7 @@ export default function Sidebar({
 
   const sysItems = [
     ...(isAdmin ? [{ id: 'notificaciones', label: 'Notificaciones', icon: BellRinging }] : []),
-    { id: 'configuracion', label: 'Configuración', icon: GearSix },
+    { id: 'configuracion', label: 'Configuración', icon: Sliders },
   ];
 
   function logout() {
