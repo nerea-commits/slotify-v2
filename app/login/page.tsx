@@ -202,7 +202,7 @@ export default function LoginPage() {
   <div className="w-full max-w-sm space-y-6">
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
       {(empresa as any)?.logo_url && (
-        <img src={(empresa as any).logo_url} alt="logo" style={{ width: 110, height: 110, objectFit: 'contain' }}/>
+        <img src={(empresa as any).logo_url} alt="logo" style={{ width: 160, height: 160, objectFit: 'contain' }}/>
       )}
       <h1 className="text-xl font-bold text-center">{empresa?.nombre || 'Slotify'}</h1>
     </div>
