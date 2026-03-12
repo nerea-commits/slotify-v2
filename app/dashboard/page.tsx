@@ -1297,7 +1297,17 @@ profesionalColor={profesional?.color || ''}
           </div>
         </div>
 
-          {activeSection === 'agenda' && (
+        {activeSection === 'agenda' && (
+```
+
+El problema es que al eliminar el bloque del perfil te quedaron **dos `</div>` extras**. La estructura correcta del header es:
+```
+<div style={{ background: C.surface ... }}>   ← outer (borde)
+  <div style={{ height: 52 ... }}>            ← inner row
+    ... botones de vista, fecha, filtros ...
+    <div style={{ flex: 1 }} />
+  </div>                                       ← cierra inner
+</div>                                         ← cierra outer
             <div className="show-mobile-only" style={{ height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, borderTop: `1px solid ${C.surfaceAlt}`, padding: '0 8px' }}>
               <button onClick={() => view === 'day' ? changeDay(-1) : view === 'week' ? changeWeek(-1) : changeMonth(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textSec, padding: 6, borderRadius: 6, display: 'flex' }}>
                 <ChevronLeft className="w-4 h-4" />
