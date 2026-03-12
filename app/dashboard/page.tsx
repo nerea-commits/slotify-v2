@@ -1294,8 +1294,8 @@ profesionalColor={profesional?.color || ''}
 
             <div style={{ flex: 1 }} />
 
-            </div>
           </div>
+        </div>
 
           {activeSection === 'agenda' && (
             <div className="show-mobile-only" style={{ height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, borderTop: `1px solid ${C.surfaceAlt}`, padding: '0 8px' }}>
