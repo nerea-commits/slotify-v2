@@ -234,7 +234,6 @@ export default function LoginPage() {
     <ChevronRight className="w-4 h-4 text-gray-500" />
   </div>
 </button>
-              </button>
             ))}
           </div>
         </div>
