@@ -171,29 +171,28 @@ export default function LoginPage() {
             background: 'linear-gradient(170deg,#0E1724 0%,#090D18 100%)',
             border: '1px solid rgba(201,169,110,0.22)',
             borderRadius: 28,
-            padding: '52px 44px',
+            padding: '48px 44px',
             boxShadow: '0 48px 120px rgba(0,0,0,0.75), inset 0 1px 0 rgba(201,169,110,0.06)',
           }}>
 
             {/* ── HEADER ── */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, marginBottom: 38 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 36 }}>
 
               {/* Logo */}
               {(empresa as any)?.logo_url ? (
-                <div style={{ marginBottom: 20 }}>
-                  <img
-                    src={(empresa as any).logo_url}
-                    alt={empresa?.nombre}
-                    style={{
-                      maxHeight: 96, maxWidth: 200,
-                      width: 'auto', height: 'auto',
-                      objectFit: 'contain', display: 'block',
-                      filter: 'drop-shadow(0 6px 24px rgba(0,0,0,0.7))',
-                    }}
-                  />
-                </div>
+                <img
+                  src={(empresa as any).logo_url}
+                  alt={empresa?.nombre}
+                  style={{
+                    maxHeight: 160, maxWidth: 280,
+                    width: 'auto', height: 'auto',
+                    objectFit: 'contain', display: 'block',
+                    filter: 'drop-shadow(0 6px 24px rgba(0,0,0,0.7))',
+                    marginBottom: 16,
+                  }}
+                />
               ) : (
-                <div style={{ width: 80, height: 80, borderRadius: 22, background: 'rgba(201,169,110,0.1)', border: '1px solid rgba(201,169,110,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 800, color: '#C9A96E', marginBottom: 20 }}>
+                <div style={{ width: 80, height: 80, borderRadius: 22, background: 'rgba(201,169,110,0.1)', border: '1px solid rgba(201,169,110,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 800, color: '#C9A96E', marginBottom: 16 }}>
                   {empresa?.nombre?.[0]?.toUpperCase() || 'B'}
                 </div>
               )}
@@ -201,14 +200,14 @@ export default function LoginPage() {
               {/* Nombre de marca */}
               <p style={{
                 fontSize: 20, fontWeight: 700, color: '#E2C97E',
-                margin: '0 0 10px', letterSpacing: 0.2,
+                margin: '0 0 8px', letterSpacing: 0.2,
                 textShadow: '0 2px 12px rgba(201,169,110,0.2)',
               }}>
                 {empresa?.nombre || 'Tu negocio'}
               </p>
 
               {/* Título acción */}
-              <h1 style={{ fontSize: 26, fontWeight: 700, color: '#F1F5F9', margin: '0 0 7px', letterSpacing: -0.4, textAlign: 'center' as const }}>
+              <h1 style={{ fontSize: 26, fontWeight: 700, color: '#F1F5F9', margin: '0 0 6px', letterSpacing: -0.4, textAlign: 'center' as const }}>
                 Selecciona tu perfil
               </h1>
 
@@ -219,7 +218,7 @@ export default function LoginPage() {
             </div>
 
             {/* Divisor */}
-            <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,rgba(201,169,110,0.18),transparent)', marginBottom: 30 }} />
+            <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,rgba(201,169,110,0.18),transparent)', marginBottom: 28 }} />
 
             {/* ── CARDS ── */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
