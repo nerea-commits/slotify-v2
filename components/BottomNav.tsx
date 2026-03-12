@@ -1,7 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar, Users, BarChart3, MoreHorizontal, Scissors, Bell, Settings, X, LogOut, UserCircle, Palmtree } from 'lucide-react';
+import {
+  CalendarDots,
+  AddressBook,
+  ChartLineUp,
+  DotsThreeOutline,
+  Briefcase,
+  CalendarSlash,
+  BellRinging,
+  GearSix,
+  X,
+  SignOut,
+} from '@phosphor-icons/react';
 import { supabase } from '@/lib/supabase';
 
 interface BottomNavProps {
@@ -15,20 +26,16 @@ export default function BottomNav({ activeSection, onNavigate, isAdmin, permisos
   const [masOpen, setMasOpen] = useState(false);
 
   const masItems = [
-    // Servicios: siempre visible
-    { id: 'servicios',      label: 'Servicios',      icon: Scissors  },
-    // Ausencias: solo admin
+    { id: 'servicios',      label: 'Servicios',      icon: Briefcase     },
     ...(isAdmin ? [
-      { id: 'ausencias',      label: 'Ausencias',      icon: Palmtree  },
-    ] : []),
-    // Notificaciones y configuración: solo admin
-    ...(isAdmin ? [
-      { id: 'notificaciones', label: 'Notificaciones', icon: Bell      },
-      { id: 'configuracion',  label: 'Configuración',  icon: Settings  },
+      { id: 'ausencias',      label: 'Ausencias',      icon: CalendarSlash },
+      { id: 'notificaciones', label: 'Notificaciones', icon: BellRinging   },
+      { id: 'configuracion',  label: 'Configuración',  icon: GearSix       },
     ] : []),
   ];
 
   const isMasSection = masItems.some(i => i.id === activeSection);
+  const showEstadisticas = isAdmin || !!permisos.ver_estadisticas;
 
   function logout() {
     supabase.auth.signOut().then(() => {
@@ -39,15 +46,14 @@ export default function BottomNav({ activeSection, onNavigate, isAdmin, permisos
     });
   }
 
-  // Estadísticas: solo si admin o tiene permiso ver_estadisticas
-  const showEstadisticas = isAdmin || !!permisos.ver_estadisticas;
-
   const PRIMARY = [
-    { id: 'agenda',       label: 'Agenda',    icon: Calendar  },
-    { id: 'clientes',     label: 'Clientes',  icon: Users     },
-    ...(showEstadisticas ? [{ id: 'estadisticas', label: 'Stats', icon: BarChart3 }] : []),
-    { id: 'mas',          label: 'Más',       icon: MoreHorizontal },
+    { id: 'agenda',   label: 'Agenda',   icon: CalendarDots },
+    { id: 'clientes', label: 'Clientes', icon: AddressBook  },
+    ...(showEstadisticas ? [{ id: 'estadisticas', label: 'Stats', icon: ChartLineUp }] : []),
+    { id: 'mas',      label: 'Más',      icon: DotsThreeOutline },
   ];
+
+  const ACCENT = '#22C55E';
 
   return (
     <>
@@ -82,7 +88,7 @@ export default function BottomNav({ activeSection, onNavigate, isAdmin, permisos
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 20px 12px' }}>
           <p style={{ fontSize: 12, fontWeight: 700, color: '#475569', letterSpacing: 1, textTransform: 'uppercase' }}>Más opciones</p>
           <button onClick={() => setMasOpen(false)} style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', padding: 4 }}>
-            <X size={16} />
+            <X size={16} weight="bold" />
           </button>
         </div>
 
@@ -94,11 +100,12 @@ export default function BottomNav({ activeSection, onNavigate, isAdmin, permisos
               style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: 14,
                 padding: '13px 20px', border: 'none', cursor: 'pointer',
-                background: active ? 'rgba(34,197,94,0.08)' : 'transparent',
-                borderLeft: active ? '3px solid #22C55E' : '3px solid transparent',
-                color: active ? '#22C55E' : '#94A3B8', fontSize: 15, fontWeight: active ? 600 : 400,
+                background: active ? `${ACCENT}12` : 'transparent',
+                borderLeft: active ? `3px solid ${ACCENT}` : '3px solid transparent',
+                color: active ? ACCENT : '#94A3B8',
+                fontSize: 15, fontWeight: active ? 600 : 400,
               }}>
-              <Icon size={19} style={{ color: active ? '#22C55E' : '#64748B' }} />
+              <Icon size={20} weight={active ? 'fill' : 'regular'} style={{ color: active ? ACCENT : '#64748B' }} />
               {item.label}
             </button>
           );
@@ -108,7 +115,7 @@ export default function BottomNav({ activeSection, onNavigate, isAdmin, permisos
 
         <button onClick={logout}
           style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 14, padding: '13px 20px', border: 'none', cursor: 'pointer', background: 'transparent', color: '#EF4444', fontSize: 15, fontWeight: 400, borderLeft: '3px solid transparent' }}>
-          <LogOut size={19} />
+          <SignOut size={20} weight="regular" style={{ color: '#EF4444' }} />
           Cerrar sesión
         </button>
       </div>
@@ -132,11 +139,11 @@ export default function BottomNav({ activeSection, onNavigate, isAdmin, permisos
               style={{
                 flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 gap: 4, border: 'none', cursor: 'pointer', background: 'transparent',
-                color: active ? '#22C55E' : '#475569',
-                borderTop: active ? '2px solid #22C55E' : '2px solid transparent',
+                color: active ? ACCENT : '#475569',
+                borderTop: active ? `2px solid ${ACCENT}` : '2px solid transparent',
                 transition: 'all 0.12s',
               }}>
-              <Icon size={21} style={{ color: active ? '#22C55E' : '#475569', strokeWidth: active ? 2.5 : 1.8 }} />
+              <Icon size={22} weight={active ? 'fill' : 'regular'} style={{ color: active ? ACCENT : '#475569' }} />
               <span style={{ fontSize: 10, fontWeight: active ? 700 : 500, letterSpacing: 0.2 }}>{item.label}</span>
             </button>
           );
