@@ -98,6 +98,10 @@ export default function Dashboard() {
 
   // ── BADGES HEADER ──
   const [notifsNoLeidas, setNotifsNoLeidas] = useState(0);
+  const [notifPanelOpen, setNotifPanelOpen] = useState(false);
+  const [notifsHoy, setNotifsHoy] = useState<any[]>([]);
+  const [notifsHoyLoading, setNotifsHoyLoading] = useState(false);
+  const notifBtnRef = useRef<HTMLButtonElement>(null);
 
   // Calculados desde allCitas (citas de hoy, excluyendo canceladas y completadas)
   const citasHoy = allCitas.filter(c => {
@@ -338,6 +342,46 @@ export default function Dashboard() {
     });
     setClientRiskCache(riskMap);
   }
+
+  async function loadNotifsHoy() {
+    const eid = empresaIdRef.current;
+    if (!eid) return;
+    setNotifsHoyLoading(true);
+    const hoy = toDS(new Date());
+    const { data } = await supabase
+      .from('notificaciones')
+      .select('*, clientes(nombre)')
+      .eq('empresa_id', eid)
+      .gte('created_at', `${hoy}T00:00:00`)
+      .lte('created_at', `${hoy}T23:59:59`)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    setNotifsHoy(data || []);
+    setNotifsHoyLoading(false);
+  }
+
+  async function marcarTodasLeidasHeader() {
+    const eid = empresaIdRef.current;
+    if (!eid) return;
+    await supabase.from('notificaciones').update({ leida: true })
+      .eq('empresa_id', eid).eq('leida', false);
+    setNotifsNoLeidas(0);
+    setNotifsHoy(prev => prev.map(n => ({ ...n, leida: true })));
+  }
+
+  useEffect(() => {
+    if (!notifPanelOpen) return;
+    loadNotifsHoy();
+    function handleClickOutside(e: MouseEvent) {
+      const btn = notifBtnRef.current;
+      const panel = document.getElementById('notif-panel');
+      if (btn && !btn.contains(e.target as Node) && panel && !panel.contains(e.target as Node)) {
+        setNotifPanelOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [notifPanelOpen]);
 
   async function loadAllCitas() {
     const eid = empresaIdRef.current;
@@ -1352,31 +1396,163 @@ export default function Dashboard() {
               {/* Separador */}
               <div style={{ width: 1, height: 18, background: 'rgba(148,163,184,0.15)', margin: '0 2px' }} />
               {/* Notificaciones */}
-              <button
-                onClick={() => setActiveSection('notificaciones')}
-                title="Notificaciones sin leer"
-                style={{
-                  position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer',
-                  background: activeSection === 'notificaciones' ? 'rgba(34,197,94,0.15)' : 'transparent',
-                  color: activeSection === 'notificaciones' ? '#22C55E' : '#94A3B8',
-                  transition: 'all 0.12s',
-                  fontSize: 16,
-                }}>
-                🔔
-                {notifsNoLeidas > 0 && (
-                  <span style={{
-                    position: 'absolute', top: 2, right: 2,
-                    width: 15, height: 15, borderRadius: '50%',
-                    background: '#EF4444', color: '#fff',
-                    fontSize: 9, fontWeight: 800,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    border: `2px solid ${C.surface}`,
+              <div style={{ position: 'relative' }}>
+                <button
+                  ref={notifBtnRef}
+                  onClick={() => setNotifPanelOpen(o => !o)}
+                  title="Notificaciones de hoy"
+                  style={{
+                    position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer',
+                    background: notifPanelOpen ? 'rgba(34,197,94,0.15)' : 'transparent',
+                    color: notifPanelOpen ? '#22C55E' : '#94A3B8',
+                    transition: 'all 0.12s', fontSize: 16,
                   }}>
-                    {notifsNoLeidas > 9 ? '9+' : notifsNoLeidas}
-                  </span>
+                  🔔
+                  {notifsNoLeidas > 0 && (
+                    <span style={{
+                      position: 'absolute', top: 2, right: 2,
+                      width: 15, height: 15, borderRadius: '50%',
+                      background: '#EF4444', color: '#fff',
+                      fontSize: 9, fontWeight: 800,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      border: `2px solid ${C.surface}`,
+                    }}>
+                      {notifsNoLeidas > 9 ? '9+' : notifsNoLeidas}
+                    </span>
+                  )}
+                </button>
+
+                {/* ── PANEL DESPLEGABLE ── */}
+                {notifPanelOpen && (
+                  <div
+                    id="notif-panel"
+                    style={{
+                      position: 'absolute', top: 40, right: 0,
+                      width: 320, maxHeight: 480,
+                      background: C.surface,
+                      border: '1px solid rgba(148,163,184,0.12)',
+                      borderRadius: 14,
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                      zIndex: 200,
+                      display: 'flex', flexDirection: 'column',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {/* Cabecera panel */}
+                    <div style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      borderBottom: '1px solid rgba(148,163,184,0.08)',
+                      flexShrink: 0,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Hoy</span>
+                        {notifsNoLeidas > 0 && (
+                          <span style={{
+                            background: '#EF4444', color: '#fff',
+                            fontSize: 10, fontWeight: 800,
+                            padding: '1px 6px', borderRadius: 20,
+                          }}>{notifsNoLeidas}</span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {notifsNoLeidas > 0 && (
+                          <button
+                            onClick={marcarTodasLeidasHeader}
+                            style={{
+                              fontSize: 11, fontWeight: 600, color: '#22C55E',
+                              background: 'rgba(34,197,94,0.1)', border: 'none',
+                              borderRadius: 6, padding: '4px 8px', cursor: 'pointer',
+                              whiteSpace: 'nowrap' as const,
+                            }}>
+                            ✓ Leer todas
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setNotifPanelOpen(false)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: 16, padding: 2, display: 'flex' }}>
+                          ×
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Lista */}
+                    <div style={{ overflowY: 'auto', flex: 1 }}>
+                      {notifsHoyLoading ? (
+                        <div style={{ padding: 32, textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>Cargando…</div>
+                      ) : notifsHoy.length === 0 ? (
+                        <div style={{ padding: 32, textAlign: 'center' }}>
+                          <div style={{ fontSize: 24, marginBottom: 8 }}>🔔</div>
+                          <p style={{ color: '#94A3B8', fontSize: 13, margin: 0 }}>Sin notificaciones hoy</p>
+                        </div>
+                      ) : (
+                        notifsHoy.map((n, i) => {
+                          const conf = (n.estado || '').toLowerCase();
+                          const cfgMap: Record<string, { emoji: string; color: string }> = {
+                            aceptado:      { emoji: '✅', color: '#22C55E' },
+                            pendiente:     { emoji: '📌', color: '#F59E0B' },
+                            sin_respuesta: { emoji: '📌', color: '#F59E0B' },
+                            no_confirmada: { emoji: '🚨', color: '#EF4444' },
+                            cancelado:     { emoji: '❌', color: '#EF4444' },
+                            enviado:       { emoji: '📤', color: '#3B82F6' },
+                          };
+                          const cfg = cfgMap[conf] || { emoji: '🔔', color: '#94A3B8' };
+                          const hora = n.created_at
+                            ? new Date(n.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+                            : '';
+                          return (
+                            <div key={n.id} style={{
+                              display: 'flex', alignItems: 'center', gap: 10,
+                              padding: '10px 16px',
+                              borderBottom: i < notifsHoy.length - 1 ? '1px solid rgba(148,163,184,0.06)' : 'none',
+                              background: n.leida ? 'transparent' : 'rgba(34,197,94,0.03)',
+                            }}>
+                              <span style={{ fontSize: 18, flexShrink: 0 }}>{cfg.emoji}</span>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <p style={{
+                                  fontSize: 13, fontWeight: n.leida ? 400 : 700,
+                                  color: C.text, margin: 0,
+                                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const,
+                                }}>
+                                  {n.clientes?.nombre || 'Cliente'}
+                                </p>
+                                <p style={{ fontSize: 11, color: cfg.color, margin: '1px 0 0', fontWeight: 600 }}>
+                                  {conf === 'aceptado' ? 'Confirmada' :
+                                   conf === 'cancelado' ? 'Cancelada' :
+                                   conf === 'sin_respuesta' ? 'Sin respuesta' :
+                                   conf === 'no_confirmada' ? 'No confirmada' :
+                                   conf === 'enviado' ? 'Enviado' : conf}
+                                </p>
+                              </div>
+                              <span style={{ fontSize: 11, color: '#64748B', flexShrink: 0 }}>{hora}</span>
+                              {!n.leida && (
+                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E', flexShrink: 0 }} />
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {/* Footer */}
+                    <div style={{
+                      padding: '10px 16px',
+                      borderTop: '1px solid rgba(148,163,184,0.08)',
+                      flexShrink: 0, textAlign: 'center',
+                    }}>
+                      <button
+                        onClick={() => { setActiveSection('notificaciones'); setNotifPanelOpen(false); }}
+                        style={{
+                          fontSize: 12, fontWeight: 600, color: '#22C55E',
+                          background: 'none', border: 'none', cursor: 'pointer',
+                        }}>
+                        Ver historial completo →
+                      </button>
+                    </div>
+                  </div>
                 )}
-              </button>
+              </div>
             </div>
           </div>
 
