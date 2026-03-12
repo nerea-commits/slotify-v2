@@ -1095,7 +1095,7 @@ export default function ConfiguracionSection({
   isAdmin?: boolean;
   onEmpresaUpdated?: (data: any) => void;
   onProfesionalUpdated?: (data: any) => void;
-})
+}) {
   const tabs = isAdmin ? ADMIN_TABS : EMPLOYEE_TABS;
   const [activeTab, setActiveTab] = useState(tabs[0].id);
   const [empresa, setEmpresa] = useState<any>(empresaProp);
