@@ -96,6 +96,20 @@ export default function Dashboard() {
 
   const [hoveredColIdx, setHoveredColIdx] = useState<number | null>(null);
 
+  // ── BADGES HEADER ──
+  const [notifsNoLeidas, setNotifsNoLeidas] = useState(0);
+
+  // Calculados desde allCitas (citas de hoy, excluyendo canceladas y completadas)
+  const citasHoy = allCitas.filter(c => {
+    const ds = (c.hora_inicio || '').substring(0, 10);
+    const hoy = toDS(new Date());
+    const estado = (c.estado || '').toLowerCase();
+    return ds === hoy && estado !== 'cancelada' && estado !== 'completada';
+  });
+  const badgeConfirmadas = citasHoy.filter(c => (c.confirmacion_estado || '').toLowerCase() === 'confirmada').length;
+  const badgePendientes  = citasHoy.filter(c => (c.confirmacion_estado || '').toLowerCase() === 'pendiente' || !c.confirmacion_estado).length;
+  const badgeRiesgo      = citasHoy.filter(c => (c.confirmacion_estado || '').toLowerCase() === 'no_confirmada').length;
+
   function handleCambiarPerfil() {
     localStorage.removeItem('slotify_profesional_id');
     localStorage.removeItem('slotify_rol');
@@ -367,6 +381,13 @@ export default function Dashboard() {
     setAbsences(absData || []);
 
     await autoCompletarCitasPasadas(eid, admin ? null : pid);
+
+    // Badge notificaciones no leídas
+    supabase.from('notificaciones')
+      .select('id', { count: 'exact', head: true })
+      .eq('empresa_id', eid)
+      .eq('leida', false)
+      .then(({ count }) => setNotifsNoLeidas(count || 0));
   }
 
   async function autoCompletarCitasPasadas(eid: string, pid: string | null) {
@@ -1292,6 +1313,71 @@ export default function Dashboard() {
             )}
 
             <div style={{ flex: 1 }} />
+
+            {/* ── BADGES derecha del header ── */}
+            <div className="hidden-mobile" style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              {/* Confirmadas */}
+              {badgeConfirmadas > 0 && (
+                <div title="Confirmadas hoy" style={{
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)',
+                  borderRadius: 20, padding: '3px 9px', cursor: 'default',
+                }}>
+                  <span style={{ fontSize: 12 }}>✅</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#22C55E' }}>{badgeConfirmadas}</span>
+                </div>
+              )}
+              {/* Pendientes */}
+              {badgePendientes > 0 && (
+                <div title="Pendientes de confirmar hoy" style={{
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)',
+                  borderRadius: 20, padding: '3px 9px', cursor: 'default',
+                }}>
+                  <span style={{ fontSize: 12 }}>📌</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#F59E0B' }}>{badgePendientes}</span>
+                </div>
+              )}
+              {/* En riesgo */}
+              {badgeRiesgo > 0 && (
+                <div title="No confirmadas — riesgo de no-show" style={{
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)',
+                  borderRadius: 20, padding: '3px 9px', cursor: 'default',
+                }}>
+                  <span style={{ fontSize: 12 }}>🚨</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#EF4444' }}>{badgeRiesgo}</span>
+                </div>
+              )}
+              {/* Separador */}
+              <div style={{ width: 1, height: 18, background: 'rgba(148,163,184,0.15)', margin: '0 2px' }} />
+              {/* Notificaciones */}
+              <button
+                onClick={() => setActiveSection('notificaciones')}
+                title="Notificaciones sin leer"
+                style={{
+                  position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer',
+                  background: activeSection === 'notificaciones' ? 'rgba(34,197,94,0.15)' : 'transparent',
+                  color: activeSection === 'notificaciones' ? '#22C55E' : '#94A3B8',
+                  transition: 'all 0.12s',
+                  fontSize: 16,
+                }}>
+                🔔
+                {notifsNoLeidas > 0 && (
+                  <span style={{
+                    position: 'absolute', top: 2, right: 2,
+                    width: 15, height: 15, borderRadius: '50%',
+                    background: '#EF4444', color: '#fff',
+                    fontSize: 9, fontWeight: 800,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: `2px solid ${C.surface}`,
+                  }}>
+                    {notifsNoLeidas > 9 ? '9+' : notifsNoLeidas}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Barra móvil de navegación de fecha */}
