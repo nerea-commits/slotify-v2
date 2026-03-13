@@ -500,16 +500,12 @@ export default function LoginPage() {
                   gap: 10, marginBottom: 18,
                 }}>
                   {(empresa as any)?.logo_url ? (
-                    /* Logo directo, sin marco que lo apague.
-                       Altura fija real de 80px, ancho libre hasta 240px.
-                       El contenedor solo añade el drop-shadow, nada más. */
                     <img
                       src={(empresa as any).logo_url}
                       alt={empresa?.nombre}
                       style={{
-                        height: 80,
-                        maxWidth: 240,
-                        width: 'auto',
+                        width: 160,
+                        height: 160,
                         display: 'block',
                         objectFit: 'contain',
                         filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.55)) drop-shadow(0 1px 3px rgba(0,0,0,0.4))',
