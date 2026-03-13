@@ -277,7 +277,7 @@ export default function Sidebar({
             borderTop: '1px solid rgba(148,163,184,0.07)',
             flexShrink: 0,
             background: '#0B1120',
-            padding: collapsed ? '12px 0 8px' : '14px 12px 8px',
+            padding: collapsed ? '10px 0 6px' : '10px 10px 6px',
           }}
         >
           {/* Perfil del usuario — expandido */}
@@ -286,31 +286,28 @@ export default function Sidebar({
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 10,
-                marginBottom: 10,
-                padding: '6px 4px',
-                borderRadius: 10,
-                background: 'rgba(148,163,184,0.04)',
-                opacity: collapsed ? 0 : 1,
-                transition: 'opacity 0.2s ease',
+                gap: 8,
+                marginBottom: 6,
+                padding: '4px 2px',
+                opacity: 1,
               }}
             >
               {/* Avatar */}
               <div
                 style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 9,
+                  width: 28,
+                  height: 28,
+                  borderRadius: 8,
                   background: profesionalFoto ? 'transparent' : avatarBg,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: 13,
+                  fontSize: 11,
                   fontWeight: 800,
                   color: '#fff',
                   overflow: 'hidden',
                   flexShrink: 0,
-                  boxShadow: `0 0 0 2px ${accent}33`,
+                  boxShadow: `0 0 0 1.5px ${accent}44`,
                 }}
               >
                 {profesionalFoto ? (
@@ -329,9 +326,9 @@ export default function Sidebar({
               <div style={{ minWidth: 0, flex: 1 }}>
                 <p
                   style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: '#F1F5F9',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: '#CBD5E1',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
@@ -342,11 +339,12 @@ export default function Sidebar({
                 </p>
                 <p
                   style={{
-                    fontSize: 10,
+                    fontSize: 9,
                     color: accent,
                     fontWeight: 600,
                     letterSpacing: 0.3,
                     marginTop: 1,
+                    opacity: 0.8,
                   }}
                 >
                   {isAdmin ? 'Admin' : 'Empleado'}
@@ -361,23 +359,23 @@ export default function Sidebar({
               style={{
                 display: 'flex',
                 justifyContent: 'center',
-                marginBottom: 8,
+                marginBottom: 6,
               }}
             >
               <div
                 style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 9,
+                  width: 28,
+                  height: 28,
+                  borderRadius: 8,
                   background: profesionalFoto ? 'transparent' : avatarBg,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: 800,
                   color: '#fff',
                   overflow: 'hidden',
-                  boxShadow: `0 0 0 2px ${accent}33`,
+                  boxShadow: `0 0 0 1.5px ${accent}44`,
                 }}
               >
                 {profesionalFoto ? (
