@@ -194,12 +194,17 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(true);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
 
   useEffect(() => {
-    function checkMobile() { setIsMobile(window.innerWidth < 640); }
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    function checkBreakpoint() {
+      const w = window.innerWidth;
+      setIsMobile(w < 640);
+      setIsTablet(w >= 640 && w <= 1024);
+    }
+    checkBreakpoint();
+    window.addEventListener('resize', checkBreakpoint);
+    return () => window.removeEventListener('resize', checkBreakpoint);
   }, []);
 
   useEffect(() => {
@@ -278,7 +283,7 @@ export default function LoginPage() {
   }
 
   // Responsive logo size for profile step
-  const logoSize = isMobile ? 100 : 160;
+  const logoSize = isMobile ? 100 : isTablet ? 140 : 160;
 
   // ── LOADING ──
   if (loading) return (
@@ -302,7 +307,7 @@ export default function LoginPage() {
       minHeight: '100vh',
       background: `radial-gradient(ellipse 90% 70% at 50% -5%, #141C2E 0%, ${T.bg} 65%)`,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: isMobile ? '24px 12px' : '32px 16px',
+      padding: isMobile ? '24px 12px' : isTablet ? '32px 32px' : '32px 16px',
       fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
       position: 'relative',
       overflow: 'hidden',
@@ -350,7 +355,7 @@ export default function LoginPage() {
         ══════════════════════════════════════════════════════ */}
         {step === 'email' && (
           <div style={{
-            width: '100%', maxWidth: 440,
+            width: '100%', maxWidth: isTablet ? 520 : 440,
             animation: 'fadeUp 0.35s ease both',
           }}>
 
@@ -403,7 +408,7 @@ export default function LoginPage() {
               background: T.bgCard,
               border: `1px solid ${T.goldBorder}`,
               borderRadius: T.r_xl,
-              padding: isMobile ? '28px 20px' : '36px 32px',
+              padding: isMobile ? '28px 20px' : isTablet ? '40px 36px' : '36px 32px',
               boxShadow: '0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(201,169,110,0.06)',
               display: 'flex', flexDirection: 'column', gap: 20,
             }}>
@@ -486,14 +491,14 @@ export default function LoginPage() {
         ══════════════════════════════════════════════════════ */}
         {step === 'profiles' && (
           <div style={{
-            width: '100%', maxWidth: 520,
+            width: '100%', maxWidth: isTablet ? 580 : 520,
             animation: 'fadeUp 0.35s ease both',
           }}>
             <div style={{
               background: T.bgCard,
               border: `1px solid ${T.goldBorder}`,
               borderRadius: T.r_xl + 2,
-              padding: isMobile ? '24px 18px 28px' : '32px 36px 36px',
+              padding: isMobile ? '24px 18px 28px' : isTablet ? '36px 40px 40px' : '32px 36px 36px',
               boxShadow: '0 48px 120px rgba(0,0,0,0.75), inset 0 1px 0 rgba(201,169,110,0.06)',
             }}>
 
@@ -679,14 +684,14 @@ export default function LoginPage() {
         ══════════════════════════════════════════════════════ */}
         {step === 'pin' && selectedProf && (
           <div style={{
-            width: '100%', maxWidth: 380,
+            width: '100%', maxWidth: isTablet ? 420 : 380,
             animation: 'fadeUp 0.3s ease both',
           }}>
             <div style={{
               background: T.bgCard,
               border: `1px solid ${T.goldBorder}`,
               borderRadius: T.r_xl,
-              padding: isMobile ? '32px 20px' : '40px 32px',
+              padding: isMobile ? '32px 20px' : isTablet ? '44px 36px' : '40px 32px',
               boxShadow: '0 40px 100px rgba(0,0,0,0.7)',
               display: 'flex', flexDirection: 'column', alignItems: 'center',
               gap: 0,
