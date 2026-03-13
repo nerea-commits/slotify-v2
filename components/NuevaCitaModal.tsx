@@ -14,6 +14,7 @@ interface Props {
   selectedDate: Date;
   preselectedTime?: string;
   preselectedEndTime?: string;
+  preselectedProfesionalId?: string; // para cuando se abre desde columna de equipo
 }
 
 // ─── Utilidades ──────────────────────────────────────────────────────────────
@@ -113,6 +114,7 @@ export default function NuevaCitaModal({
   open, onClose, onCreated,
   profesionalId, empresaId,
   selectedDate, preselectedTime, preselectedEndTime,
+  preselectedProfesionalId,
 }: Props) {
 
   // ── Estado cliente ──
@@ -140,15 +142,17 @@ export default function NuevaCitaModal({
 
   // ── Estado config ──
   const [mostrarImporte,   setMostrarImporte]   = useState(false);
-  const [estadosCita,      setEstadosCita]      = useState<any[]>([]);
   const [estadoDefault,    setEstadoDefault]    = useState('Programada');
+
+  // ── Profesionales ──
+  const [profesionales,    setProfesionales]    = useState<any[]>([]);
+  const [profSeleccionado, setProfSeleccionado] = useState<string>('');
 
   // ── Estado secundarios (colapsados por defecto) ──
   const [showSecundarios,  setShowSecundarios]  = useState(false);
   const [notas,            setNotas]            = useState('');
   const [importe,          setImporte]          = useState('');
   const [autoFilledImporte, setAutoFilledImporte] = useState(false);
-  const [estadoManual,     setEstadoManual]     = useState<string | null>(null); // null = usa default
 
   // ── UI ──
   const [guardando,        setGuardando]        = useState(false);
@@ -167,16 +171,18 @@ export default function NuevaCitaModal({
     cargarEstados();
     cargarConfigImporte();
     cargarClientes();
+    cargarProfesionales();
 
     setNombre(''); setTelefono('');
     setServicioId(''); setServicioTexto('');
     setNotas(''); setImporte(''); setError('');
     setClienteEncontrado(null); setFiabilidad(null);
     setAutoFilledFin(false); setAutoFilledImporte(false);
-    setEstadoManual(null);
     setShowSecundarios(false);
     setSugerenciasNombre([]); setShowSugNombre(false);
     setShowSugSvc(false);
+    // Profesional: preseleccionado desde columna de equipo o el propio usuario
+    setProfSeleccionado(preselectedProfesionalId || profesionalId || '');
 
     if (preselectedTime) {
       setHoraInicio(preselectedTime);
@@ -185,7 +191,7 @@ export default function NuevaCitaModal({
     } else {
       setHoraInicio('09:00'); setHoraFin('10:00');
     }
-  }, [open, empresaId, preselectedTime, preselectedEndTime]);
+  }, [open, empresaId, preselectedTime, preselectedEndTime, profesionalId, preselectedProfesionalId]);
 
   // ── Carga datos ────────────────────────────────────────────────────────────
   async function cargarServicios() {
@@ -200,7 +206,6 @@ export default function NuevaCitaModal({
     const { data } = await supabase
       .from('estados_cita').select('*')
       .eq('empresa_id', empresaId).eq('activo', true).order('orden');
-    setEstadosCita(data || []);
     const programada = data?.find(e =>
       (e.nombre_defecto || '').toLowerCase() === 'programada' ||
       (e.nombre_personalizado || '').toLowerCase() === 'programada'
@@ -209,6 +214,13 @@ export default function NuevaCitaModal({
       ? (programada.nombre_personalizado || programada.nombre_defecto)
       : data?.[0] ? (data[0].nombre_personalizado || data[0].nombre_defecto) : 'Programada';
     setEstadoDefault(def);
+  }
+
+  async function cargarProfesionales() {
+    const { data } = await supabase
+      .from('profesionales').select('id, nombre, color, foto_url')
+      .eq('empresa_id', empresaId).eq('activo', true).order('nombre');
+    setProfesionales(data || []);
   }
 
   async function cargarConfigImporte() {
@@ -363,12 +375,13 @@ export default function NuevaCitaModal({
       clienteId = nuevo.id;
     }
 
-    const estadoFinal = estadoManual || estadoDefault;
+    const estadoFinal = estadoDefault;
     const svcObj = servicios.find(s => s.id === servicioId);
+    const profId = profSeleccionado || profesionalId;
 
     const citaData: any = {
       empresa_id:     empresaId,
-      profesional_id: profesionalId,
+      profesional_id: profId,
       cliente_id:     clienteId,
       hora_inicio:    `${fecha}T${horaInicio}:00`,
       hora_fin:       `${fecha}T${horaFin}:00`,
@@ -412,10 +425,12 @@ export default function NuevaCitaModal({
     })(),
   } : null;
 
-  const selectedSvc   = servicios.find(s => s.id === servicioId);
-  const estadoActual  = estadoManual || estadoDefault;
-  const durMin        = selectedSvc?.duracion_minutos;
-  const hasSecundarios = mostrarImporte || notas || estadosCita.length > 0;
+  const selectedSvc    = servicios.find(s => s.id === servicioId);
+  const durMin         = selectedSvc?.duracion_minutos;
+  const hasSecundarios = mostrarImporte || notas.length > 0;
+  // Mostrar selector de profesional solo si hay más de uno
+  const mostrarSelectorProf = profesionales.length > 1;
+  const profActual     = profesionales.find(p => p.id === profSeleccionado);
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -566,6 +581,58 @@ export default function NuevaCitaModal({
             )}
           </div>
 
+          {/* ── SELECTOR PROFESIONAL (flujo principal, solo si hay >1) ──── */}
+          {mostrarSelectorProf && (
+            <>
+              <div style={{ height: 1, background: 'rgba(148,163,184,0.06)' }} />
+              <div>
+                <label style={{ fontSize: 11, color: C.textSec, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase' as const, display: 'block', marginBottom: 7 }}>
+                  Profesional
+                </label>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+                  {profesionales.map(p => {
+                    const sel = profSeleccionado === p.id;
+                    const color = p.color || C.green;
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => setProfSeleccionado(p.id)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 7,
+                          padding: '6px 11px 6px 7px',
+                          borderRadius: 9,
+                          border: sel ? `1.5px solid ${color}55` : `1px solid ${C.border}`,
+                          background: sel ? color + '14' : C.surfaceAlt,
+                          cursor: 'pointer',
+                          transition: 'all 0.12s',
+                        }}
+                        onMouseEnter={e => { if (!sel) (e.currentTarget as HTMLElement).style.borderColor = 'rgba(148,163,184,0.2)'; }}
+                        onMouseLeave={e => { if (!sel) (e.currentTarget as HTMLElement).style.borderColor = C.border; }}
+                      >
+                        <div style={{
+                          width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                          background: p.foto_url ? 'transparent' : color + '25',
+                          border: `1.5px solid ${color}50`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          overflow: 'hidden', fontSize: 10, fontWeight: 800, color,
+                        }}>
+                          {p.foto_url
+                            ? <img src={p.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            : (p.nombre?.[0] || '?').toUpperCase()
+                          }
+                        </div>
+                        <span style={{ fontSize: 12, fontWeight: sel ? 700 : 500, color: sel ? C.text : C.textSec, whiteSpace: 'nowrap' as const }}>
+                          {p.nombre}
+                        </span>
+                        {sel && <CheckCircle size={11} color={color} style={{ flexShrink: 0 }} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+
           {/* ── SEPARADOR ───────────────────────────────────────────────── */}
           <div style={{ height: 1, background: 'rgba(148,163,184,0.06)' }} />
 
@@ -678,9 +745,9 @@ export default function NuevaCitaModal({
                 />
                 <span style={{ fontSize: 12, color: C.textSec, fontWeight: 500 }}>
                   {showSecundarios ? 'Menos opciones' : 'Más opciones'}
-                  {(autoFilledImporte || notas || estadoManual) && !showSecundarios && (
+                  {(autoFilledImporte || notas) && !showSecundarios && (
                     <span style={{ marginLeft: 6, fontSize: 10, color: C.green }}>
-                      {[autoFilledImporte && '€', notas && 'nota', estadoManual && 'estado'].filter(Boolean).join(' · ')}
+                      {[autoFilledImporte && '€', notas && 'nota'].filter(Boolean).join(' · ')}
                     </span>
                   )}
                 </span>
@@ -724,28 +791,6 @@ export default function NuevaCitaModal({
                     />
                   </Field>
 
-                  {/* Estado — solo si el usuario quiere cambiarlo */}
-                  {estadosCita.length > 0 && (
-                    <Field label="Estado">
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
-                        {estadosCita.map(e => {
-                          const nom = e.nombre_personalizado || e.nombre_defecto;
-                          const selected = estadoActual === nom;
-                          return (
-                            <button
-                              key={e.id}
-                              onClick={() => setEstadoManual(nom === estadoDefault && !estadoManual ? null : nom)}
-                              style={{ padding: '5px 11px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: selected ? e.color + '20' : C.surfaceAlt, color: selected ? e.color : C.textSec, outline: selected ? `1.5px solid ${e.color}40` : 'none', transition: 'all 0.12s' }}
-                            >
-                              <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: e.color, marginRight: 5, verticalAlign: 'middle' }} />
-                              {nom}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <p style={{ fontSize: 11, color: C.textTer, margin: '6px 0 0' }}>Por defecto: {estadoDefault}</p>
-                    </Field>
-                  )}
                 </div>
               )}
             </>
