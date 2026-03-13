@@ -3,9 +3,182 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Profesional, Empresa } from '@/lib/utils';
-import { Lock, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { Lock, ChevronRight, Eye, EyeOff, CheckCircle2, BellRing, CalendarCheck } from 'lucide-react';
 
 type LoginStep = 'email' | 'profiles' | 'pin';
+
+// ── TOKENS ──────────────────────────────────────────────────────────────
+const T = {
+  // Fondos
+  bg:          '#07090F',
+  bgCard:      'linear-gradient(160deg,#0F1826 0%,#0A0E1A 100%)',
+  bgCardHov:   'rgba(201,169,110,0.06)',
+  bgInput:     '#0E1520',
+  bgInputFoc:  '#111B2C',
+
+  // Marca
+  gold:        '#C9A96E',
+  goldDim:     'rgba(201,169,110,0.12)',
+  goldBorder:  'rgba(201,169,110,0.22)',
+  goldGlow:    'rgba(201,169,110,0.08)',
+
+  // Texto
+  textPrimary: '#F1F5F9',
+  textSec:     '#8899AA',
+  textDim:     '#3D4A5C',
+
+  // Superficies
+  border:      'rgba(255,255,255,0.06)',
+  borderHov:   'rgba(201,169,110,0.28)',
+  divider:     'linear-gradient(90deg,transparent,rgba(201,169,110,0.18),transparent)',
+
+  // Estados
+  red:         '#EF4444',
+  redDim:      'rgba(239,68,68,0.08)',
+  redBorder:   'rgba(239,68,68,0.18)',
+
+  // Radios
+  r_sm:   10,
+  r_md:   14,
+  r_lg:   20,
+  r_xl:   26,
+  r_pill: 999,
+};
+
+const BENEFITS = [
+  { icon: CalendarCheck,  text: 'Agenda inteligente' },
+  { icon: BellRing,       text: 'Recordatorios automáticos' },
+  { icon: CheckCircle2,   text: 'Confirmación por WhatsApp' },
+];
+
+// ── SUBCOMPONENTES ───────────────────────────────────────────────────────
+
+function KnoaLogo({ size = 32 }: { size?: number }) {
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      width: size, height: size,
+      borderRadius: Math.round(size * 0.28),
+      background: `linear-gradient(135deg, ${T.gold} 0%, #A8813E 100%)`,
+      boxShadow: `0 4px 20px rgba(201,169,110,0.35)`,
+      flexShrink: 0,
+    }}>
+      <span style={{
+        fontSize: Math.round(size * 0.45),
+        fontWeight: 900,
+        color: '#07090F',
+        letterSpacing: -1,
+        fontFamily: 'Georgia, serif',
+        lineHeight: 1,
+        userSelect: 'none',
+      }}>K</span>
+    </div>
+  );
+}
+
+function InputField({
+  label, type = 'text', value, onChange, onKeyDown, placeholder, suffix
+}: {
+  label: string;
+  type?: string;
+  value: string;
+  onChange: (v: string) => void;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
+  placeholder?: string;
+  suffix?: React.ReactNode;
+}) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <label style={{
+        fontSize: 11, fontWeight: 700, color: T.textDim,
+        letterSpacing: 1.2, textTransform: 'uppercase' as const,
+      }}>{label}</label>
+      <div style={{ position: 'relative' }}>
+        <input
+          type={type} value={value} placeholder={placeholder}
+          onChange={e => onChange(e.target.value)}
+          onKeyDown={onKeyDown}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{
+            width: '100%',
+            padding: suffix ? '12px 44px 12px 14px' : '12px 14px',
+            background: focused ? T.bgInputFoc : T.bgInput,
+            border: `1px solid ${focused ? T.gold + '55' : 'rgba(148,163,184,0.1)'}`,
+            borderRadius: T.r_md,
+            color: T.textPrimary,
+            fontSize: 14,
+            boxSizing: 'border-box' as const,
+            outline: 'none',
+            boxShadow: focused ? `0 0 0 3px rgba(201,169,110,0.10)` : 'none',
+            transition: 'all 0.15s ease',
+          }}
+        />
+        {suffix && (
+          <div style={{
+            position: 'absolute', right: 12, top: '50%',
+            transform: 'translateY(-50%)',
+          }}>
+            {suffix}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ErrorBox({ msg }: { msg: string }) {
+  return (
+    <div style={{
+      padding: '10px 14px',
+      background: T.redDim,
+      border: `1px solid ${T.redBorder}`,
+      borderRadius: T.r_sm,
+    }}>
+      <p style={{ fontSize: 13, color: T.red, margin: 0 }}>{msg}</p>
+    </div>
+  );
+}
+
+function GoldButton({ onClick, disabled, children }: {
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  const [hov, setHov] = useState(false);
+  return (
+    <button
+      onClick={onClick} disabled={disabled}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        width: '100%', padding: '13px',
+        background: hov
+          ? 'linear-gradient(135deg,#D4B47A,#C9A96E)'
+          : 'linear-gradient(135deg,#C9A96E,#A8813E)',
+        border: 'none',
+        borderRadius: T.r_md,
+        color: '#07090F',
+        fontSize: 14, fontWeight: 700,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.6 : 1,
+        boxShadow: hov
+          ? '0 6px 24px rgba(201,169,110,0.4)'
+          : '0 2px 10px rgba(201,169,110,0.2)',
+        transition: 'all 0.15s ease',
+        letterSpacing: 0.2,
+      }}>
+      {children}
+    </button>
+  );
+}
+
+function Divider() {
+  return <div style={{ height: 1, background: T.divider, margin: '4px 0' }} />;
+}
+
+// ── PÁGINA PRINCIPAL ─────────────────────────────────────────────────────
 
 export default function LoginPage() {
   const router = useRouter();
@@ -96,9 +269,19 @@ export default function LoginPage() {
     }
   }
 
+  // ── LOADING ──
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#07090F', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ width: 36, height: 36, border: '2px solid rgba(201,169,110,0.2)', borderTopColor: '#C9A96E', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+    <div style={{
+      minHeight: '100vh', background: T.bg,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <div style={{
+        width: 36, height: 36,
+        border: `2px solid ${T.goldDim}`,
+        borderTopColor: T.gold,
+        borderRadius: '50%',
+        animation: 'spin 0.8s linear infinite',
+      }} />
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
@@ -106,231 +289,492 @@ export default function LoginPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'radial-gradient(ellipse 80% 60% at 50% -10%, #141C2E 0%, #07090F 70%)',
+      background: `radial-gradient(ellipse 90% 70% at 50% -5%, #141C2E 0%, ${T.bg} 65%)`,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '32px 16px',
       fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
+      position: 'relative',
+      overflow: 'hidden',
     }}>
       <style>{`
-        @keyframes spin{to{transform:rotate(360deg)}}
-        @keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-        .pcard:focus-visible{outline:2px solid #C9A96E;outline-offset:3px;border-radius:16px}
-        .linput:focus{border-color:#C9A96E !important;box-shadow:0 0 0 3px rgba(201,169,110,0.14) !important;outline:none}
+        @keyframes spin { to { transform: rotate(360deg) } }
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(18px) }
+          to   { opacity: 1; transform: translateY(0) }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0 }
+          to   { opacity: 1 }
+        }
+        /* Grain overlay sutil */
+        .knoa-bg-grain::before {
+          content: '';
+          position: fixed; inset: 0;
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+          pointer-events: none; z-index: 0; opacity: 0.4;
+        }
+        .pcard { outline: none; }
+        .pcard:focus-visible {
+          outline: 2px solid ${T.gold};
+          outline-offset: 3px;
+          border-radius: 16px;
+        }
       `}</style>
 
-      {/* ── EMAIL ── */}
-      {step === 'email' && (
-        <div style={{ width: '100%', maxWidth: 420, animation: 'up 0.3s ease' }}>
-          <div style={{ textAlign: 'center', marginBottom: 36 }}>
-            <h1 style={{ fontSize: 28, fontWeight: 700, color: '#F1F5F9', margin: '0 0 6px', letterSpacing: -0.5 }}>Bienvenido</h1>
-            <p style={{ fontSize: 14, color: '#4B5563', margin: 0 }}>Accede al panel de gestión</p>
-          </div>
-          <div style={{ background: 'linear-gradient(160deg,#0F1826,#0A0E1A)', border: '1px solid rgba(201,169,110,0.2)', borderRadius: 22, padding: '36px 32px', boxShadow: '0 32px 80px rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: '#4B5563', letterSpacing: 1, textTransform: 'uppercase' as const }}>Email</label>
-              <input className="linput" type="email" value={email} placeholder="tu@email.com"
-                onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleEmailLogin()}
-                style={{ width: '100%', padding: '12px 14px', background: '#131B2B', border: '1px solid rgba(148,163,184,0.1)', borderRadius: 12, color: '#F1F5F9', fontSize: 14, boxSizing: 'border-box' as const, transition: 'all 0.15s' }} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: '#4B5563', letterSpacing: 1, textTransform: 'uppercase' as const }}>Contraseña</label>
-              <div style={{ position: 'relative' }}>
-                <input className="linput" type={showPassword ? 'text' : 'password'} value={password} placeholder="Tu contraseña"
-                  onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleEmailLogin()}
-                  style={{ width: '100%', padding: '12px 44px 12px 14px', background: '#131B2B', border: '1px solid rgba(148,163,184,0.1)', borderRadius: 12, color: '#F1F5F9', fontSize: 14, boxSizing: 'border-box' as const, transition: 'all 0.15s' }} />
-                <button onClick={() => setShowPassword(s => !s)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'flex', padding: 4 }}>
-                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                </button>
-              </div>
-            </div>
-            <div style={{ textAlign: 'right', marginTop: -8 }}>
-              <a href="/login?reset=1" style={{ fontSize: 12, color: '#4B5563', textDecoration: 'none' }}
-                onMouseEnter={e => (e.target as HTMLElement).style.color = '#C9A96E'}
-                onMouseLeave={e => (e.target as HTMLElement).style.color = '#4B5563'}>
-                ¿Olvidaste tu contraseña?
-              </a>
-            </div>
-            {error && <div style={{ padding: '10px 14px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 10 }}>
-              <p style={{ fontSize: 13, color: '#EF4444', margin: 0 }}>{error}</p>
-            </div>}
-            <button onClick={handleEmailLogin} disabled={loading}
-              style={{ padding: '13px', background: 'linear-gradient(135deg,#C9A96E,#A8813E)', border: 'none', borderRadius: 12, color: '#07090F', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: loading ? 0.7 : 1 }}>
-              Entrar
-            </button>
-            <p style={{ textAlign: 'center', fontSize: 13, color: '#374151', margin: 0 }}>
-              ¿Sin cuenta?{' '}<a href="/register" style={{ color: '#C9A96E', fontWeight: 600, textDecoration: 'none' }}>Crear negocio</a>
-            </p>
-          </div>
-        </div>
-      )}
+      {/* Grain */}
+      <div className="knoa-bg-grain" style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }} />
 
-      {/* ── PERFILES ── */}
-      {step === 'profiles' && (
-        <div style={{ width: '100%', maxWidth: 520, animation: 'up 0.3s ease' }}>
+      {/* Glow ambiental */}
+      <div style={{
+        position: 'fixed',
+        top: '-20%', left: '50%', transform: 'translateX(-50%)',
+        width: '60vw', height: '40vw',
+        background: 'radial-gradient(ellipse, rgba(201,169,110,0.06) 0%, transparent 70%)',
+        pointerEvents: 'none', zIndex: 0,
+      }} />
+
+      <div style={{ position: 'relative', zIndex: 1, width: '100%', display: 'flex', justifyContent: 'center' }}>
+
+        {/* ══════════════════════════════════════════════════════
+            STEP: EMAIL
+        ══════════════════════════════════════════════════════ */}
+        {step === 'email' && (
           <div style={{
-            background: 'linear-gradient(170deg,#0E1724 0%,#090D18 100%)',
-            border: '1px solid rgba(201,169,110,0.22)',
-            borderRadius: 28,
-            padding: '48px 44px',
-            boxShadow: '0 48px 120px rgba(0,0,0,0.75), inset 0 1px 0 rgba(201,169,110,0.06)',
+            width: '100%', maxWidth: 440,
+            animation: 'fadeUp 0.35s ease both',
           }}>
 
-            {/* ── HEADER ── */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 36 }}>
+            {/* Branding superior */}
+            <div style={{ textAlign: 'center', marginBottom: 32 }}>
+              {/* Logo + nombre */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 16 }}>
+                <KnoaLogo size={36} />
+                <span style={{
+                  fontSize: 26, fontWeight: 800, color: T.textPrimary,
+                  letterSpacing: -0.8, fontFamily: 'Georgia, serif',
+                }}>Knöa</span>
+              </div>
 
-              {/* Logo */}
-              {(empresa as any)?.logo_url ? (
-                <img
-                  src={(empresa as any).logo_url}
-                  alt={empresa?.nombre}
-                  style={{
-                    maxHeight: 160, maxWidth: 280,
-                    width: 'auto', height: 'auto',
-                    objectFit: 'contain', display: 'block',
-                    filter: 'drop-shadow(0 6px 24px rgba(0,0,0,0.7))',
-                    marginBottom: 16,
-                  }}
+              {/* Claim */}
+              <h1 style={{
+                fontSize: 15, fontWeight: 500,
+                color: T.textSec,
+                margin: '0 0 20px',
+                letterSpacing: 0.1,
+                lineHeight: 1.5,
+              }}>
+                Organiza tu agenda, automatiza recordatorios<br />y reduce ausencias desde el primer día.
+              </h1>
+
+              {/* Microbeneficios */}
+              <div style={{
+                display: 'inline-flex', alignItems: 'center',
+                gap: 6, flexWrap: 'wrap' as const,
+                justifyContent: 'center',
+              }}>
+                {BENEFITS.map(({ icon: Icon, text }) => (
+                  <div key={text} style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    padding: '4px 10px',
+                    background: T.goldDim,
+                    border: `1px solid ${T.goldBorder}`,
+                    borderRadius: T.r_pill,
+                    fontSize: 11, fontWeight: 600, color: T.gold,
+                    whiteSpace: 'nowrap' as const,
+                  }}>
+                    <Icon size={11} />
+                    {text}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Card formulario */}
+            <div style={{
+              background: T.bgCard,
+              border: `1px solid ${T.goldBorder}`,
+              borderRadius: T.r_xl,
+              padding: '36px 32px',
+              boxShadow: '0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(201,169,110,0.06)',
+              display: 'flex', flexDirection: 'column', gap: 20,
+            }}>
+              <div style={{ marginBottom: 2 }}>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: T.textPrimary, margin: '0 0 3px' }}>
+                  Accede a tu panel
+                </h2>
+                <p style={{ fontSize: 13, color: T.textDim, margin: 0 }}>
+                  Introduce tus credenciales para continuar
+                </p>
+              </div>
+
+              <InputField
+                label="Email"
+                type="email"
+                value={email}
+                onChange={setEmail}
+                onKeyDown={e => e.key === 'Enter' && handleEmailLogin()}
+                placeholder="tu@email.com"
+              />
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <InputField
+                  label="Contraseña"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={setPassword}
+                  onKeyDown={e => e.key === 'Enter' && handleEmailLogin()}
+                  placeholder="Tu contraseña"
+                  suffix={
+                    <button
+                      onClick={() => setShowPassword(s => !s)}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        color: T.textDim, display: 'flex', padding: 4,
+                        transition: 'color 0.15s',
+                      }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = T.gold}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = T.textDim}
+                    >
+                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  }
                 />
-              ) : (
-                <div style={{ width: 80, height: 80, borderRadius: 22, background: 'rgba(201,169,110,0.1)', border: '1px solid rgba(201,169,110,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 800, color: '#C9A96E', marginBottom: 16 }}>
-                  {empresa?.nombre?.[0]?.toUpperCase() || 'B'}
+                <div style={{ textAlign: 'right', marginTop: 2 }}>
+                  <a href="/login?reset=1" style={{
+                    fontSize: 12, color: T.textDim, textDecoration: 'none', transition: 'color 0.15s',
+                  }}
+                    onMouseEnter={e => (e.target as HTMLElement).style.color = T.gold}
+                    onMouseLeave={e => (e.target as HTMLElement).style.color = T.textDim}>
+                    ¿Olvidaste tu contraseña?
+                  </a>
+                </div>
+              </div>
+
+              {error && <ErrorBox msg={error} />}
+
+              <GoldButton onClick={handleEmailLogin} disabled={loading}>
+                {loading ? 'Entrando...' : 'Entrar'}
+              </GoldButton>
+
+              <Divider />
+
+              <p style={{ textAlign: 'center', fontSize: 13, color: T.textDim, margin: 0 }}>
+                ¿Sin cuenta?{' '}
+                <a href="/register" style={{
+                  color: T.gold, fontWeight: 600, textDecoration: 'none', transition: 'opacity 0.15s',
+                }}
+                  onMouseEnter={e => (e.target as HTMLElement).style.opacity = '0.75'}
+                  onMouseLeave={e => (e.target as HTMLElement).style.opacity = '1'}>
+                  Registra tu negocio
+                </a>
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════
+            STEP: PERFILES
+        ══════════════════════════════════════════════════════ */}
+        {step === 'profiles' && (
+          <div style={{
+            width: '100%', maxWidth: 520,
+            animation: 'fadeUp 0.35s ease both',
+          }}>
+            <div style={{
+              background: T.bgCard,
+              border: `1px solid ${T.goldBorder}`,
+              borderRadius: T.r_xl + 2,
+              padding: '44px 40px',
+              boxShadow: '0 48px 120px rgba(0,0,0,0.75), inset 0 1px 0 rgba(201,169,110,0.06)',
+            }}>
+
+              {/* Header negocio */}
+              <div style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                marginBottom: 32, textAlign: 'center' as const,
+              }}>
+                {/* Logo o inicial */}
+                {(empresa as any)?.logo_url ? (
+                  <img
+                    src={(empresa as any).logo_url}
+                    alt={empresa?.nombre}
+                    style={{
+                      maxHeight: 72, maxWidth: 180,
+                      width: 'auto', height: 'auto',
+                      objectFit: 'contain',
+                      filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.6))',
+                      marginBottom: 14,
+                    }}
+                  />
+                ) : (
+                  <div style={{
+                    width: 68, height: 68,
+                    borderRadius: T.r_lg,
+                    background: T.goldDim,
+                    border: `1px solid ${T.goldBorder}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 26, fontWeight: 800, color: T.gold,
+                    marginBottom: 14,
+                    boxShadow: `0 4px 20px ${T.goldGlow}`,
+                  }}>
+                    {empresa?.nombre?.[0]?.toUpperCase() || 'K'}
+                  </div>
+                )}
+
+                {/* Nombre negocio con pill */}
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '4px 12px',
+                  background: T.goldDim,
+                  border: `1px solid ${T.goldBorder}`,
+                  borderRadius: T.r_pill,
+                  marginBottom: 12,
+                }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: T.gold, letterSpacing: 0.3 }}>
+                    {empresa?.nombre || 'Tu negocio'}
+                  </span>
+                </div>
+
+                <h1 style={{
+                  fontSize: 22, fontWeight: 700, color: T.textPrimary,
+                  margin: '0 0 6px', letterSpacing: -0.3,
+                }}>
+                  Selecciona tu perfil
+                </h1>
+                <p style={{ fontSize: 13, color: T.textSec, margin: 0 }}>
+                  Elige el usuario con el que vas a trabajar hoy
+                </p>
+              </div>
+
+              <Divider />
+              <div style={{ height: 20 }} />
+
+              {/* Lista de perfiles */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {profesionales.map(p => {
+                  const isAdmin = p.rol === 'admin' || p.rol === 'owner';
+                  const isProtected = isAdmin || !!p.pin;
+                  const isHov = hoveredId === p.id;
+                  const foto = (p as any).foto_url;
+                  const avatarColor = (p as any).color || '#3B82F6';
+                  const rolLabel = p.rol === 'owner' ? 'Propietario' : p.rol === 'admin' ? 'Administrador' : 'Empleado';
+
+                  return (
+                    <button
+                      key={p.id}
+                      className="pcard"
+                      onClick={() => handleSelectProfile(p)}
+                      onMouseEnter={() => setHoveredId(p.id)}
+                      onMouseLeave={() => setHoveredId(null)}
+                      style={{
+                        width: '100%',
+                        display: 'flex', alignItems: 'center', gap: 14,
+                        padding: '14px 16px',
+                        background: isHov ? T.bgCardHov : 'rgba(255,255,255,0.025)',
+                        border: `1px solid ${isHov ? T.borderHov : T.border}`,
+                        borderRadius: T.r_lg,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        transform: isHov ? 'translateY(-1px)' : 'none',
+                        boxShadow: isHov ? '0 8px 24px rgba(0,0,0,0.35)' : 'none',
+                        textAlign: 'left' as const,
+                      }}>
+
+                      {/* Avatar */}
+                      <div style={{
+                        width: 46, height: 46,
+                        borderRadius: 12, flexShrink: 0,
+                        background: foto ? '#0A0E1A' : avatarColor,
+                        overflow: 'hidden', position: 'relative',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+                        border: `1px solid rgba(255,255,255,0.06)`,
+                      }}>
+                        {foto
+                          ? <img src={foto} alt={p.nombre} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, fontWeight: 800, color: '#fff' }}>
+                              {p.nombre?.[0]?.toUpperCase()}
+                            </div>
+                        }
+                      </div>
+
+                      {/* Info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{
+                          fontSize: 15, fontWeight: 700, color: T.textPrimary,
+                          margin: '0 0 4px',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const,
+                        }}>
+                          {p.nombre}
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' as const }}>
+                          {/* Rol */}
+                          <span style={{
+                            fontSize: 11, fontWeight: 600,
+                            color: isAdmin ? T.gold : T.textSec,
+                            letterSpacing: 0.2,
+                          }}>
+                            {rolLabel}
+                          </span>
+                          {/* Badge PIN */}
+                          {isProtected && (
+                            <>
+                              <span style={{ fontSize: 10, color: T.textDim }}>·</span>
+                              <div style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 3,
+                                padding: '2px 6px',
+                                background: 'rgba(201,169,110,0.08)',
+                                border: `1px solid rgba(201,169,110,0.2)`,
+                                borderRadius: T.r_pill,
+                              }}>
+                                <Lock size={9} style={{ color: T.gold }} />
+                                <span style={{ fontSize: 10, fontWeight: 700, color: T.gold }}>PIN</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Chevron */}
+                      <div style={{
+                        width: 32, height: 32,
+                        borderRadius: 9, flexShrink: 0,
+                        background: isHov ? T.goldDim : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${isHov ? T.goldBorder : T.border}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'all 0.15s',
+                      }}>
+                        <ChevronRight size={14} style={{
+                          color: isHov ? T.gold : T.textDim,
+                          transition: 'color 0.15s',
+                        }} />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════
+            STEP: PIN
+        ══════════════════════════════════════════════════════ */}
+        {step === 'pin' && selectedProf && (
+          <div style={{
+            width: '100%', maxWidth: 380,
+            animation: 'fadeUp 0.3s ease both',
+          }}>
+            <div style={{
+              background: T.bgCard,
+              border: `1px solid ${T.goldBorder}`,
+              borderRadius: T.r_xl,
+              padding: '40px 32px',
+              boxShadow: '0 40px 100px rgba(0,0,0,0.7)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              gap: 0,
+            }}>
+              {/* Avatar */}
+              <div style={{
+                width: 58, height: 58,
+                borderRadius: 15,
+                background: (selectedProf as any).foto_url ? '#0A0E1A' : ((selectedProf as any).color || T.gold),
+                overflow: 'hidden',
+                border: `1px solid ${T.goldBorder}`,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                marginBottom: 12,
+                position: 'relative', flexShrink: 0,
+              }}>
+                {(selectedProf as any).foto_url
+                  ? <img src={(selectedProf as any).foto_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color: '#fff' }}>
+                      {selectedProf.nombre?.[0]?.toUpperCase()}
+                    </div>
+                }
+              </div>
+
+              <p style={{ fontSize: 17, fontWeight: 700, color: T.textPrimary, margin: '0 0 4px' }}>
+                {selectedProf.nombre}
+              </p>
+              <p style={{ fontSize: 12, color: T.gold, fontWeight: 600, margin: '0 0 24px', letterSpacing: 0.3 }}>
+                Introduce tu PIN para acceder
+              </p>
+
+              <Divider />
+              <div style={{ height: 22, width: '100%' }} />
+
+              {/* Input PIN */}
+              <PinInput
+                value={pin}
+                onChange={setPin}
+                onEnter={handlePin}
+              />
+
+              <div style={{ height: 14, width: '100%' }} />
+
+              {error && (
+                <div style={{ width: '100%', marginBottom: 14 }}>
+                  <ErrorBox msg={error} />
                 </div>
               )}
 
-              {/* Nombre de marca */}
-              <p style={{
-                fontSize: 20, fontWeight: 700, color: '#E2C97E',
-                margin: '0 0 8px', letterSpacing: 0.2,
-                textShadow: '0 2px 12px rgba(201,169,110,0.2)',
-              }}>
-                {empresa?.nombre || 'Tu negocio'}
-              </p>
+              <GoldButton onClick={handlePin}>Entrar</GoldButton>
 
-              {/* Título acción */}
-              <h1 style={{ fontSize: 26, fontWeight: 700, color: '#F1F5F9', margin: '0 0 6px', letterSpacing: -0.4, textAlign: 'center' as const }}>
-                Selecciona tu perfil
-              </h1>
-
-              {/* Subtítulo */}
-              <p style={{ fontSize: 14, color: '#8899AA', margin: 0, fontWeight: 400, textAlign: 'center' as const }}>
-                Elige un usuario para continuar
-              </p>
-            </div>
-
-            {/* Divisor */}
-            <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,rgba(201,169,110,0.18),transparent)', marginBottom: 28 }} />
-
-            {/* ── CARDS ── */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {profesionales.map(p => {
-                const isAdmin = p.rol === 'admin' || p.rol === 'owner';
-                const isProtected = isAdmin || !!p.pin;
-                const isHov = hoveredId === p.id;
-                const foto = (p as any).foto_url;
-                const avatarColor = (p as any).color || '#3B82F6';
-
-                return (
-                  <button key={p.id} className="pcard"
-                    onClick={() => handleSelectProfile(p)}
-                    onMouseEnter={() => setHoveredId(p.id)}
-                    onMouseLeave={() => setHoveredId(null)}
-                    style={{
-                      width: '100%', display: 'flex', alignItems: 'center', gap: 16,
-                      padding: '16px 18px',
-                      background: isHov ? 'rgba(201,169,110,0.07)' : 'rgba(255,255,255,0.03)',
-                      border: `1px solid ${isHov ? 'rgba(201,169,110,0.28)' : 'rgba(255,255,255,0.05)'}`,
-                      borderRadius: 16, cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      transform: isHov ? 'translateY(-2px)' : 'none',
-                      boxShadow: isHov ? '0 10px 28px rgba(0,0,0,0.4)' : 'none',
-                      textAlign: 'left' as const,
-                    }}>
-
-                    {/* Avatar */}
-                    <div style={{
-                      width: 48, height: 48, borderRadius: 13, flexShrink: 0,
-                      background: foto ? '#0A0E1A' : avatarColor,
-                      overflow: 'hidden', position: 'relative',
-                      boxShadow: '0 2px 10px rgba(0,0,0,0.45)',
-                    }}>
-                      {foto
-                        ? <img src={foto} alt={p.nombre} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                        : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, color: '#fff' }}>
-                            {p.nombre?.[0]?.toUpperCase()}
-                          </div>
-                      }
-                    </div>
-
-                    {/* Info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 15, fontWeight: 600, color: '#F1F5F9', margin: '0 0 5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-                        {p.nombre}
-                      </p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                        {isProtected && <Lock size={10} style={{ color: '#C9A96E', flexShrink: 0 }} />}
-                        <span style={{ fontSize: 12, color: isProtected ? '#C9A96E' : '#4B5563', fontWeight: isProtected ? 600 : 400, lineHeight: 1.3 }}>
-                          {isAdmin ? 'Administrador · Requiere PIN' : p.pin ? 'Acceso protegido · Requiere PIN' : 'Empleado'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Chevron */}
-                    <div style={{
-                      width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-                      background: isHov ? 'rgba(201,169,110,0.12)' : 'rgba(255,255,255,0.04)',
-                      border: `1px solid ${isHov ? 'rgba(201,169,110,0.22)' : 'rgba(255,255,255,0.06)'}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'all 0.15s',
-                    }}>
-                      <ChevronRight size={15} style={{ color: isHov ? '#C9A96E' : '#2D3748', transition: 'color 0.15s' }} />
-                    </div>
-                  </button>
-                );
-              })}
+              <button
+                onClick={() => { setStep('profiles'); setSelectedProf(null); setError(''); }}
+                style={{
+                  background: 'none', border: 'none',
+                  color: T.textDim, fontSize: 13,
+                  cursor: 'pointer', padding: '10px 8px 0',
+                  transition: 'color 0.15s',
+                  width: '100%',
+                }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = T.gold}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = T.textDim}
+              >
+                ← Volver a perfiles
+              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ── PIN ── */}
-      {step === 'pin' && selectedProf && (
-        <div style={{ width: '100%', maxWidth: 400, animation: 'up 0.3s ease' }}>
-          <div style={{
-            background: 'linear-gradient(170deg,#0E1724,#090D18)',
-            border: '1px solid rgba(201,169,110,0.22)',
-            borderRadius: 26, padding: '44px 36px',
-            boxShadow: '0 40px 100px rgba(0,0,0,0.7)',
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-          }}>
-            <div style={{ width: 60, height: 60, borderRadius: 16, background: (selectedProf as any).foto_url ? '#0A0E1A' : ((selectedProf as any).color || '#C9A96E'), overflow: 'hidden', border: '1px solid rgba(201,169,110,0.25)', boxShadow: '0 4px 20px rgba(0,0,0,0.5)', marginBottom: 14, position: 'relative', flexShrink: 0 }}>
-              {(selectedProf as any).foto_url
-                ? <img src={(selectedProf as any).foto_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color: '#fff' }}>{selectedProf.nombre?.[0]?.toUpperCase()}</div>
-              }
-            </div>
-            <p style={{ fontSize: 18, fontWeight: 700, color: '#F1F5F9', margin: '0 0 5px' }}>{selectedProf.nombre}</p>
-            <p style={{ fontSize: 12, color: '#C9A96E', fontWeight: 600, margin: '0 0 30px', letterSpacing: 0.3 }}>Introduce tu PIN para continuar</p>
-            <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,rgba(201,169,110,0.18),transparent)', width: '100%', marginBottom: 24 }} />
-            <input className="linput" type="password" maxLength={6} value={pin} autoFocus
-              onChange={e => setPin(e.target.value)} onKeyDown={e => e.key === 'Enter' && handlePin()}
-              placeholder="· · · ·"
-              style={{ width: '100%', padding: '15px', background: '#131B2B', border: '1px solid rgba(148,163,184,0.1)', borderRadius: 12, color: '#F1F5F9', fontSize: 28, textAlign: 'center' as const, letterSpacing: 14, outline: 'none', boxSizing: 'border-box' as const, marginBottom: 14, transition: 'all 0.15s' }} />
-            {error && <div style={{ width: '100%', padding: '10px 14px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 10, marginBottom: 14 }}>
-              <p style={{ fontSize: 13, color: '#EF4444', margin: 0, textAlign: 'center' as const }}>{error}</p>
-            </div>}
-            <button onClick={handlePin}
-              style={{ width: '100%', padding: '13px', background: 'linear-gradient(135deg,#C9A96E,#A8813E)', border: 'none', borderRadius: 12, color: '#07090F', fontSize: 14, fontWeight: 700, cursor: 'pointer', marginBottom: 10 }}>
-              Entrar
-            </button>
-            <button onClick={() => { setStep('profiles'); setSelectedProf(null); setError(''); }}
-              style={{ background: 'none', border: 'none', color: '#374151', fontSize: 13, cursor: 'pointer', padding: '8px', transition: 'color 0.15s' }}
-              onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#C9A96E'}
-              onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = '#374151'}>
-              ← Volver a perfiles
-            </button>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
+  );
+}
+
+// ── PIN INPUT ────────────────────────────────────────────────────────────
+function PinInput({ value, onChange, onEnter }: {
+  value: string;
+  onChange: (v: string) => void;
+  onEnter: () => void;
+}) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <input
+      type="password"
+      maxLength={6}
+      value={value}
+      autoFocus
+      onChange={e => onChange(e.target.value)}
+      onKeyDown={e => e.key === 'Enter' && onEnter()}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      placeholder="· · · ·"
+      style={{
+        width: '100%',
+        padding: '15px',
+        background: focused ? T.bgInputFoc : T.bgInput,
+        border: `1px solid ${focused ? T.gold + '55' : 'rgba(148,163,184,0.1)'}`,
+        borderRadius: T.r_md,
+        color: T.textPrimary,
+        fontSize: 28,
+        textAlign: 'center' as const,
+        letterSpacing: 14,
+        outline: 'none',
+        boxSizing: 'border-box' as const,
+        boxShadow: focused ? `0 0 0 3px rgba(201,169,110,0.10)` : 'none',
+        transition: 'all 0.15s ease',
+      }}
+    />
   );
 }
