@@ -1591,38 +1591,50 @@ export default function Dashboard() {
             { label: isWeekOrMonth ? 'Libres hoy' : 'Huecos libres', value: libresHoy, color: '#38BDF8', dot: '#38BDF8', show: true },
           ];
 
+          const visibleChips = chips.filter(c => c.show);
           return (
             <div style={{
               flexShrink: 0,
-              background: '#0D1829',
-              borderBottom: `1px solid rgba(148,163,184,0.07)`,
-              padding: '0 16px',
+              background: '#0C1624',
+              borderBottom: `1px solid rgba(148,163,184,0.08)`,
+              padding: '0 18px',
               display: 'flex', alignItems: 'center', gap: 0,
-              height: 36, overflowX: 'auto',
+              height: 34, overflowX: 'auto',
               scrollbarWidth: 'none' as any,
             }}>
               {/* Fecha de referencia */}
               <span style={{
-                fontSize: 10, fontWeight: 700, color: '#334155',
-                letterSpacing: 0.8, whiteSpace: 'nowrap', flexShrink: 0,
-                marginRight: 12, textTransform: 'uppercase' as const,
+                fontSize: 10, fontWeight: 600, color: '#3D5068',
+                letterSpacing: 0.7, whiteSpace: 'nowrap', flexShrink: 0,
+                marginRight: 14, textTransform: 'uppercase' as const,
               }}>
                 {new Date().toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
               </span>
               {/* Divisor */}
-              <div style={{ width: 1, height: 14, background: 'rgba(148,163,184,0.1)', flexShrink: 0, marginRight: 12 }} />
-              {/* Chips de métricas */}
-              {chips.filter(c => c.show).map((chip, idx) => (
+              <div style={{ width: 1, height: 12, background: 'rgba(148,163,184,0.1)', flexShrink: 0, marginRight: 14 }} />
+              {/* Métricas */}
+              {visibleChips.map((chip, idx) => (
                 <div key={chip.label} style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  padding: '0 10px',
+                  display: 'flex', alignItems: 'baseline', gap: 5,
+                  padding: '0 12px',
                   height: '100%',
-                  borderRight: idx < chips.filter(c => c.show).length - 1 ? '1px solid rgba(148,163,184,0.06)' : 'none',
+                  borderRight: idx < visibleChips.length - 1
+                    ? '1px solid rgba(148,163,184,0.07)'
+                    : 'none',
                   flexShrink: 0,
                   cursor: 'default',
                 }}>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: chip.color, lineHeight: 1, letterSpacing: -0.3 }}>{chip.value}</span>
-                  <span style={{ fontSize: 10, fontWeight: 400, color: '#334155', letterSpacing: 0.1, whiteSpace: 'nowrap' }}>{chip.label}</span>
+                  <span style={{
+                    fontSize: 14, fontWeight: 700,
+                    color: chip.color,
+                    lineHeight: 1, letterSpacing: -0.5,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>{chip.value}</span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 500,
+                    color: '#4A5E74',
+                    letterSpacing: 0.1, whiteSpace: 'nowrap',
+                  }}>{chip.label}</span>
                 </div>
               ))}
             </div>
@@ -1680,7 +1692,7 @@ export default function Dashboard() {
               className="flex-1 overflow-y-auto"
               style={{ paddingTop: 8, paddingBottom: 80, animation: !isMobile && navDir ? `agendaSlide${navDir === 'left' ? 'Left' : 'Right'} 160ms cubic-bezier(0.25,0.46,0.45,0.94) both` : undefined }}
             >
-              <div style={{ paddingLeft: isMobile ? 8 : 16, paddingRight: isMobile ? 8 : 16 }}>
+              <div style={{ paddingLeft: isMobile ? 8 : 16, paddingRight: isMobile ? 8 : 16, position: 'relative' }}>
                 {absenceBannersForDate(selectedDate).map((b, i) => (
                   <div key={`abs-banner-${i}`} style={{
                     padding: '8px 12px', borderRadius: 8, marginBottom: 6, fontSize: 12, fontWeight: 600,
@@ -1745,6 +1757,12 @@ export default function Dashboard() {
 
                   const dayDragMinIdx = dayDrag ? Math.min(dayDrag.startSlotIdx, dayDrag.currentSlotIdx) : -1;
                   const dayDragMaxIdx = dayDrag ? Math.max(dayDrag.startSlotIdx, dayDrag.currentSlotIdx) : -1;
+
+                  // ── Empty state: día sin citas ──
+                  // Se muestra como franja sutil en la zona media del horario, no interrumpe el grid
+                  const emptyStateMidSlot = !isMobile && dayCitas.length === 0
+                    ? Math.floor(slotsToRender.length * 0.35)
+                    : -1;
 
                   return slotsToRender.map((slot, si) => {
                     if (!isMobile && coveredSlots.has(si) && !citaAtSlot[si]) return null;
@@ -1930,6 +1948,45 @@ export default function Dashboard() {
                       </div>
                     );
                   });
+                })()}
+                {/* ── Empty state día sin citas ── */}
+                {!isMobile && (() => {
+                  const dayCitas = citasForDate(selectedDate);
+                  if (dayCitas.length > 0) return null;
+                  const isLaborable = isWorkingDay(selectedDate);
+                  return (
+                    <div style={{
+                      position: 'absolute',
+                      top: '38%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 6,
+                      pointerEvents: 'none',
+                      zIndex: 2,
+                    }}>
+                      <div style={{
+                        width: 32, height: 32,
+                        borderRadius: '50%',
+                        border: '1px solid rgba(148,163,184,0.1)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <circle cx="7" cy="7" r="6" stroke="rgba(100,116,139,0.35)" strokeWidth="1.2" />
+                          <path d="M7 4.5V7L8.5 8.5" stroke="rgba(100,116,139,0.35)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </div>
+                      <span style={{
+                        fontSize: 11, fontWeight: 500,
+                        color: 'rgba(100,116,139,0.45)',
+                        letterSpacing: 0.1,
+                      }}>
+                        {isLaborable ? 'Sin citas programadas' : 'Día no laborable'}
+                      </span>
+                    </div>
+                  );
                 })()}
               </div>
             </div>
@@ -2615,24 +2672,25 @@ export default function Dashboard() {
                 </div>
               )}
               {/* Grid mes */}
-              <div style={{ padding: isMobile ? '8px 6px' : '12px 16px', maxWidth: 1200, margin: '0 auto' }}>
+              <div style={{ padding: isMobile ? '8px 6px' : '14px 20px', maxWidth: 1200, margin: '0 auto' }}>
                 {/* Headers días semana */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: isMobile ? 0 : 4, marginBottom: isMobile ? 4 : 6 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: isMobile ? 0 : 4, marginBottom: isMobile ? 4 : 8 }}>
                   {(isMobile ? ['L', 'M', 'X', 'J', 'V', 'S', 'D'] : weekDayNames).map(d => (
                     <div key={d} style={{
                       textAlign: 'center',
-                      fontSize: isMobile ? 10 : 11,
-                      color: '#334155',
+                      fontSize: isMobile ? 10 : 10,
+                      color: '#3D5068',
                       fontWeight: 700,
-                      padding: isMobile ? '4px 0 8px' : '4px 0 8px',
-                      letterSpacing: 0.5,
+                      padding: isMobile ? '4px 0 8px' : '4px 0 10px',
+                      letterSpacing: 0.8,
+                      textTransform: 'uppercase' as const,
                     }}>{d}</div>
                   ))}
                 </div>
                 {/* Celdas días */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: isMobile ? 2 : 4 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: isMobile ? 2 : 5 }}>
                   {getMonthDays().map((day, i) => {
-                    if (!day) return <div key={`e${i}`} style={{ minHeight: isMobile ? 44 : 80 }} />;
+                    if (!day) return <div key={`e${i}`} style={{ minHeight: isMobile ? 44 : 84 }} />;
                     const today = isToday(day);
                     const working = isWorkingDay(day);
                     const free = working ? freeSlotCount(day) : -1;
@@ -2666,38 +2724,40 @@ export default function Dashboard() {
                         onClick={() => working ? goToDay(day) : setAnotacionModal({ open: true, date: day })}
                         style={{
                           background: today
-                            ? 'rgba(34,197,94,0.06)'
+                            ? 'rgba(34,197,94,0.07)'
                             : working
-                            ? 'rgba(30,41,59,0.6)'
-                            : 'rgba(15,23,42,0.3)',
-                          borderRadius: 8,
-                          padding: '10px 10px 8px',
-                          minHeight: 80,
+                            ? 'rgba(22,33,52,0.75)'
+                            : 'rgba(12,18,30,0.4)',
+                          borderRadius: 9,
+                          padding: '10px 11px 9px',
+                          minHeight: 84,
                           border: today
-                            ? `1px solid rgba(34,197,94,0.3)`
-                            : `1px solid rgba(148,163,184,0.07)`,
-                          opacity: working ? 1 : 0.45,
+                            ? `1px solid rgba(34,197,94,0.35)`
+                            : working
+                            ? `1px solid rgba(148,163,184,0.1)`
+                            : `1px solid rgba(148,163,184,0.05)`,
+                          opacity: working ? 1 : 0.4,
                           display: 'flex', flexDirection: 'column',
                           cursor: 'pointer',
                           transition: 'background 0.12s, border-color 0.12s',
                         }}
                         onMouseEnter={e => {
-                          if (working) (e.currentTarget as HTMLElement).style.background = today ? 'rgba(34,197,94,0.1)' : 'rgba(36,50,71,0.9)';
+                          if (working) (e.currentTarget as HTMLElement).style.background = today ? 'rgba(34,197,94,0.12)' : 'rgba(30,42,64,0.95)';
                         }}
                         onMouseLeave={e => {
-                          (e.currentTarget as HTMLElement).style.background = today ? 'rgba(34,197,94,0.06)' : working ? 'rgba(30,41,59,0.6)' : 'rgba(15,23,42,0.3)';
+                          (e.currentTarget as HTMLElement).style.background = today ? 'rgba(34,197,94,0.07)' : working ? 'rgba(22,33,52,0.75)' : 'rgba(12,18,30,0.4)';
                         }}>
                         {/* Número del día */}
                         <span style={{
                           fontSize: 13, fontWeight: 700,
-                          color: today ? C.green : working ? C.text : 'rgba(241,245,249,0.3)',
+                          color: today ? C.green : working ? '#CBD5E1' : 'rgba(241,245,249,0.25)',
                           lineHeight: 1,
                         }}>{day.getDate()}</span>
                         {/* Métricas del día */}
                         {working && av && (
                           <div style={{ marginTop: 'auto', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
                             {/* Barra ocupación */}
-                            <div style={{ height: 3, borderRadius: 2, background: 'rgba(148,163,184,0.1)', overflow: 'hidden' }}>
+                            <div style={{ height: 3, borderRadius: 2, background: 'rgba(148,163,184,0.08)', overflow: 'hidden' }}>
                               <div style={{
                                 height: '100%',
                                 width: `${totalSlots > 0 ? ((totalSlots - free) / totalSlots) * 100 : 0}%`,
@@ -2711,7 +2771,7 @@ export default function Dashboard() {
                                 <span style={{ fontSize: 10, color: av.color, fontWeight: 600 }}>{av.label}</span>
                               </div>
                               {citasCount > 0 && (
-                                <span style={{ fontSize: 10, color: '#475569', fontWeight: 500 }}>
+                                <span style={{ fontSize: 10, color: '#4A5E74', fontWeight: 600 }}>
                                   {citasCount}c
                                 </span>
                               )}
