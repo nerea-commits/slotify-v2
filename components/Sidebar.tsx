@@ -174,8 +174,8 @@ export default function Sidebar({
         }}
       >
 
-        {/* ── ZONA SUPERIOR: Logo + nombre empresa ── */}
         <div
+          className="sb-logo-zone"
           style={{
             flexShrink: 0,
             padding: collapsed ? '20px 0 16px' : '28px 16px 20px',
@@ -188,6 +188,7 @@ export default function Sidebar({
           }}
         >
           <div
+            className="sb-logo-wrap"
             style={{
               width: collapsed ? 34 : 88,
               height: collapsed ? 34 : 88,
@@ -269,8 +270,8 @@ export default function Sidebar({
           )}
         </nav>
 
-        {/* ── ZONA INFERIOR: Perfil + acciones + colapsar ── */}
         <div
+          className="sb-bottom"
           style={{
             borderTop: '1px solid rgba(148,163,184,0.08)',
             flexShrink: 0,
@@ -412,6 +413,24 @@ export default function Sidebar({
           .sidebar-desktop nav button {
             justify-content: center !important;
             padding: 10px 0 !important;
+          }
+          /* Logo zona superior: forzar tamaño colapsado */
+          .sidebar-desktop .sb-logo-zone {
+            padding: 20px 0 16px !important;
+          }
+          .sidebar-desktop .sb-logo-wrap {
+            width: 34px !important;
+            height: 34px !important;
+            border-radius: 10px !important;
+            font-size: 14px !important;
+          }
+          /* Zona inferior: centrar avatar */
+          .sidebar-desktop .sb-bottom {
+            padding: 12px 0 8px !important;
+          }
+          .sidebar-desktop .sb-bottom button {
+            justify-content: center !important;
+            padding: 8px 0 !important;
           }
         }
       `}</style>
