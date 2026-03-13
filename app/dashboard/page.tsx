@@ -1595,44 +1595,44 @@ export default function Dashboard() {
           return (
             <div style={{
               flexShrink: 0,
-              background: '#0C1624',
-              borderBottom: `1px solid rgba(148,163,184,0.08)`,
-              padding: '0 18px',
+              background: '#0D1829',
+              borderBottom: `1px solid rgba(148,163,184,0.09)`,
+              padding: '0 20px',
               display: 'flex', alignItems: 'center', gap: 0,
-              height: 34, overflowX: 'auto',
+              height: 38, overflowX: 'auto',
               scrollbarWidth: 'none' as any,
             }}>
               {/* Fecha de referencia */}
               <span style={{
-                fontSize: 10, fontWeight: 600, color: '#3D5068',
-                letterSpacing: 0.7, whiteSpace: 'nowrap', flexShrink: 0,
-                marginRight: 14, textTransform: 'uppercase' as const,
+                fontSize: 10, fontWeight: 700, color: '#475569',
+                letterSpacing: 0.8, whiteSpace: 'nowrap', flexShrink: 0,
+                marginRight: 16, textTransform: 'uppercase' as const,
               }}>
                 {new Date().toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
               </span>
               {/* Divisor */}
-              <div style={{ width: 1, height: 12, background: 'rgba(148,163,184,0.1)', flexShrink: 0, marginRight: 14 }} />
+              <div style={{ width: 1, height: 16, background: 'rgba(148,163,184,0.12)', flexShrink: 0, marginRight: 16 }} />
               {/* Métricas */}
               {visibleChips.map((chip, idx) => (
                 <div key={chip.label} style={{
-                  display: 'flex', alignItems: 'baseline', gap: 5,
-                  padding: '0 12px',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '0 14px',
                   height: '100%',
                   borderRight: idx < visibleChips.length - 1
-                    ? '1px solid rgba(148,163,184,0.07)'
+                    ? '1px solid rgba(148,163,184,0.08)'
                     : 'none',
                   flexShrink: 0,
                   cursor: 'default',
                 }}>
                   <span style={{
-                    fontSize: 14, fontWeight: 700,
+                    fontSize: 15, fontWeight: 800,
                     color: chip.color,
                     lineHeight: 1, letterSpacing: -0.5,
-                    fontVariantNumeric: 'tabular-nums',
+                    fontVariantNumeric: 'tabular-nums' as any,
                   }}>{chip.value}</span>
                   <span style={{
                     fontSize: 10, fontWeight: 500,
-                    color: '#4A5E74',
+                    color: '#546A82',
                     letterSpacing: 0.1, whiteSpace: 'nowrap',
                   }}>{chip.label}</span>
                 </div>
@@ -1928,7 +1928,22 @@ export default function Dashboard() {
                                     onClick={() => {
                                       if (!dayDrag) openModal(selectedDate, slot);
                                     }}
-                                  />
+                                  >
+                                    {/* Indicador sutil cuando el día está vacío — solo en slot 12:00 */}
+                                    {dayCitas.length === 0 && slot === '12:00' && (
+                                      <span style={{
+                                        position: 'absolute',
+                                        left: 16, top: '50%', transform: 'translateY(-50%)',
+                                        fontSize: 10, fontWeight: 500,
+                                        color: 'rgba(100,116,139,0.3)',
+                                        letterSpacing: 0.3,
+                                        pointerEvents: 'none',
+                                        userSelect: 'none',
+                                      }}>
+                                        {isWorkingDay(selectedDate) ? 'Día libre · Haz clic para añadir una cita' : 'Día no laborable'}
+                                      </span>
+                                    )}
+                                  </div>
                                 ) : (
                                   <div onClick={() => openModal(selectedDate, slot)} style={{ position: 'absolute', inset: 0, cursor: 'pointer' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.greenBg; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }} />
                                 )
@@ -1948,45 +1963,6 @@ export default function Dashboard() {
                       </div>
                     );
                   });
-                })()}
-                {/* ── Empty state día sin citas ── */}
-                {!isMobile && (() => {
-                  const dayCitas = citasForDate(selectedDate);
-                  if (dayCitas.length > 0) return null;
-                  const isLaborable = isWorkingDay(selectedDate);
-                  return (
-                    <div style={{
-                      position: 'absolute',
-                      top: '38%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 6,
-                      pointerEvents: 'none',
-                      zIndex: 2,
-                    }}>
-                      <div style={{
-                        width: 32, height: 32,
-                        borderRadius: '50%',
-                        border: '1px solid rgba(148,163,184,0.1)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <circle cx="7" cy="7" r="6" stroke="rgba(100,116,139,0.35)" strokeWidth="1.2" />
-                          <path d="M7 4.5V7L8.5 8.5" stroke="rgba(100,116,139,0.35)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </div>
-                      <span style={{
-                        fontSize: 11, fontWeight: 500,
-                        color: 'rgba(100,116,139,0.45)',
-                        letterSpacing: 0.1,
-                      }}>
-                        {isLaborable ? 'Sin citas programadas' : 'Día no laborable'}
-                      </span>
-                    </div>
-                  );
                 })()}
               </div>
             </div>
@@ -2724,33 +2700,33 @@ export default function Dashboard() {
                         onClick={() => working ? goToDay(day) : setAnotacionModal({ open: true, date: day })}
                         style={{
                           background: today
-                            ? 'rgba(34,197,94,0.07)'
+                            ? 'rgba(34,197,94,0.08)'
                             : working
-                            ? 'rgba(22,33,52,0.75)'
-                            : 'rgba(12,18,30,0.4)',
+                            ? 'rgba(20,31,48,0.9)'
+                            : 'rgba(11,16,26,0.5)',
                           borderRadius: 9,
                           padding: '10px 11px 9px',
                           minHeight: 84,
                           border: today
-                            ? `1px solid rgba(34,197,94,0.35)`
+                            ? `1px solid rgba(34,197,94,0.4)`
                             : working
-                            ? `1px solid rgba(148,163,184,0.1)`
+                            ? `1px solid rgba(148,163,184,0.12)`
                             : `1px solid rgba(148,163,184,0.05)`,
-                          opacity: working ? 1 : 0.4,
+                          opacity: working ? 1 : 0.38,
                           display: 'flex', flexDirection: 'column',
                           cursor: 'pointer',
                           transition: 'background 0.12s, border-color 0.12s',
                         }}
                         onMouseEnter={e => {
-                          if (working) (e.currentTarget as HTMLElement).style.background = today ? 'rgba(34,197,94,0.12)' : 'rgba(30,42,64,0.95)';
+                          if (working) (e.currentTarget as HTMLElement).style.background = today ? 'rgba(34,197,94,0.13)' : 'rgba(28,43,66,0.95)';
                         }}
                         onMouseLeave={e => {
-                          (e.currentTarget as HTMLElement).style.background = today ? 'rgba(34,197,94,0.07)' : working ? 'rgba(22,33,52,0.75)' : 'rgba(12,18,30,0.4)';
+                          (e.currentTarget as HTMLElement).style.background = today ? 'rgba(34,197,94,0.08)' : working ? 'rgba(20,31,48,0.9)' : 'rgba(11,16,26,0.5)';
                         }}>
                         {/* Número del día */}
                         <span style={{
                           fontSize: 13, fontWeight: 700,
-                          color: today ? C.green : working ? '#CBD5E1' : 'rgba(241,245,249,0.25)',
+                          color: today ? C.green : working ? '#E2E8F0' : 'rgba(241,245,249,0.2)',
                           lineHeight: 1,
                         }}>{day.getDate()}</span>
                         {/* Métricas del día */}
