@@ -274,10 +274,10 @@ export default function Sidebar({
         {/* ── ZONA INFERIOR: Perfil + acciones + colapsar ── */}
         <div
           style={{
-            borderTop: '1px solid rgba(148,163,184,0.07)',
+            borderTop: '1px solid rgba(148,163,184,0.08)',
             flexShrink: 0,
             background: '#0B1120',
-            padding: collapsed ? '10px 0 6px' : '10px 10px 6px',
+            padding: collapsed ? '12px 0 8px' : '12px 12px 8px',
           }}
         >
           {/* Perfil del usuario — expandido */}
@@ -286,28 +286,27 @@ export default function Sidebar({
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
-                marginBottom: 6,
-                padding: '4px 2px',
-                opacity: 1,
+                gap: 10,
+                marginBottom: 8,
+                padding: '2px 0',
               }}
             >
               {/* Avatar */}
               <div
                 style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 8,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 9,
                   background: profesionalFoto ? 'transparent' : avatarBg,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: 800,
                   color: '#fff',
                   overflow: 'hidden',
                   flexShrink: 0,
-                  boxShadow: `0 0 0 1.5px ${accent}44`,
+                  boxShadow: `0 0 0 2px ${accent}33`,
                 }}
               >
                 {profesionalFoto ? (
@@ -326,25 +325,27 @@ export default function Sidebar({
               <div style={{ minWidth: 0, flex: 1 }}>
                 <p
                   style={{
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: 600,
                     color: '#CBD5E1',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
                     lineHeight: 1.3,
+                    margin: 0,
                   }}
                 >
                   {profesionalNombre || 'Usuario'}
                 </p>
                 <p
                   style={{
-                    fontSize: 9,
+                    fontSize: 10,
                     color: accent,
                     fontWeight: 600,
-                    letterSpacing: 0.3,
-                    marginTop: 1,
-                    opacity: 0.8,
+                    letterSpacing: 0.2,
+                    marginTop: 2,
+                    opacity: 0.9,
+                    margin: '2px 0 0',
                   }}
                 >
                   {isAdmin ? 'Admin' : 'Empleado'}
@@ -359,23 +360,23 @@ export default function Sidebar({
               style={{
                 display: 'flex',
                 justifyContent: 'center',
-                marginBottom: 6,
+                marginBottom: 8,
               }}
             >
               <div
                 style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 8,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 9,
                   background: profesionalFoto ? 'transparent' : avatarBg,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: 800,
                   color: '#fff',
                   overflow: 'hidden',
-                  boxShadow: `0 0 0 1.5px ${accent}44`,
+                  boxShadow: `0 0 0 2px ${accent}33`,
                 }}
               >
                 {profesionalFoto ? (
@@ -400,21 +401,22 @@ export default function Sidebar({
               width: '100%',
               display: 'flex',
               alignItems: 'center',
-              gap: 8,
+              gap: 10,
               justifyContent: collapsed ? 'center' : 'flex-start',
-              padding: collapsed ? '7px 0' : '6px 8px',
+              padding: collapsed ? '8px 0' : '7px 8px',
               border: 'none',
               cursor: 'pointer',
               background: 'transparent',
-              color: '#3D5068',
-              fontSize: 11,
+              color: '#64748B',
+              fontSize: 12,
               fontWeight: 500,
-              borderRadius: 6,
+              borderRadius: 7,
+              transition: 'color 0.15s',
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.05)'; (e.currentTarget as HTMLElement).style.color = '#64748B'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#3D5068'; }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.06)'; (e.currentTarget as HTMLElement).style.color = '#94A3B8'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#64748B'; }}
           >
-            <UserCircle size={13} style={{ flexShrink: 0 }} />
+            <UserCircle size={15} style={{ flexShrink: 0 }} />
             <span
               style={{
                 opacity: collapsed ? 0 : 1,
@@ -437,22 +439,22 @@ export default function Sidebar({
               width: '100%',
               display: 'flex',
               alignItems: 'center',
-              gap: 8,
+              gap: 10,
               justifyContent: collapsed ? 'center' : 'flex-start',
-              padding: collapsed ? '7px 0' : '6px 8px',
+              padding: collapsed ? '8px 0' : '7px 8px',
               border: 'none',
               cursor: 'pointer',
               background: 'transparent',
-              color: '#2D3C4E',
-              fontSize: 11,
+              color: '#475569',
+              fontSize: 12,
               fontWeight: 400,
-              borderRadius: 6,
+              borderRadius: 7,
               transition: 'color 0.15s',
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.05)'; (e.currentTarget as HTMLElement).style.color = '#EF4444'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#2D3C4E'; }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.06)'; (e.currentTarget as HTMLElement).style.color = '#EF4444'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#475569'; }}
           >
-            <LogOut size={12} style={{ flexShrink: 0 }} />
+            <LogOut size={14} style={{ flexShrink: 0 }} />
             <span
               style={{
                 opacity: collapsed ? 0 : 1,
@@ -468,7 +470,7 @@ export default function Sidebar({
           </button>
 
           {/* Separador */}
-          <div style={{ height: 1, background: 'rgba(148,163,184,0.06)', margin: '4px 0' }} />
+          <div style={{ height: 1, background: 'rgba(148,163,184,0.07)', margin: '6px 0' }} />
 
           {/* Botón: Colapsar / Expandir */}
           <button
@@ -479,22 +481,22 @@ export default function Sidebar({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '6px 0',
+              padding: '7px 0',
               border: 'none',
               cursor: 'pointer',
               background: 'transparent',
-              color: '#2D3C4E',
+              color: '#475569',
               fontSize: 13,
-              borderRadius: 6,
+              borderRadius: 7,
               transition: 'color 0.15s',
             }}
             onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.05)';
-              (e.currentTarget as HTMLElement).style.color = '#475569';
+              (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.06)';
+              (e.currentTarget as HTMLElement).style.color = '#94A3B8';
             }}
             onMouseLeave={e => {
               (e.currentTarget as HTMLElement).style.background = 'transparent';
-              (e.currentTarget as HTMLElement).style.color = '#2D3C4E';
+              (e.currentTarget as HTMLElement).style.color = '#475569';
             }}
           >
             {collapsed
