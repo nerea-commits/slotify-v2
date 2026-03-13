@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, forwardRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { X, AlertTriangle, Info, AlertCircle, CheckCircle, ChevronDown, ChevronRight, Clock, Calendar, User } from 'lucide-react';
 import { calcularFiabilidad, type FiabilidadResult } from '@/lib/fiabilidad';
@@ -77,9 +77,11 @@ function Field({ label, badge, children }: { label: string; badge?: React.ReactN
   );
 }
 
-function InputBase({ style, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
+const InputBase = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
+  function InputBase({ style, onFocus, onBlur, ...props }, ref) {
   return (
     <input
+      ref={ref}
       {...props}
       style={{
         width: '100%',
@@ -94,15 +96,16 @@ function InputBase({ style, ...props }: React.InputHTMLAttributes<HTMLInputEleme
         transition: 'border-color 0.15s',
         ...style,
       }}
-      onFocus={e => { e.currentTarget.style.borderColor = C.borderFocus; if (props.onFocus) props.onFocus(e); }}
+      onFocus={e => { e.currentTarget.style.borderColor = C.borderFocus; if (onFocus) onFocus(e); }}
       onBlur={e => {
         const base = (style as any)?.borderColor || C.border;
         e.currentTarget.style.borderColor = base;
-        if (props.onBlur) props.onBlur(e);
+        if (onBlur) onBlur(e);
       }}
     />
   );
-}
+});
+InputBase.displayName = 'InputBase';
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
