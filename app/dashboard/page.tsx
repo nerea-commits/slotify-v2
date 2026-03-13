@@ -1584,6 +1584,64 @@ export default function Dashboard() {
         </div>
         {/* ── FIN HEADER ── */}
 
+        {/* ── BARRA KPIs DÍA ── solo agenda, solo desktop ── */}
+        {activeSection === 'agenda' && !isMobile && (() => {
+          const hoy = toDS(new Date());
+          const citasTotalesHoy = allCitas.filter(c => {
+            const ds = (c.hora_inicio || '').substring(0, 10);
+            return ds === hoy && (c.estado || '').toLowerCase() !== 'cancelada';
+          });
+          const totalHoy       = citasTotalesHoy.length;
+          const confirmadas    = citasTotalesHoy.filter(c => (c.confirmacion_estado || '').toLowerCase() === 'confirmada').length;
+          const pendientes     = citasTotalesHoy.filter(c => {
+            const ce = (c.confirmacion_estado || '').toLowerCase();
+            return ce === 'pendiente' || !c.confirmacion_estado;
+          }).length;
+          const riesgo         = citasTotalesHoy.filter(c => (c.confirmacion_estado || '').toLowerCase() === 'no_confirmada').length;
+          const canceladas     = allCitas.filter(c => (c.hora_inicio || '').substring(0, 10) === hoy && (c.estado || '').toLowerCase() === 'cancelada').length;
+          const libresHoy      = freeSlotCount(new Date());
+
+          const chips: { label: string; value: number | string; color: string; bg: string; border: string; show: boolean }[] = [
+            { label: 'Citas hoy',    value: totalHoy,    color: '#F1F5F9', bg: 'rgba(241,245,249,0.06)', border: 'rgba(241,245,249,0.1)',  show: true },
+            { label: 'Confirmadas',  value: confirmadas, color: '#22C55E', bg: 'rgba(34,197,94,0.08)',   border: 'rgba(34,197,94,0.2)',    show: true },
+            { label: 'Pendientes',   value: pendientes,  color: '#F59E0B', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.2)',   show: pendientes > 0 },
+            { label: 'En riesgo',    value: riesgo,      color: '#EF4444', bg: 'rgba(239,68,68,0.08)',   border: 'rgba(239,68,68,0.2)',    show: riesgo > 0 },
+            { label: 'Canceladas',   value: canceladas,  color: '#94A3B8', bg: 'rgba(148,163,184,0.06)', border: 'rgba(148,163,184,0.12)', show: canceladas > 0 },
+            { label: 'Huecos libres',value: libresHoy,   color: '#38BDF8', bg: 'rgba(56,189,248,0.07)',  border: 'rgba(56,189,248,0.18)', show: true },
+          ];
+
+          return (
+            <div style={{
+              flexShrink: 0,
+              background: '#131E30',
+              borderBottom: `1px solid rgba(148,163,184,0.08)`,
+              padding: '0 18px',
+              display: 'flex', alignItems: 'center', gap: 6,
+              height: 38, overflowX: 'auto',
+            }}>
+              {/* Fecha contexto */}
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#475569', whiteSpace: 'nowrap', marginRight: 4, flexShrink: 0 }}>
+                {new Date().toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase()}
+              </span>
+              <div style={{ width: 1, height: 16, background: 'rgba(148,163,184,0.12)', flexShrink: 0 }} />
+              {chips.filter(c => c.show).map(chip => (
+                <div key={chip.label} style={{
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  padding: '3px 10px',
+                  background: chip.bg,
+                  border: `1px solid ${chip.border}`,
+                  borderRadius: 20,
+                  flexShrink: 0,
+                  cursor: 'default',
+                }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: chip.color, lineHeight: 1 }}>{chip.value}</span>
+                  <span style={{ fontSize: 10, fontWeight: 500, color: chip.color, opacity: 0.75, letterSpacing: 0.1, whiteSpace: 'nowrap' }}>{chip.label}</span>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+
         {activeSection !== 'agenda' && (
           <div className="flex-1 overflow-y-auto" style={{ background: C.bg, paddingBottom: 80 }}>
             {activeSection === 'clientes' && <ClientesSection empresaId={empresa?.id || ''} />}
@@ -1713,7 +1771,11 @@ export default function Dashboard() {
                     return (
                       <div key={slot} style={{ display: 'flex', minHeight: slotCitas.length > 0 ? Math.max(MIN_H, slotCitas.length * 52) : MIN_H }}>
                         <div style={{ width: isMobile ? 44 : 64, flexShrink: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: isMobile ? 8 : 12, paddingTop: 4 }}>
-                          <span style={{ fontSize: isMobile ? 12 : 11, color: C.textSec, fontWeight: 600 }}>{slot}</span>
+                          <span style={{
+                            fontSize: isMobile ? 12 : (isHour ? 11 : 10),
+                            color: isHour ? '#64748B' : 'rgba(100,116,139,0.4)',
+                            fontWeight: isHour ? 600 : 400,
+                          }}>{isHour ? slot : (isMobile ? slot : '· · ·')}</span>
                         </div>
                         {(() => {
                           const slotAbsence = isSlotInAbsence(slot, selectedDate);
@@ -1728,7 +1790,7 @@ export default function Dashboard() {
                               data-slot-idx={si}
                               data-day-idx={0}
                               data-date={toDS(selectedDate)}
-                              style={{ flex: 1, borderBottom: `1px solid ${isHour ? C.surfaceAlt : 'rgba(36,50,71,0.4)'}`, minHeight: MIN_H, position: 'relative', display: 'flex', flexDirection: 'column', gap: 3, padding: slotCitas.length > 0 ? '2px 0' : 0, ...(absOverlay ? { background: absOverlay.background, borderLeft: `${absOverlay.borderLeftWidth} ${absOverlay.borderLeftStyle} ${absOverlay.borderLeftColor}` } : {}), userSelect: 'none' }}
+                              style={{ flex: 1, borderBottom: `1px solid ${isHour ? 'rgba(148,163,184,0.14)' : 'rgba(36,50,71,0.3)'}`, minHeight: MIN_H, position: 'relative', display: 'flex', flexDirection: 'column', gap: 3, padding: slotCitas.length > 0 ? '2px 0' : 0, ...(absOverlay ? { background: absOverlay.background, borderLeft: `${absOverlay.borderLeftWidth} ${absOverlay.borderLeftStyle} ${absOverlay.borderLeftColor}` } : {}), userSelect: 'none' }}
                             >
                               {moveDrag?.active && moveDrag.targetSlotIdx === si && (() => {
                                 const ghostH = moveDrag.durSlots * MIN_H;
@@ -1804,7 +1866,32 @@ export default function Dashboard() {
                                         {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
                                         {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && <span style={{ marginLeft: 4, fontSize: 11 }}>{clientRiskCache[cita.cliente_id].icon}</span>}
                                       </p>
-                                      {renderConfirmacionDot(cita, isMobile ? 7 : 8)}
+                                      {/* Vista día desktop: badge estado texto + dot */}
+                                      {!isMobile && !isCompletada(cita.estado) && (() => {
+                                        const conf = (cita.confirmacion_estado || 'pendiente').toLowerCase();
+                                        const estadoBase = (cita.estado || '').toLowerCase();
+                                        if (['completada','cancelada','no-show','no_show'].includes(estadoBase)) return null;
+                                        const map: Record<string, { label: string; color: string }> = {
+                                          pendiente:     { label: 'Pendiente',      color: '#F59E0B' },
+                                          confirmada:    { label: 'Confirmada',     color: '#22C55E' },
+                                          no_confirmada: { label: 'Sin confirmar',  color: '#EF4444' },
+                                          cancelada:     { label: 'Cancelada',      color: '#94A3B8' },
+                                        };
+                                        const cfg = map[conf] || map['pendiente'];
+                                        return (
+                                          <div style={{
+                                            display: 'flex', alignItems: 'center', gap: 3,
+                                            padding: '2px 7px', borderRadius: 20, flexShrink: 0,
+                                            background: cfg.color + '20',
+                                            border: `1px solid ${cfg.color}40`,
+                                          }}>
+                                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: cfg.color, flexShrink: 0 }} />
+                                            <span style={{ fontSize: 9, fontWeight: 700, color: cfg.color, letterSpacing: 0.2, whiteSpace: 'nowrap' as const }}>{cfg.label}</span>
+                                          </div>
+                                        );
+                                      })()}
+                                      {/* Mobile: solo dot + hora */}
+                                      {isMobile && renderConfirmacionDot(cita, 7)}
                                       {isMobile && (
                                         <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', flexShrink: 0 }}>
                                           {cita.hora_inicio?.substring(11, 16)}
@@ -1843,8 +1930,11 @@ export default function Dashboard() {
                               )}
                               {nowSlotIdx === si && (
                                 <div data-now-line style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', pointerEvents: 'none', zIndex: 20 }}>
-                                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.red, boxShadow: '0 0 6px rgba(239,68,68,0.8)', flexShrink: 0 }} />
-                                  <div style={{ flex: 1, height: 2, background: C.red, opacity: 0.85 }} />
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0, paddingRight: 4 }}>
+                                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#F87171', boxShadow: '0 0 6px rgba(248,113,113,0.7)' }} />
+                                    <span style={{ fontSize: 9, fontWeight: 700, color: '#F87171', letterSpacing: 0.4, lineHeight: 1 }}>AHORA</span>
+                                  </div>
+                                  <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, #F87171 0%, rgba(248,113,113,0.15) 100%)', opacity: 0.9 }} />
                                 </div>
                               )}
                             </div>
@@ -1954,7 +2044,7 @@ export default function Dashboard() {
                           borderBottom: `1px solid ${isHour ? C.surfaceAlt : 'rgba(36,50,71,0.3)'}`,
                           background: C.bg, flexShrink: 0,
                         }}>
-                          <span style={{ fontSize: isHour ? 10 : 9, color: C.textSec, fontWeight: isHour ? 600 : 400, opacity: isHour ? 1 : 0.5, lineHeight: 1 }}>{slot}</span>
+                          <span style={{ fontSize: isHour ? 10 : 9, color: isHour ? '#64748B' : 'rgba(100,116,139,0.35)', fontWeight: isHour ? 600 : 400, opacity: 1, lineHeight: 1 }}>{isHour ? slot : '·'}</span>
                         </div>,
 
                         ...profsVisibles.map((prof, di) => {
@@ -2011,8 +2101,11 @@ export default function Dashboard() {
                             >
                               {isNow && (
                                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', pointerEvents: 'none', zIndex: 20 }}>
-                                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.red, boxShadow: '0 0 5px rgba(239,68,68,0.8)', flexShrink: 0 }} />
-                                  <div style={{ flex: 1, height: 2, background: C.red, opacity: 0.8 }} />
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0, paddingRight: 3 }}>
+                                    <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#F87171', boxShadow: '0 0 5px rgba(248,113,113,0.7)' }} />
+                                    <span style={{ fontSize: 8, fontWeight: 700, color: '#F87171', letterSpacing: 0.3 }}>AHORA</span>
+                                  </div>
+                                  <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, #F87171 0%, rgba(248,113,113,0.1) 100%)', opacity: 0.9 }} />
                                 </div>
                               )}
 
@@ -2293,7 +2386,7 @@ export default function Dashboard() {
                       const isHour = slot.endsWith(':00');
                       cells.push(
                         <div key={`time-${si}`} style={{ gridColumn: 1, gridRow: rowIdx, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: isMobile ? 4 : 6, paddingTop: 6, borderBottom: `1px solid ${isHour ? C.surfaceAlt : 'rgba(36,50,71,0.25)'}`, background: C.bg }}>
-                          <span style={{ fontSize: isHour ? 10 : 9, color: C.textSec, fontWeight: isHour ? 600 : 400, opacity: isHour ? 1 : 0.5, lineHeight: 1, whiteSpace: 'nowrap' }}>{slot}</span>
+                          <span style={{ fontSize: isHour ? 10 : 9, color: isHour ? '#64748B' : 'rgba(100,116,139,0.35)', fontWeight: isHour ? 600 : 400, opacity: 1, lineHeight: 1, whiteSpace: 'nowrap' }}>{isHour ? slot : '·'}</span>
                         </div>
                       );
 
@@ -2444,7 +2537,7 @@ export default function Dashboard() {
                                 }}
                               />
                             )}
-                            {isNowSlot && <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', pointerEvents: 'none', zIndex: 20 }}><div style={{ width: 6, height: 6, borderRadius: '50%', background: C.red, boxShadow: '0 0 5px rgba(239,68,68,0.8)', flexShrink: 0 }} /><div style={{ flex: 1, height: 2, background: C.red, opacity: 0.8 }} /></div>}
+                            {isNowSlot && <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', pointerEvents: 'none', zIndex: 20 }}><div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0, paddingRight: 3 }}><div style={{ width: 5, height: 5, borderRadius: '50%', background: '#F87171', boxShadow: '0 0 5px rgba(248,113,113,0.7)' }} /><span style={{ fontSize: 8, fontWeight: 700, color: '#F87171', letterSpacing: 0.3 }}>AHORA</span></div><div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, #F87171 0%, rgba(248,113,113,0.1) 100%)', opacity: 0.9 }} /></div>}
                           </div>
                         );
                       });
