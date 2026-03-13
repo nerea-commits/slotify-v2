@@ -484,73 +484,92 @@ export default function LoginPage() {
               background: T.bgCard,
               border: `1px solid ${T.goldBorder}`,
               borderRadius: T.r_xl + 2,
-              padding: '44px 40px',
+              padding: '32px 36px 36px',
               boxShadow: '0 48px 120px rgba(0,0,0,0.75), inset 0 1px 0 rgba(201,169,110,0.06)',
             }}>
 
-              {/* Header negocio */}
+              {/* ── HEADER NEGOCIO ── */}
               <div style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
-                marginBottom: 32, textAlign: 'center' as const,
+                marginBottom: 24, textAlign: 'center' as const,
               }}>
-                {/* Logo o inicial */}
+
+                {/* Logo — grande y con peso visual real */}
                 {(empresa as any)?.logo_url ? (
-                  <img
-                    src={(empresa as any).logo_url}
-                    alt={empresa?.nombre}
-                    style={{
-                      maxHeight: 72, maxWidth: 180,
-                      width: 'auto', height: 'auto',
-                      objectFit: 'contain',
-                      filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.6))',
-                      marginBottom: 14,
-                    }}
-                  />
-                ) : (
                   <div style={{
-                    width: 68, height: 68,
+                    width: 120, height: 120,
                     borderRadius: T.r_lg,
-                    background: T.goldDim,
+                    background: '#0A0F1C',
                     border: `1px solid ${T.goldBorder}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 26, fontWeight: 800, color: T.gold,
-                    marginBottom: 14,
-                    boxShadow: `0 4px 20px ${T.goldGlow}`,
+                    marginBottom: 16,
+                    overflow: 'hidden',
+                    boxShadow: `0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(201,169,110,0.06)`,
+                    padding: 14,
+                    boxSizing: 'border-box' as const,
+                  }}>
+                    <img
+                      src={(empresa as any).logo_url}
+                      alt={empresa?.nombre}
+                      style={{
+                        maxWidth: '100%', maxHeight: '100%',
+                        width: 'auto', height: 'auto',
+                        objectFit: 'contain', display: 'block',
+                        filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.4))',
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div style={{
+                    width: 88, height: 88,
+                    borderRadius: T.r_lg,
+                    background: 'linear-gradient(135deg, rgba(201,169,110,0.14) 0%, rgba(201,169,110,0.06) 100%)',
+                    border: `1px solid ${T.goldBorder}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 34, fontWeight: 800, color: T.gold,
+                    marginBottom: 16,
+                    boxShadow: `0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(201,169,110,0.06)`,
+                    fontFamily: 'Georgia, serif',
+                    letterSpacing: -1,
                   }}>
                     {empresa?.nombre?.[0]?.toUpperCase() || 'K'}
                   </div>
                 )}
 
-                {/* Nombre negocio con pill */}
-                <div style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '4px 12px',
-                  background: T.goldDim,
-                  border: `1px solid ${T.goldBorder}`,
-                  borderRadius: T.r_pill,
-                  marginBottom: 12,
+                {/* Nombre negocio — peso real, no pill pequeño */}
+                <p style={{
+                  fontSize: 18, fontWeight: 700, color: T.gold,
+                  margin: '0 0 4px', letterSpacing: 0.1,
+                  textShadow: '0 2px 12px rgba(201,169,110,0.18)',
                 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: T.gold, letterSpacing: 0.3 }}>
-                    {empresa?.nombre || 'Tu negocio'}
-                  </span>
-                </div>
+                  {empresa?.nombre || 'Tu negocio'}
+                </p>
 
+                {/* Contexto — "ya has accedido, ahora elige perfil" */}
+                <p style={{
+                  fontSize: 12, color: T.textDim,
+                  margin: '0 0 14px', fontWeight: 500,
+                }}>
+                  Sesión iniciada correctamente
+                </p>
+
+                {/* Título acción */}
                 <h1 style={{
-                  fontSize: 22, fontWeight: 700, color: T.textPrimary,
-                  margin: '0 0 6px', letterSpacing: -0.3,
+                  fontSize: 20, fontWeight: 700, color: T.textPrimary,
+                  margin: '0 0 5px', letterSpacing: -0.3,
                 }}>
                   Selecciona tu perfil
                 </h1>
                 <p style={{ fontSize: 13, color: T.textSec, margin: 0 }}>
-                  Elige el usuario con el que vas a trabajar hoy
+                  ¿Con quién vas a trabajar hoy?
                 </p>
               </div>
 
               <Divider />
-              <div style={{ height: 20 }} />
+              <div style={{ height: 18 }} />
 
-              {/* Lista de perfiles */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* ── LISTA DE PERFILES ── */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {profesionales.map(p => {
                   const isAdmin = p.rol === 'admin' || p.rol === 'owner';
                   const isProtected = isAdmin || !!p.pin;
@@ -569,7 +588,7 @@ export default function LoginPage() {
                       style={{
                         width: '100%',
                         display: 'flex', alignItems: 'center', gap: 14,
-                        padding: '14px 16px',
+                        padding: '13px 14px',
                         background: isHov ? T.bgCardHov : 'rgba(255,255,255,0.025)',
                         border: `1px solid ${isHov ? T.borderHov : T.border}`,
                         borderRadius: T.r_lg,
@@ -615,19 +634,21 @@ export default function LoginPage() {
                           }}>
                             {rolLabel}
                           </span>
-                          {/* Badge PIN */}
+                          {/* Badge PIN — explícito */}
                           {isProtected && (
                             <>
                               <span style={{ fontSize: 10, color: T.textDim }}>·</span>
                               <div style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 3,
-                                padding: '2px 6px',
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                padding: '2px 7px',
                                 background: 'rgba(201,169,110,0.08)',
-                                border: `1px solid rgba(201,169,110,0.2)`,
+                                border: `1px solid rgba(201,169,110,0.22)`,
                                 borderRadius: T.r_pill,
                               }}>
                                 <Lock size={9} style={{ color: T.gold }} />
-                                <span style={{ fontSize: 10, fontWeight: 700, color: T.gold }}>PIN</span>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: T.gold, letterSpacing: 0.2 }}>
+                                  Requiere PIN
+                                </span>
                               </div>
                             </>
                           )}
@@ -636,14 +657,14 @@ export default function LoginPage() {
 
                       {/* Chevron */}
                       <div style={{
-                        width: 32, height: 32,
-                        borderRadius: 9, flexShrink: 0,
+                        width: 30, height: 30,
+                        borderRadius: 8, flexShrink: 0,
                         background: isHov ? T.goldDim : 'rgba(255,255,255,0.03)',
                         border: `1px solid ${isHov ? T.goldBorder : T.border}`,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         transition: 'all 0.15s',
                       }}>
-                        <ChevronRight size={14} style={{
+                        <ChevronRight size={13} style={{
                           color: isHov ? T.gold : T.textDim,
                           transition: 'color 0.15s',
                         }} />
