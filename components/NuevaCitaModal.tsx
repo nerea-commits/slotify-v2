@@ -449,20 +449,23 @@ export default function NuevaCitaModal({
             <div>
               <h3 style={{ fontSize: 16, fontWeight: 700, color: C.text, lineHeight: 1.2, margin: 0 }}>Nueva cita</h3>
               {/* Contexto: fecha + hora */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 7, flexWrap: 'wrap' as const }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(148,163,184,0.06)', borderRadius: 7, padding: '4px 9px' }}>
-                  <Calendar size={11} color={C.textSec} />
-                  <span style={{ fontSize: 12, color: '#94A3B8', fontWeight: 500 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, flexWrap: 'wrap' as const }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Calendar size={11} color={C.textTer} />
+                  <span style={{ fontSize: 12, color: C.textSec, fontWeight: 500 }}>
                     {fmtFecha(selectedDate)}
                   </span>
                 </div>
                 {preselectedTime && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 7, padding: '4px 9px' }}>
-                    <Clock size={11} color={C.green} />
-                    <span style={{ fontSize: 12, color: C.green, fontWeight: 600 }}>
-                      {horaInicio}{preselectedEndTime ? ` – ${horaFin}` : ''}
-                    </span>
-                  </div>
+                  <>
+                    <span style={{ fontSize: 11, color: 'rgba(148,163,184,0.25)' }}>·</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.18)', borderRadius: 6, padding: '3px 8px' }}>
+                      <Clock size={10} color={C.green} />
+                      <span style={{ fontSize: 12, color: C.green, fontWeight: 700, letterSpacing: 0.1 }}>
+                        {horaInicio}{preselectedEndTime ? ` – ${horaFin}` : ''}
+                      </span>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -586,10 +589,10 @@ export default function NuevaCitaModal({
             <>
               <div style={{ height: 1, background: 'rgba(148,163,184,0.06)' }} />
               <div>
-                <label style={{ fontSize: 11, color: C.textSec, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase' as const, display: 'block', marginBottom: 7 }}>
+                <label style={{ fontSize: 11, color: C.textTer, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' as const, display: 'block', marginBottom: 8 }}>
                   Profesional
                 </label>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
                   {profesionales.map(p => {
                     const sel = profSeleccionado === p.id;
                     const color = p.color || C.green;
@@ -598,33 +601,46 @@ export default function NuevaCitaModal({
                         key={p.id}
                         onClick={() => setProfSeleccionado(p.id)}
                         style={{
-                          display: 'flex', alignItems: 'center', gap: 7,
-                          padding: '6px 11px 6px 7px',
-                          borderRadius: 9,
-                          border: sel ? `1.5px solid ${color}55` : `1px solid ${C.border}`,
-                          background: sel ? color + '14' : C.surfaceAlt,
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          padding: '5px 10px 5px 6px',
+                          borderRadius: 8,
+                          border: sel
+                            ? `1px solid ${color}40`
+                            : `1px solid rgba(148,163,184,0.09)`,
+                          background: sel
+                            ? color + '0F'
+                            : 'rgba(148,163,184,0.04)',
                           cursor: 'pointer',
-                          transition: 'all 0.12s',
+                          transition: 'all 0.1s',
+                          outline: 'none',
                         }}
-                        onMouseEnter={e => { if (!sel) (e.currentTarget as HTMLElement).style.borderColor = 'rgba(148,163,184,0.2)'; }}
-                        onMouseLeave={e => { if (!sel) (e.currentTarget as HTMLElement).style.borderColor = C.border; }}
+                        onMouseEnter={e => { if (!sel) { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.08)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(148,163,184,0.16)'; } }}
+                        onMouseLeave={e => { if (!sel) { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.04)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(148,163,184,0.09)'; } }}
                       >
+                        {/* Avatar */}
                         <div style={{
-                          width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
-                          background: p.foto_url ? 'transparent' : color + '25',
-                          border: `1.5px solid ${color}50`,
+                          width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                          background: p.foto_url ? 'transparent' : (sel ? color + '30' : 'rgba(148,163,184,0.12)'),
+                          border: sel ? `1.5px solid ${color}60` : '1.5px solid rgba(148,163,184,0.15)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          overflow: 'hidden', fontSize: 10, fontWeight: 800, color,
+                          overflow: 'hidden', fontSize: 9, fontWeight: 800,
+                          color: sel ? color : C.textSec,
+                          transition: 'all 0.1s',
                         }}>
                           {p.foto_url
                             ? <img src={p.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             : (p.nombre?.[0] || '?').toUpperCase()
                           }
                         </div>
-                        <span style={{ fontSize: 12, fontWeight: sel ? 700 : 500, color: sel ? C.text : C.textSec, whiteSpace: 'nowrap' as const }}>
+                        <span style={{
+                          fontSize: 12,
+                          fontWeight: sel ? 600 : 400,
+                          color: sel ? C.text : C.textSec,
+                          whiteSpace: 'nowrap' as const,
+                          transition: 'color 0.1s',
+                        }}>
                           {p.nombre}
                         </span>
-                        {sel && <CheckCircle size={11} color={color} style={{ flexShrink: 0 }} />}
                       </button>
                     );
                   })}
@@ -730,71 +746,84 @@ export default function NuevaCitaModal({
             </div>
           </div>
 
-          {/* ── CAMPOS SECUNDARIOS (colapsable) ─────────────────────────── */}
-          {hasSecundarios && (
-            <>
-              <div style={{ height: 1, background: 'rgba(148,163,184,0.06)' }} />
-              <button
-                onClick={() => setShowSecundarios(v => !v)}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', width: 'fit-content' }}
-              >
-                <ChevronRight
-                  size={13}
-                  color={C.textSec}
-                  style={{ transform: showSecundarios ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s', flexShrink: 0 }}
-                />
+          {/* ── MÁS OPCIONES — disclosure integrado ──────────────────────── */}
+          <div style={{ borderTop: `1px solid rgba(148,163,184,0.06)` }}>
+            <button
+              onClick={() => setShowSecundarios(v => !v)}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                background: 'none', border: 'none', cursor: 'pointer',
+                padding: '10px 0 0', gap: 8,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ fontSize: 12, color: C.textSec, fontWeight: 500 }}>
-                  {showSecundarios ? 'Menos opciones' : 'Más opciones'}
-                  {(autoFilledImporte || notas) && !showSecundarios && (
-                    <span style={{ marginLeft: 6, fontSize: 10, color: C.green }}>
-                      {[autoFilledImporte && '€', notas && 'nota'].filter(Boolean).join(' · ')}
-                    </span>
-                  )}
+                  {showSecundarios ? 'Ocultar opciones' : 'Más opciones'}
                 </span>
-              </button>
+                {/* Resumen de datos activos cuando colapsado */}
+                {!showSecundarios && (autoFilledImporte || importe || notas) && (
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    {(autoFilledImporte || importe) && (
+                      <span style={{ fontSize: 10, fontWeight: 600, color: C.green, background: 'rgba(34,197,94,0.08)', padding: '1px 6px', borderRadius: 4 }}>
+                        {importe ? `${importe}€` : '€'}
+                      </span>
+                    )}
+                    {notas && (
+                      <span style={{ fontSize: 10, fontWeight: 500, color: C.textTer, background: 'rgba(148,163,184,0.08)', padding: '1px 6px', borderRadius: 4 }}>
+                        nota
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+              <ChevronDown
+                size={13}
+                color={C.textTer}
+                style={{ transform: showSecundarios ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.18s ease', flexShrink: 0 }}
+              />
+            </button>
 
-              {showSecundarios && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {showSecundarios && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 12 }}>
 
-                  {/* Importe */}
-                  {mostrarImporte && (
-                    <Field
-                      label="Importe"
-                      badge={
-                        autoFilledImporte
-                          ? <span style={{ fontSize: 10, color: C.green, fontWeight: 500 }}>sugerido</span>
-                          : <span style={{ fontSize: 10, color: C.textTer }}>opcional</span>
-                      }
-                    >
-                      <div style={{ position: 'relative' }}>
-                        <InputBase
-                          type="text"
-                          inputMode="decimal"
-                          placeholder="0.00"
-                          value={importe}
-                          onChange={e => { setImporte(e.target.value); setAutoFilledImporte(false); }}
-                          style={{ paddingRight: 36, borderColor: autoFilledImporte ? C.borderGreen : C.border }}
-                        />
-                        <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: C.textTer, fontSize: 13, fontWeight: 600 }}>€</span>
-                      </div>
-                    </Field>
-                  )}
-
-                  {/* Notas */}
-                  <Field label="Notas">
-                    <textarea
-                      placeholder="Observaciones, preferencias..."
-                      value={notas}
-                      onChange={e => setNotas(e.target.value)}
-                      rows={2}
-                      style={{ width: '100%', padding: '11px 14px', background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, color: C.text, fontSize: 14, outline: 'none', resize: 'vertical' as const, boxSizing: 'border-box' as const, fontFamily: 'inherit' }}
-                    />
+                {/* Importe */}
+                {mostrarImporte && (
+                  <Field
+                    label="Importe"
+                    badge={
+                      autoFilledImporte
+                        ? <span style={{ fontSize: 10, color: C.green, fontWeight: 500 }}>sugerido</span>
+                        : <span style={{ fontSize: 10, color: C.textTer }}>opcional</span>
+                    }
+                  >
+                    <div style={{ position: 'relative' }}>
+                      <InputBase
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0.00"
+                        value={importe}
+                        onChange={e => { setImporte(e.target.value); setAutoFilledImporte(false); }}
+                        style={{ paddingRight: 36, borderColor: autoFilledImporte ? C.borderGreen : C.border }}
+                      />
+                      <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: C.textTer, fontSize: 13, fontWeight: 600 }}>€</span>
+                    </div>
                   </Field>
+                )}
 
-                </div>
-              )}
-            </>
-          )}
+                {/* Notas */}
+                <Field label="Notas">
+                  <textarea
+                    placeholder="Observaciones, preferencias..."
+                    value={notas}
+                    onChange={e => setNotas(e.target.value)}
+                    rows={2}
+                    style={{ width: '100%', padding: '11px 14px', background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, color: C.text, fontSize: 14, outline: 'none', resize: 'vertical' as const, boxSizing: 'border-box' as const, fontFamily: 'inherit' }}
+                  />
+                </Field>
+
+              </div>
+            )}
+          </div>
 
           {/* Error */}
           {error && (
