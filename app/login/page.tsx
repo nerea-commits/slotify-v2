@@ -491,72 +491,68 @@ export default function LoginPage() {
               {/* ── HEADER NEGOCIO ── */}
               <div style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
-                marginBottom: 24, textAlign: 'center' as const,
+                marginBottom: 22, textAlign: 'center' as const,
               }}>
 
-                {/* Logo — grande y con peso visual real */}
-                {(empresa as any)?.logo_url ? (
-                  <div style={{
-                    width: 120, height: 120,
-                    borderRadius: T.r_lg,
-                    background: '#0A0F1C',
-                    border: `1px solid ${T.goldBorder}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    marginBottom: 16,
-                    overflow: 'hidden',
-                    boxShadow: `0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(201,169,110,0.06)`,
-                    padding: 14,
-                    boxSizing: 'border-box' as const,
-                  }}>
+                {/* Identidad del negocio: logo + nombre como unidad */}
+                <div style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  gap: 10, marginBottom: 18,
+                }}>
+                  {(empresa as any)?.logo_url ? (
+                    /* Logo directo, sin marco que lo apague.
+                       Altura fija real de 80px, ancho libre hasta 240px.
+                       El contenedor solo añade el drop-shadow, nada más. */
                     <img
                       src={(empresa as any).logo_url}
                       alt={empresa?.nombre}
                       style={{
-                        maxWidth: '100%', maxHeight: '100%',
-                        width: 'auto', height: 'auto',
-                        objectFit: 'contain', display: 'block',
-                        filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.4))',
+                        height: 80,
+                        maxWidth: 240,
+                        width: 'auto',
+                        display: 'block',
+                        objectFit: 'contain',
+                        filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.55)) drop-shadow(0 1px 3px rgba(0,0,0,0.4))',
                       }}
                     />
-                  </div>
-                ) : (
-                  <div style={{
-                    width: 88, height: 88,
-                    borderRadius: T.r_lg,
-                    background: 'linear-gradient(135deg, rgba(201,169,110,0.14) 0%, rgba(201,169,110,0.06) 100%)',
-                    border: `1px solid ${T.goldBorder}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 34, fontWeight: 800, color: T.gold,
-                    marginBottom: 16,
-                    boxShadow: `0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(201,169,110,0.06)`,
-                    fontFamily: 'Georgia, serif',
-                    letterSpacing: -1,
+                  ) : (
+                    <div style={{
+                      width: 80, height: 80,
+                      borderRadius: T.r_lg,
+                      background: 'linear-gradient(135deg, rgba(201,169,110,0.16) 0%, rgba(201,169,110,0.07) 100%)',
+                      border: `1px solid ${T.goldBorder}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 32, fontWeight: 800, color: T.gold,
+                      fontFamily: 'Georgia, serif',
+                      letterSpacing: -1,
+                      boxShadow: `0 6px 24px rgba(0,0,0,0.4)`,
+                    }}>
+                      {empresa?.nombre?.[0]?.toUpperCase() || 'K'}
+                    </div>
+                  )}
+
+                  {/* Nombre del negocio — unidad visual con el logo */}
+                  <p style={{
+                    fontSize: 19, fontWeight: 700, color: T.gold,
+                    margin: 0, letterSpacing: 0.1,
+                    textShadow: '0 2px 12px rgba(201,169,110,0.2)',
                   }}>
-                    {empresa?.nombre?.[0]?.toUpperCase() || 'K'}
-                  </div>
-                )}
+                    {empresa?.nombre || 'Tu negocio'}
+                  </p>
+                </div>
 
-                {/* Nombre negocio — peso real, no pill pequeño */}
-                <p style={{
-                  fontSize: 18, fontWeight: 700, color: T.gold,
-                  margin: '0 0 4px', letterSpacing: 0.1,
-                  textShadow: '0 2px 12px rgba(201,169,110,0.18)',
-                }}>
-                  {empresa?.nombre || 'Tu negocio'}
-                </p>
-
-                {/* Contexto — "ya has accedido, ahora elige perfil" */}
+                {/* Separador de contexto */}
                 <p style={{
                   fontSize: 12, color: T.textDim,
-                  margin: '0 0 14px', fontWeight: 500,
+                  margin: '0 0 12px', fontWeight: 500,
                 }}>
-                  Sesión iniciada correctamente
+                  Ya estás dentro · Elige tu perfil para continuar
                 </p>
 
                 {/* Título acción */}
                 <h1 style={{
                   fontSize: 20, fontWeight: 700, color: T.textPrimary,
-                  margin: '0 0 5px', letterSpacing: -0.3,
+                  margin: '0 0 4px', letterSpacing: -0.3,
                 }}>
                   Selecciona tu perfil
                 </h1>
