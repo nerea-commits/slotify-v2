@@ -1321,7 +1321,7 @@ export default function Dashboard() {
             )}
 
             {isAdmin && activeSection === 'agenda' && profesionales.length > 0 && (
-              <div className="hidden-mobile" style={{ display: 'flex', alignItems: 'center', gap: 0, background: C.surfaceAlt, borderRadius: 8, padding: 2, flexShrink: 0, marginLeft: 4 }}>
+              <div className="hidden-mobile prof-filter-scroll" style={{ display: 'flex', alignItems: 'center', gap: 0, background: C.surfaceAlt, borderRadius: 8, padding: 2, flexShrink: 0, marginLeft: 4 }}>
                 <button
                   onClick={() => setSelectedProfId(null)}
                   style={{
@@ -1593,7 +1593,7 @@ export default function Dashboard() {
 
           const visibleChips = chips.filter(c => c.show);
           return (
-            <div style={{
+            <div className="kpi-bar-scroll" style={{
               flexShrink: 0,
               background: '#0D1829',
               borderBottom: `1px solid rgba(148,163,184,0.09)`,
@@ -3082,7 +3082,7 @@ export default function Dashboard() {
       />
 
       <style>{`
-        @media (min-width: 768px) {
+        @media (min-width: 1025px) {
           .main-content-desktop {
             margin-left: ${sidebarCollapsed ? 56 : 240}px;
             transition: margin-left 0.2s cubic-bezier(0.4,0,0.2,1);
@@ -3090,12 +3090,31 @@ export default function Dashboard() {
           .show-mobile-flex { display: none !important; }
           .show-mobile-only { display: none !important; }
         }
+        @media (min-width: 768px) and (max-width: 1024px) {
+          .main-content-desktop {
+            margin-left: 56px !important;
+            transition: margin-left 0.2s cubic-bezier(0.4,0,0.2,1);
+          }
+          .show-mobile-flex { display: none !important; }
+          .show-mobile-only { display: none !important; }
+          .prof-filter-scroll {
+            max-width: 280px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+          }
+          .prof-filter-scroll::-webkit-scrollbar { display: none; }
+        }
         @media (max-width: 767px) {
           .main-content-desktop { margin-left: 0 !important; width: 100% !important; }
           .hidden-mobile { display: none !important; }
           .show-mobile-flex { display: flex !important; }
           .show-mobile-only { display: flex !important; }
         }
+        .kpi-bar-scroll {
+          -webkit-overflow-scrolling: touch;
+        }
+        .kpi-bar-scroll::-webkit-scrollbar { display: none; }
         ${moveDrag?.active ? 'body { cursor: grabbing !important; }' : ''}
         @keyframes agendaSlideLeft {
           from { opacity: 0; transform: translateX(18px); }
