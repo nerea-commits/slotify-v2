@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Eye, EyeOff, Check, ArrowLeft, Building2, User, Lock } from 'lucide-react';
@@ -172,7 +172,12 @@ function Divider() {
 }
 
 // ── STEPPER ─────────────────────────────────────────────────────────────
-function Stepper({ current }: { current: number }) {
+function Stepper({ current, compact = false }: { current: number; compact?: boolean }) {
+  const circleSize = compact ? 30 : 36;
+  const iconSize = compact ? 13 : 15;
+  const labelSize = compact ? 9 : 10;
+  const lineW = compact ? 28 : 40;
+
   return (
     <div className="knoa-stepper" style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -184,14 +189,13 @@ function Stepper({ current }: { current: number }) {
         const Icon = s.icon;
         return (
           <div key={s.num} style={{ display: 'flex', alignItems: 'center' }}>
-            {/* Step circle */}
             <div style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-              minWidth: 64,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: compact ? 4 : 6,
+              minWidth: compact ? 52 : 64,
             }}>
               <div style={{
-                width: 36, height: 36,
-                borderRadius: 12,
+                width: circleSize, height: circleSize,
+                borderRadius: compact ? 10 : 12,
                 background: done
                   ? T.gold
                   : active
@@ -203,30 +207,31 @@ function Stepper({ current }: { current: number }) {
                 boxShadow: active ? `0 0 16px ${T.goldGlow}` : 'none',
               }}>
                 {done ? (
-                  <Check size={16} style={{ color: '#07090F', strokeWidth: 3 }} />
+                  <Check size={compact ? 13 : 16} style={{ color: '#07090F', strokeWidth: 3 }} />
                 ) : (
-                  <Icon size={15} style={{
+                  <Icon size={iconSize} style={{
                     color: active ? T.gold : '#334155',
                     strokeWidth: active ? 2.2 : 1.5,
                   }} />
                 )}
               </div>
+              {/* Label — en móvil solo el paso activo muestra texto completo */}
               <span className="knoa-step-label" style={{
-                fontSize: 10, fontWeight: active ? 700 : 500,
+                fontSize: labelSize,
+                fontWeight: active ? 700 : 500,
                 color: done ? T.gold : active ? T.textPrimary : '#334155',
                 letterSpacing: 0.3, whiteSpace: 'nowrap',
                 transition: 'color 0.2s',
-              }}>{s.label}</span>
+              }}>{compact && !active && !done ? `${s.num}` : s.label}</span>
             </div>
-            {/* Connector line */}
             {i < STEPS.length - 1 && (
               <div style={{
-                width: 40, height: 1.5,
+                width: lineW, height: 1.5,
                 background: done
                   ? T.gold
                   : `linear-gradient(90deg, ${active ? T.gold + '44' : 'rgba(148,163,184,0.08)'}, rgba(148,163,184,0.08))`,
                 margin: '0 4px',
-                marginBottom: 22, /* align with circles, not labels */
+                marginBottom: compact ? 18 : 22,
                 borderRadius: 1,
                 transition: 'background 0.3s',
               }} />
@@ -264,6 +269,20 @@ export default function RegisterPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
+
+  useEffect(() => {
+    function checkBreakpoint() {
+      const w = window.innerWidth;
+      setIsMobile(w < 640);
+      setIsTablet(w >= 640 && w <= 1024);
+    }
+    checkBreakpoint();
+    window.addEventListener('resize', checkBreakpoint);
+    return () => window.removeEventListener('resize', checkBreakpoint);
+  }, []);
+
 
   function toggleDia(i: number) {
     setDiasSeleccionados(prev => prev.map((v, idx) => idx === i ? !v : v));
@@ -351,7 +370,7 @@ export default function RegisterPage() {
       minHeight: '100vh',
       background: `radial-gradient(ellipse 90% 70% at 50% -5%, #141C2E 0%, ${T.bg} 65%)`,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '32px 16px',
+      padding: isMobile ? '24px 12px' : isTablet ? '32px 32px' : '32px 16px',
       fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
       position: 'relative',
       overflow: 'hidden',
@@ -375,10 +394,13 @@ export default function RegisterPage() {
         input[type="time"] {
           color-scheme: dark;
         }
-        /* Responsive stepper */
+        /* Tablet: stepper wider lines */
+        @media (min-width: 640px) and (max-width: 1024px) {
+          .knoa-stepper { transform: scale(1.05); transform-origin: center; }
+        }
+        /* Mobile: compact stepper */
         @media (max-width: 480px) {
           .knoa-stepper { gap: 0 !important; }
-          .knoa-step-label { font-size: 9px !important; }
         }
       `}</style>
 
@@ -394,7 +416,7 @@ export default function RegisterPage() {
         pointerEvents: 'none', zIndex: 0,
       }} />
 
-      <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 480 }}>
+      <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: isTablet ? 560 : 480 }}>
 
         {/* ── Branding superior ── */}
         <div style={{ textAlign: 'center', marginBottom: 24, animation: 'fadeIn 0.3s ease both' }}>
@@ -415,7 +437,7 @@ export default function RegisterPage() {
 
         {/* ── Stepper ── */}
         <div style={{ marginBottom: 20, animation: 'fadeIn 0.35s ease both' }}>
-          <Stepper current={step} />
+          <Stepper current={step} compact={isMobile} />
         </div>
 
         {/* ── Card formulario ── */}
@@ -425,7 +447,7 @@ export default function RegisterPage() {
             background: T.bgCard,
             border: `1px solid ${T.goldBorder}`,
             borderRadius: T.r_xl,
-            padding: '32px 28px',
+            padding: isMobile ? '24px 20px' : isTablet ? '36px 36px' : '32px 28px',
             boxShadow: '0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(201,169,110,0.06)',
             display: 'flex', flexDirection: 'column', gap: 18,
             animation: 'fadeUp 0.25s ease both',
