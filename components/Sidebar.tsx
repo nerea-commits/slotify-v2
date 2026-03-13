@@ -133,8 +133,8 @@ export default function Sidebar({
             strokeWidth: active ? 2.5 : 1.8,
           }}
         />
-        {/* Label con fade-in al expandir */}
         <span
+          className="sb-text"
           style={{
             opacity: collapsed ? 0 : 1,
             maxWidth: collapsed ? 0 : 200,
@@ -151,14 +151,13 @@ export default function Sidebar({
     );
   }
 
-  // Avatar del profesional
   const avatarBg = profesionalColor || accent;
   const avatarInitial = profesionalNombre?.[0]?.toUpperCase() || '?';
 
   return (
     <>
       <aside
-        className="hidden-mobile"
+        className="hidden-mobile sidebar-desktop"
         style={{
           position: 'fixed',
           top: 0,
@@ -188,7 +187,6 @@ export default function Sidebar({
             transition: 'padding 0.3s ease',
           }}
         >
-          {/* Logo */}
           <div
             style={{
               width: collapsed ? 34 : 88,
@@ -221,8 +219,8 @@ export default function Sidebar({
             )}
           </div>
 
-          {/* Nombre empresa — desaparece al colapsar */}
           <div
+            className="sb-text"
             style={{
               overflow: 'hidden',
               maxHeight: collapsed ? 0 : 48,
@@ -280,9 +278,10 @@ export default function Sidebar({
             padding: collapsed ? '12px 0 8px' : '12px 12px 8px',
           }}
         >
-          {/* Perfil del usuario — expandido */}
+          {/* Perfil expandido */}
           {!collapsed && (
             <div
+              className="sb-text"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -291,335 +290,186 @@ export default function Sidebar({
                 padding: '2px 0',
               }}
             >
-              {/* Avatar */}
               <div
                 style={{
-                  width: 32,
-                  height: 32,
+                  width: 32, height: 32,
                   borderRadius: 9,
                   background: profesionalFoto ? 'transparent' : avatarBg,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 12,
-                  fontWeight: 800,
-                  color: '#fff',
-                  overflow: 'hidden',
-                  flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 12, fontWeight: 800, color: '#fff',
+                  overflow: 'hidden', flexShrink: 0,
                   boxShadow: `0 0 0 2px ${accent}33`,
                 }}
               >
                 {profesionalFoto ? (
-                  <img
-                    src={profesionalFoto}
-                    alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
-                ) : (
-                  avatarInitial
-                )}
+                  <img src={profesionalFoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                ) : avatarInitial}
               </div>
-
-              {/* Nombre + rol */}
               <div style={{ minWidth: 0, flex: 1 }}>
-                <p
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: '#CBD5E1',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    lineHeight: 1.3,
-                    margin: 0,
-                  }}
-                >
+                <p style={{ fontSize: 12, fontWeight: 600, color: '#CBD5E1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3, margin: 0 }}>
                   {profesionalNombre || 'Usuario'}
                 </p>
-                <p
-                  style={{
-                    fontSize: 10,
-                    color: accent,
-                    fontWeight: 600,
-                    letterSpacing: 0.2,
-                    marginTop: 2,
-                    opacity: 0.9,
-                    margin: '2px 0 0',
-                  }}
-                >
+                <p style={{ fontSize: 10, color: accent, fontWeight: 600, letterSpacing: 0.2, marginTop: 2, opacity: 0.9, margin: '2px 0 0' }}>
                   {isAdmin ? 'Admin' : 'Empleado'}
                 </p>
               </div>
             </div>
           )}
 
-          {/* Avatar solo — colapsado */}
+          {/* Avatar colapsado */}
           {collapsed && (
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                marginBottom: 8,
-              }}
-            >
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 9,
-                  background: profesionalFoto ? 'transparent' : avatarBg,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 12,
-                  fontWeight: 800,
-                  color: '#fff',
-                  overflow: 'hidden',
-                  boxShadow: `0 0 0 2px ${accent}33`,
-                }}
-              >
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: 9,
+                background: profesionalFoto ? 'transparent' : avatarBg,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 12, fontWeight: 800, color: '#fff',
+                overflow: 'hidden',
+                boxShadow: `0 0 0 2px ${accent}33`,
+              }}>
                 {profesionalFoto ? (
-                  <img
-                    src={profesionalFoto}
-                    alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
-                ) : (
-                  avatarInitial
-                )}
+                  <img src={profesionalFoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                ) : avatarInitial}
               </div>
             </div>
           )}
 
-          {/* Botón: Cambiar perfil */}
+          {/* Cambiar perfil */}
           <button
             onClick={handleChangeProfile}
             title="Cambiar perfil"
             style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
+              width: '100%', display: 'flex', alignItems: 'center', gap: 10,
               justifyContent: collapsed ? 'center' : 'flex-start',
               padding: collapsed ? '8px 0' : '7px 8px',
-              border: 'none',
-              cursor: 'pointer',
-              background: 'transparent',
-              color: '#64748B',
-              fontSize: 12,
-              fontWeight: 500,
-              borderRadius: 7,
-              transition: 'color 0.15s',
+              border: 'none', cursor: 'pointer', background: 'transparent',
+              color: '#64748B', fontSize: 12, fontWeight: 500,
+              borderRadius: 7, transition: 'color 0.15s',
             }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.06)'; (e.currentTarget as HTMLElement).style.color = '#94A3B8'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#64748B'; }}
           >
             <UserCircle size={15} style={{ flexShrink: 0 }} />
-            <span
-              style={{
-                opacity: collapsed ? 0 : 1,
-                maxWidth: collapsed ? 0 : 200,
-                overflow: 'hidden',
-                whiteSpace: 'nowrap' as const,
-                transition: 'opacity 0.2s ease, max-width 0.2s ease',
-                display: 'block',
-              }}
-            >
+            <span className="sb-text" style={{ opacity: collapsed ? 0 : 1, maxWidth: collapsed ? 0 : 200, overflow: 'hidden', whiteSpace: 'nowrap' as const, transition: 'opacity 0.2s ease, max-width 0.2s ease', display: 'block' }}>
               Cambiar perfil
             </span>
           </button>
 
-          {/* Botón: Cerrar sesión */}
+          {/* Cerrar sesión */}
           <button
             onClick={logout}
             title="Cerrar sesión"
             style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
+              width: '100%', display: 'flex', alignItems: 'center', gap: 10,
               justifyContent: collapsed ? 'center' : 'flex-start',
               padding: collapsed ? '8px 0' : '7px 8px',
-              border: 'none',
-              cursor: 'pointer',
-              background: 'transparent',
-              color: '#475569',
-              fontSize: 12,
-              fontWeight: 400,
-              borderRadius: 7,
-              transition: 'color 0.15s',
+              border: 'none', cursor: 'pointer', background: 'transparent',
+              color: '#475569', fontSize: 12, fontWeight: 400,
+              borderRadius: 7, transition: 'color 0.15s',
             }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.06)'; (e.currentTarget as HTMLElement).style.color = '#EF4444'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#475569'; }}
           >
             <LogOut size={14} style={{ flexShrink: 0 }} />
-            <span
-              style={{
-                opacity: collapsed ? 0 : 1,
-                maxWidth: collapsed ? 0 : 200,
-                overflow: 'hidden',
-                whiteSpace: 'nowrap' as const,
-                transition: 'opacity 0.2s ease, max-width 0.2s ease',
-                display: 'block',
-              }}
-            >
+            <span className="sb-text" style={{ opacity: collapsed ? 0 : 1, maxWidth: collapsed ? 0 : 200, overflow: 'hidden', whiteSpace: 'nowrap' as const, transition: 'opacity 0.2s ease, max-width 0.2s ease', display: 'block' }}>
               Cerrar sesión
             </span>
           </button>
 
-          {/* Separador */}
           <div style={{ height: 1, background: 'rgba(148,163,184,0.07)', margin: '6px 0' }} />
 
-          {/* Botón: Colapsar / Expandir */}
+          {/* Colapsar */}
           <button
             onClick={onToggleCollapse}
             title={collapsed ? 'Expandir' : 'Contraer'}
             style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '7px 0',
-              border: 'none',
-              cursor: 'pointer',
-              background: 'transparent',
-              color: '#475569',
-              fontSize: 13,
-              borderRadius: 7,
-              transition: 'color 0.15s',
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '7px 0', border: 'none', cursor: 'pointer', background: 'transparent',
+              color: '#475569', fontSize: 13, borderRadius: 7, transition: 'color 0.15s',
             }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.06)';
-              (e.currentTarget as HTMLElement).style.color = '#94A3B8';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.background = 'transparent';
-              (e.currentTarget as HTMLElement).style.color = '#475569';
-            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.06)'; (e.currentTarget as HTMLElement).style.color = '#94A3B8'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#475569'; }}
           >
-            {collapsed
-              ? <ChevronRight size={16} style={{ flexShrink: 0 }} />
-              : <ChevronLeft size={16} style={{ flexShrink: 0 }} />
-            }
+            {collapsed ? <ChevronRight size={16} style={{ flexShrink: 0 }} /> : <ChevronLeft size={16} style={{ flexShrink: 0 }} />}
           </button>
         </div>
       </aside>
+
+      {/* ── Tablet responsive: forzar colapso visual ── */}
+      <style>{`
+        @media (min-width: 768px) and (max-width: 1024px) {
+          .sidebar-desktop {
+            width: 56px !important;
+          }
+          .sidebar-desktop .sb-text {
+            opacity: 0 !important;
+            max-width: 0 !important;
+            max-height: 0 !important;
+            overflow: hidden !important;
+          }
+          .sidebar-desktop nav button {
+            justify-content: center !important;
+            padding: 10px 0 !important;
+          }
+        }
+      `}</style>
 
       {/* ── MODAL PIN ADMIN ── */}
       {showPinModal && (
         <div
           onClick={() => setShowPinModal(false)}
           style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 1000,
+            position: 'fixed', inset: 0, zIndex: 1000,
             background: 'rgba(0,0,0,0.7)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
             backdropFilter: 'blur(4px)',
+            padding: '16px',
           }}
         >
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: '#111827',
-              borderRadius: 16,
-              padding: '28px 24px',
-              width: 320,
+              background: '#111827', borderRadius: 16,
+              padding: '28px 24px', width: '100%', maxWidth: 320,
               boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
               border: '1px solid rgba(148,163,184,0.1)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 16,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
             }}
           >
-            <div
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 12,
-                background: 'rgba(245,158,11,0.12)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
+            <div style={{
+              width: 44, height: 44, borderRadius: 12,
+              background: 'rgba(245,158,11,0.12)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
               <Lock size={20} style={{ color: '#F59E0B' }} />
             </div>
-
             <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: 15, fontWeight: 700, color: '#F1F5F9', margin: 0 }}>
-                Acceso restringido
-              </p>
-              <p style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
-                Introduce el PIN del administrador para cambiar de perfil
-              </p>
+              <p style={{ fontSize: 15, fontWeight: 700, color: '#F1F5F9', margin: 0 }}>Acceso restringido</p>
+              <p style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>Introduce el PIN del administrador para cambiar de perfil</p>
             </div>
-
             <input
-              type="password"
-              maxLength={4}
-              value={pinInput}
+              type="password" maxLength={4} value={pinInput}
               onChange={e => { setPinInput(e.target.value); setPinError(''); }}
               onKeyDown={e => { if (e.key === 'Enter') handlePinSubmit(); }}
-              autoFocus
-              placeholder="····"
+              autoFocus placeholder="····"
               style={{
-                width: '100%',
-                padding: '12px 16px',
-                background: '#1A2332',
+                width: '100%', padding: '12px 16px', background: '#1A2332',
                 border: `1px solid ${pinError ? '#EF4444' : 'rgba(148,163,184,0.12)'}`,
-                borderRadius: 10,
-                color: '#F1F5F9',
-                fontSize: 22,
-                textAlign: 'center',
-                letterSpacing: 8,
-                outline: 'none',
-                boxSizing: 'border-box' as const,
-                transition: 'border-color 0.15s',
+                borderRadius: 10, color: '#F1F5F9', fontSize: 22,
+                textAlign: 'center', letterSpacing: 8, outline: 'none',
+                boxSizing: 'border-box' as const, transition: 'border-color 0.15s',
               }}
             />
-            {pinError && (
-              <p style={{ fontSize: 12, color: '#EF4444', margin: '-8px 0 0', fontWeight: 600 }}>
-                {pinError}
-              </p>
-            )}
-
+            {pinError && <p style={{ fontSize: 12, color: '#EF4444', margin: '-8px 0 0', fontWeight: 600 }}>{pinError}</p>}
             <div style={{ display: 'flex', gap: 8, width: '100%' }}>
-              <button
-                onClick={() => setShowPinModal(false)}
-                style={{
-                  flex: 1,
-                  padding: '10px 0',
-                  borderRadius: 10,
-                  border: '1px solid rgba(148,163,184,0.12)',
-                  background: 'transparent',
-                  color: '#64748B',
-                  cursor: 'pointer',
-                  fontSize: 13,
-                  fontWeight: 600,
-                }}
-              >
+              <button onClick={() => setShowPinModal(false)}
+                style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid rgba(148,163,184,0.12)', background: 'transparent', color: '#64748B', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
                 Cancelar
               </button>
-              <button
-                onClick={handlePinSubmit}
-                style={{
-                  flex: 1,
-                  padding: '10px 0',
-                  borderRadius: 10,
-                  border: 'none',
-                  background: accent,
-                  color: '#fff',
-                  cursor: 'pointer',
-                  fontSize: 13,
-                  fontWeight: 700,
-                }}
-              >
+              <button onClick={handlePinSubmit}
+                style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: accent, color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
                 Confirmar
               </button>
             </div>
