@@ -193,6 +193,14 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    function checkMobile() { setIsMobile(window.innerWidth < 640); }
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     async function checkSession() {
@@ -269,6 +277,9 @@ export default function LoginPage() {
     }
   }
 
+  // Responsive logo size for profile step
+  const logoSize = isMobile ? 100 : 160;
+
   // ── LOADING ──
   if (loading) return (
     <div style={{
@@ -291,7 +302,7 @@ export default function LoginPage() {
       minHeight: '100vh',
       background: `radial-gradient(ellipse 90% 70% at 50% -5%, #141C2E 0%, ${T.bg} 65%)`,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '32px 16px',
+      padding: isMobile ? '24px 12px' : '32px 16px',
       fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
       position: 'relative',
       overflow: 'hidden',
@@ -306,7 +317,6 @@ export default function LoginPage() {
           from { opacity: 0 }
           to   { opacity: 1 }
         }
-        /* Grain overlay sutil */
         .knoa-bg-grain::before {
           content: '';
           position: fixed; inset: 0;
@@ -345,8 +355,7 @@ export default function LoginPage() {
           }}>
 
             {/* Branding superior */}
-            <div style={{ textAlign: 'center', marginBottom: 32 }}>
-              {/* Logo + nombre */}
+            <div style={{ textAlign: 'center', marginBottom: isMobile ? 24 : 32 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 16 }}>
                 <KnoaLogo size={36} />
                 <span style={{
@@ -355,15 +364,15 @@ export default function LoginPage() {
                 }}>Knöa</span>
               </div>
 
-              {/* Claim */}
               <h1 style={{
-                fontSize: 15, fontWeight: 500,
+                fontSize: isMobile ? 14 : 15, fontWeight: 500,
                 color: T.textSec,
                 margin: '0 0 20px',
                 letterSpacing: 0.1,
                 lineHeight: 1.5,
+                padding: isMobile ? '0 8px' : 0,
               }}>
-                Organiza tu agenda, automatiza recordatorios<br />y reduce ausencias desde el primer día.
+                Organiza tu agenda, automatiza recordatorios{isMobile ? ' ' : <br />}y reduce ausencias desde el primer día.
               </h1>
 
               {/* Microbeneficios */}
@@ -394,7 +403,7 @@ export default function LoginPage() {
               background: T.bgCard,
               border: `1px solid ${T.goldBorder}`,
               borderRadius: T.r_xl,
-              padding: '36px 32px',
+              padding: isMobile ? '28px 20px' : '36px 32px',
               boxShadow: '0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(201,169,110,0.06)',
               display: 'flex', flexDirection: 'column', gap: 20,
             }}>
@@ -484,7 +493,7 @@ export default function LoginPage() {
               background: T.bgCard,
               border: `1px solid ${T.goldBorder}`,
               borderRadius: T.r_xl + 2,
-              padding: '32px 36px 36px',
+              padding: isMobile ? '24px 18px 28px' : '32px 36px 36px',
               boxShadow: '0 48px 120px rgba(0,0,0,0.75), inset 0 1px 0 rgba(201,169,110,0.06)',
             }}>
 
@@ -494,7 +503,7 @@ export default function LoginPage() {
                 marginBottom: 22, textAlign: 'center' as const,
               }}>
 
-                {/* Identidad del negocio: logo + nombre como unidad */}
+                {/* Logo + nombre como unidad */}
                 <div style={{
                   display: 'flex', flexDirection: 'column', alignItems: 'center',
                   gap: 10, marginBottom: 18,
@@ -504,8 +513,8 @@ export default function LoginPage() {
                       src={(empresa as any).logo_url}
                       alt={empresa?.nombre}
                       style={{
-                        width: 160,
-                        height: 160,
+                        width: logoSize,
+                        height: logoSize,
                         display: 'block',
                         objectFit: 'contain',
                         filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.55)) drop-shadow(0 1px 3px rgba(0,0,0,0.4))',
@@ -513,12 +522,12 @@ export default function LoginPage() {
                     />
                   ) : (
                     <div style={{
-                      width: 80, height: 80,
+                      width: isMobile ? 64 : 80, height: isMobile ? 64 : 80,
                       borderRadius: T.r_lg,
                       background: 'linear-gradient(135deg, rgba(201,169,110,0.16) 0%, rgba(201,169,110,0.07) 100%)',
                       border: `1px solid ${T.goldBorder}`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 32, fontWeight: 800, color: T.gold,
+                      fontSize: isMobile ? 26 : 32, fontWeight: 800, color: T.gold,
                       fontFamily: 'Georgia, serif',
                       letterSpacing: -1,
                       boxShadow: `0 6px 24px rgba(0,0,0,0.4)`,
@@ -527,9 +536,8 @@ export default function LoginPage() {
                     </div>
                   )}
 
-                  {/* Nombre del negocio — unidad visual con el logo */}
                   <p style={{
-                    fontSize: 19, fontWeight: 700, color: T.gold,
+                    fontSize: isMobile ? 17 : 19, fontWeight: 700, color: T.gold,
                     margin: 0, letterSpacing: 0.1,
                     textShadow: '0 2px 12px rgba(201,169,110,0.2)',
                   }}>
@@ -537,7 +545,7 @@ export default function LoginPage() {
                   </p>
                 </div>
 
-                {/* Separador de contexto */}
+                {/* Contexto */}
                 <p style={{
                   fontSize: 12, color: T.textDim,
                   margin: '0 0 12px', fontWeight: 500,
@@ -545,9 +553,8 @@ export default function LoginPage() {
                   Ya estás dentro · Elige tu perfil para continuar
                 </p>
 
-                {/* Título acción */}
                 <h1 style={{
-                  fontSize: 20, fontWeight: 700, color: T.textPrimary,
+                  fontSize: isMobile ? 18 : 20, fontWeight: 700, color: T.textPrimary,
                   margin: '0 0 4px', letterSpacing: -0.3,
                 }}>
                   Selecciona tu perfil
@@ -579,8 +586,8 @@ export default function LoginPage() {
                       onMouseLeave={() => setHoveredId(null)}
                       style={{
                         width: '100%',
-                        display: 'flex', alignItems: 'center', gap: 14,
-                        padding: '13px 14px',
+                        display: 'flex', alignItems: 'center', gap: isMobile ? 12 : 14,
+                        padding: isMobile ? '12px 12px' : '13px 14px',
                         background: isHov ? T.bgCardHov : 'rgba(255,255,255,0.025)',
                         border: `1px solid ${isHov ? T.borderHov : T.border}`,
                         borderRadius: T.r_lg,
@@ -593,7 +600,7 @@ export default function LoginPage() {
 
                       {/* Avatar */}
                       <div style={{
-                        width: 46, height: 46,
+                        width: isMobile ? 40 : 46, height: isMobile ? 40 : 46,
                         borderRadius: 12, flexShrink: 0,
                         background: foto ? '#0A0E1A' : avatarColor,
                         overflow: 'hidden', position: 'relative',
@@ -602,7 +609,7 @@ export default function LoginPage() {
                       }}>
                         {foto
                           ? <img src={foto} alt={p.nombre} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, fontWeight: 800, color: '#fff' }}>
+                          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: isMobile ? 15 : 17, fontWeight: 800, color: '#fff' }}>
                               {p.nombre?.[0]?.toUpperCase()}
                             </div>
                         }
@@ -611,14 +618,13 @@ export default function LoginPage() {
                       {/* Info */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{
-                          fontSize: 15, fontWeight: 700, color: T.textPrimary,
+                          fontSize: isMobile ? 14 : 15, fontWeight: 700, color: T.textPrimary,
                           margin: '0 0 4px',
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const,
                         }}>
                           {p.nombre}
                         </p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' as const }}>
-                          {/* Rol */}
                           <span style={{
                             fontSize: 11, fontWeight: 600,
                             color: isAdmin ? T.gold : T.textSec,
@@ -626,7 +632,6 @@ export default function LoginPage() {
                           }}>
                             {rolLabel}
                           </span>
-                          {/* Badge PIN — explícito */}
                           {isProtected && (
                             <>
                               <span style={{ fontSize: 10, color: T.textDim }}>·</span>
@@ -649,7 +654,7 @@ export default function LoginPage() {
 
                       {/* Chevron */}
                       <div style={{
-                        width: 30, height: 30,
+                        width: isMobile ? 28 : 30, height: isMobile ? 28 : 30,
                         borderRadius: 8, flexShrink: 0,
                         background: isHov ? T.goldDim : 'rgba(255,255,255,0.03)',
                         border: `1px solid ${isHov ? T.goldBorder : T.border}`,
@@ -681,14 +686,14 @@ export default function LoginPage() {
               background: T.bgCard,
               border: `1px solid ${T.goldBorder}`,
               borderRadius: T.r_xl,
-              padding: '40px 32px',
+              padding: isMobile ? '32px 20px' : '40px 32px',
               boxShadow: '0 40px 100px rgba(0,0,0,0.7)',
               display: 'flex', flexDirection: 'column', alignItems: 'center',
               gap: 0,
             }}>
               {/* Avatar */}
               <div style={{
-                width: 58, height: 58,
+                width: isMobile ? 50 : 58, height: isMobile ? 50 : 58,
                 borderRadius: 15,
                 background: (selectedProf as any).foto_url ? '#0A0E1A' : ((selectedProf as any).color || T.gold),
                 overflow: 'hidden',
@@ -766,6 +771,7 @@ function PinInput({ value, onChange, onEnter }: {
     <input
       type="password"
       maxLength={6}
+      inputMode="numeric"
       value={value}
       autoFocus
       onChange={e => onChange(e.target.value)}
