@@ -400,21 +400,21 @@ export default function Sidebar({
               width: '100%',
               display: 'flex',
               alignItems: 'center',
-              gap: 10,
+              gap: 8,
               justifyContent: collapsed ? 'center' : 'flex-start',
-              padding: collapsed ? '9px 0' : '8px 10px',
+              padding: collapsed ? '7px 0' : '6px 8px',
               border: 'none',
               cursor: 'pointer',
               background: 'transparent',
-              color: '#94A3B8',
-              fontSize: 13,
+              color: '#3D5068',
+              fontSize: 11,
               fontWeight: 500,
-              borderRadius: 8,
+              borderRadius: 6,
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.06)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.05)'; (e.currentTarget as HTMLElement).style.color = '#64748B'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#3D5068'; }}
           >
-            <UserCircle size={16} style={{ flexShrink: 0, color: '#94A3B8' }} />
+            <UserCircle size={13} style={{ flexShrink: 0 }} />
             <span
               style={{
                 opacity: collapsed ? 0 : 1,
@@ -437,22 +437,22 @@ export default function Sidebar({
               width: '100%',
               display: 'flex',
               alignItems: 'center',
-              gap: 10,
+              gap: 8,
               justifyContent: collapsed ? 'center' : 'flex-start',
-              padding: collapsed ? '9px 0' : '8px 10px',
+              padding: collapsed ? '7px 0' : '6px 8px',
               border: 'none',
               cursor: 'pointer',
               background: 'transparent',
-              color: '#475569',
-              fontSize: 13,
+              color: '#2D3C4E',
+              fontSize: 11,
               fontWeight: 400,
-              borderRadius: 8,
+              borderRadius: 6,
               transition: 'color 0.15s',
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.06)'; (e.currentTarget as HTMLElement).style.color = '#EF4444'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#475569'; }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.05)'; (e.currentTarget as HTMLElement).style.color = '#EF4444'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#2D3C4E'; }}
           >
-            <LogOut size={15} style={{ flexShrink: 0 }} />
+            <LogOut size={12} style={{ flexShrink: 0 }} />
             <span
               style={{
                 opacity: collapsed ? 0 : 1,
@@ -468,7 +468,7 @@ export default function Sidebar({
           </button>
 
           {/* Separador */}
-          <div style={{ height: 1, background: 'rgba(148,163,184,0.07)', margin: '6px 0' }} />
+          <div style={{ height: 1, background: 'rgba(148,163,184,0.06)', margin: '4px 0' }} />
 
           {/* Botón: Colapsar / Expandir */}
           <button
@@ -479,22 +479,22 @@ export default function Sidebar({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '8px 0',
+              padding: '6px 0',
               border: 'none',
               cursor: 'pointer',
               background: 'transparent',
-              color: '#475569',
+              color: '#2D3C4E',
               fontSize: 13,
-              borderRadius: 8,
+              borderRadius: 6,
               transition: 'color 0.15s',
             }}
             onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.06)';
-              (e.currentTarget as HTMLElement).style.color = '#94A3B8';
+              (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.05)';
+              (e.currentTarget as HTMLElement).style.color = '#475569';
             }}
             onMouseLeave={e => {
               (e.currentTarget as HTMLElement).style.background = 'transparent';
-              (e.currentTarget as HTMLElement).style.color = '#475569';
+              (e.currentTarget as HTMLElement).style.color = '#2D3C4E';
             }}
           >
             {collapsed
