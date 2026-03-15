@@ -14,7 +14,8 @@ interface Props {
   selectedDate: Date;
   preselectedTime?: string;
   preselectedEndTime?: string;
-  preselectedProfesionalId?: string; // para cuando se abre desde columna de equipo
+  preselectedProfesionalId?: string;
+  preselectedCliente?: { id: string; nombre: string; telefono?: string };
 }
 
 // ─── Utilidades ──────────────────────────────────────────────────────────────
@@ -115,6 +116,7 @@ export default function NuevaCitaModal({
   profesionalId, empresaId,
   selectedDate, preselectedTime, preselectedEndTime,
   preselectedProfesionalId,
+  preselectedCliente,
 }: Props) {
 
   // ── Estado cliente ──
@@ -181,6 +183,14 @@ export default function NuevaCitaModal({
     setShowSecundarios(false);
     setSugerenciasNombre([]); setShowSugNombre(false);
     setShowSugSvc(false);
+
+    // Cliente preseleccionado (desde ficha de cliente)
+    if (preselectedCliente) {
+      setNombre(preselectedCliente.nombre);
+      setTelefono(preselectedCliente.telefono || '');
+      setClienteEncontrado(preselectedCliente);
+    }
+
     // Profesional: preseleccionado desde columna de equipo o el propio usuario
     setProfSeleccionado(preselectedProfesionalId || profesionalId || '');
 
@@ -191,7 +201,7 @@ export default function NuevaCitaModal({
     } else {
       setHoraInicio('09:00'); setHoraFin('10:00');
     }
-  }, [open, empresaId, preselectedTime, preselectedEndTime, profesionalId, preselectedProfesionalId]);
+  }, [open, empresaId, preselectedTime, preselectedEndTime, profesionalId, preselectedProfesionalId, preselectedCliente]);
 
   // ── Carga datos ────────────────────────────────────────────────────────────
   async function cargarServicios() {
