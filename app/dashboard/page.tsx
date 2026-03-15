@@ -1321,7 +1321,7 @@ export default function Dashboard() {
             )}
 
             {isAdmin && activeSection === 'agenda' && profesionales.length > 0 && (
-              <div className="hidden-mobile prof-filter-scroll" style={{ display: 'flex', alignItems: 'center', gap: 0, background: C.surfaceAlt, borderRadius: 8, padding: 2, flexShrink: 0, marginLeft: 4 }}>
+              <div className="hidden-mobile" style={{ display: 'flex', alignItems: 'center', gap: 0, background: C.surfaceAlt, borderRadius: 8, padding: 2, flexShrink: 0, marginLeft: 4 }}>
                 <button
                   onClick={() => setSelectedProfId(null)}
                   style={{
@@ -1593,7 +1593,7 @@ export default function Dashboard() {
 
           const visibleChips = chips.filter(c => c.show);
           return (
-            <div className="kpi-bar-scroll" style={{
+            <div style={{
               flexShrink: 0,
               background: '#0D1829',
               borderBottom: `1px solid rgba(148,163,184,0.09)`,
@@ -2772,142 +2772,375 @@ export default function Dashboard() {
           )}
 
           {/* ── MODAL DETALLE CITA ── */}
-          {selectedCita && (
-            <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setSelectedCita(null)}>
-              <div style={{ background: C.surface, borderRadius: 20, padding: 24, width: '100%', maxWidth: 400 }} onClick={e => e.stopPropagation()}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                  <h3 className="text-lg font-bold">Detalle de cita</h3>
-                  <button onClick={() => setSelectedCita(null)} style={{ background: 'none', border: 'none', color: C.textSec, cursor: 'pointer' }}><X className="w-5 h-5" /></button>
-                </div>
-                <div className="space-y-2 text-sm mb-6">
-                  <p><span style={{ color: C.textSec }}>Cliente: </span>{selectedCita.clientes?.nombre || selectedCita.cliente_nombre_libre || '—'}</p>
-                  <p><span style={{ color: C.textSec }}>Teléfono: </span>{selectedCita.clientes?.telefono || '—'}</p>
-                  <p><span style={{ color: C.textSec }}>Servicio: </span>{selectedCita.servicios?.nombre || selectedCita.servicio_nombre_libre || '—'}</p>
-                  <p><span style={{ color: C.textSec }}>Fecha: </span>{rawDate(selectedCita.hora_inicio) || '—'}</p>
-                  <p><span style={{ color: C.textSec }}>Inicio: </span>{selectedCita.hora_inicio?.substring(11, 16) || '—'}</p>
-                  <p><span style={{ color: C.textSec }}>Fin: </span>{selectedCita.hora_fin?.substring(11, 16) || '—'}</p>
-                  {selectedCita.notas && <p><span style={{ color: C.textSec }}>Notas: </span>{selectedCita.notas}</p>}
-                  <p>
-                    <span style={{ color: C.textSec }}>Estado: </span>
-                    <span style={{ color: citaColor(selectedCita.estado), background: citaColor(selectedCita.estado) + '22', padding: '2px 8px', borderRadius: 10, fontSize: 12, fontWeight: 600 }}>
-                      {citaEstadoNombre(selectedCita.estado)}
-                    </span>
-                  </p>
-                  <p style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ color: C.textSec }}>Confirmación: </span>
-                    {(() => {
-                      const conf = (selectedCita.confirmacion_estado || 'pendiente').toLowerCase();
-                      const map: Record<string, { label: string; color: string }> = {
-                        pendiente:     { label: '🟡 Pendiente', color: '#F59E0B' },
-                        confirmada:    { label: '🟢 Confirmada', color: '#22C55E' },
-                        no_confirmada: { label: '🔴 No confirmada', color: '#EF4444' },
-                        cancelada:     { label: '⚫ Cancelada', color: '#94A3B8' },
-                      };
-                      const cfg = map[conf] || map['pendiente'];
-                      return (
-                        <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 10, color: cfg.color, background: cfg.color + '18' }}>
-                          {cfg.label}
-                        </span>
-                      );
-                    })()}
-                  </p>
-                  {selectedCita.cliente_id && clientRiskCache[selectedCita.cliente_id]?.show && (
-                    <p style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                      <span style={{ color: C.textSec }}>Fiabilidad: </span>
-                      <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 10, color: clientRiskCache[selectedCita.cliente_id].color, background: clientRiskCache[selectedCita.cliente_id].color + '18' }}>
-                        {clientRiskCache[selectedCita.cliente_id].icon} Cliente con riesgo
-                      </span>
-                    </p>
-                  )}
-                </div>
-                <div className="flex gap-3">
-                  <button onClick={() => openEdit(selectedCita)} className="flex-1 py-2 rounded-xl text-sm font-semibold flex items-center justify-center gap-2" style={{ background: C.surfaceAlt, color: C.text }}>
-                    <Edit2 className="w-4 h-4" /> Editar
-                  </button>
-                  {(selectedCita.estado || '').toLowerCase() !== 'cancelada' && (
-                    <button onClick={() => cancelarCita(selectedCita.id)} className="flex-1 py-2 rounded-xl text-sm text-white" style={{ background: C.red }}>Cancelar cita</button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+          {selectedCita && (() => {
+            // ── datos derivados para detalle ──
+            const sc         = selectedCita;
+            const nombreCl   = sc.clientes?.nombre || sc.cliente_nombre_libre || '—';
+            const telCl      = sc.clientes?.telefono;
+            const svcNombre  = sc.servicios?.nombre || sc.servicio_nombre_libre;
+            const fechaObj   = sc.hora_inicio ? new Date(sc.hora_inicio) : null;
+            const fechaFmt   = fechaObj
+              ? fechaObj.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+              : '—';
+            const horaI      = sc.hora_inicio?.substring(11, 16) || '—';
+            const horaF      = sc.hora_fin?.substring(11, 16)    || '—';
+            const stColor    = citaColor(sc.estado);
+            const stNombre   = citaEstadoNombre(sc.estado);
+            const conf       = (sc.confirmacion_estado || 'pendiente').toLowerCase();
+            const confMap: Record<string, { label: string; color: string; icon: string }> = {
+              pendiente:     { label: 'Sin respuesta',    color: '#F59E0B', icon: '⏳' },
+              confirmada:    { label: 'Confirmó asistencia', color: '#22C55E', icon: '✓' },
+              no_confirmada: { label: 'No respondió',     color: '#EF4444', icon: '✗' },
+              cancelada:     { label: 'Canceló por mensaje', color: '#94A3B8', icon: '–' },
+            };
+            const confCfg    = confMap[conf] || confMap['pendiente'];
+            const risk       = sc.cliente_id ? clientRiskCache[sc.cliente_id] : null;
+            const isCancelada = (sc.estado || '').toLowerCase() === 'cancelada';
+            const divider    = <div style={{ height: 1, background: 'rgba(148,163,184,0.07)', margin: '2px 0' }} />;
 
-          {/* ── MODAL EDITAR CITA ── */}
-          {editingCita && (
-            <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setEditingCita(null)}>
-              <div style={{ background: C.surface, borderRadius: 20, padding: 24, width: '100%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                  <div>
-                    <h3 className="text-lg font-bold">Editar cita</h3>
-                    <p style={{ fontSize: 12, color: C.textSec, marginTop: 2 }}>
-                      {editingCita.clientes?.nombre || editingCita.cliente_nombre_libre || 'Cliente'}
-                    </p>
-                  </div>
-                  <button onClick={() => setEditingCita(null)} style={{ background: 'none', border: 'none', color: C.textSec, cursor: 'pointer' }}><X className="w-5 h-5" /></button>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <div>
-                    <label style={{ fontSize: 12, color: C.textSec, display: 'block', marginBottom: 6 }}>Servicio</label>
-                    <input value={editServicio} onChange={e => setEditServicio(e.target.value)}
-                      style={{ width: '100%', background: C.surfaceAlt, border: 'none', borderRadius: 12, padding: '10px 14px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
-                      placeholder="Nombre del servicio" />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 12, color: C.textSec, display: 'block', marginBottom: 6 }}>Fecha</label>
-                    <input type="date" value={editFecha} onChange={e => setEditFecha(e.target.value)}
-                      style={{ width: '100%', background: C.surfaceAlt, border: 'none', borderRadius: 12, padding: '10px 14px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box', colorScheme: 'dark' }} />
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <div>
-                      <label style={{ fontSize: 12, color: C.textSec, display: 'block', marginBottom: 6 }}>Hora inicio</label>
-                      <input type="time" value={editHoraInicio} onChange={e => setEditHoraInicio(e.target.value)}
-                        style={{ width: '100%', background: C.surfaceAlt, border: 'none', borderRadius: 12, padding: '10px 14px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+            return (
+              <div
+                style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16, background: 'rgba(0,0,0,0.72)' }}
+                onClick={() => setSelectedCita(null)}
+              >
+                <div
+                  style={{ background: C.surface, borderRadius: 20, width: '100%', maxWidth: 400, boxShadow: '0 24px 60px rgba(0,0,0,0.55)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  {/* Cabecera */}
+                  <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid rgba(148,163,184,0.07)' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {/* Nombre cliente */}
+                        <p style={{ fontSize: 17, fontWeight: 700, color: C.text, margin: 0, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {nombreCl}
+                        </p>
+                        {telCl && (
+                          <p style={{ fontSize: 12, color: C.textSec, margin: '2px 0 0' }}>{telCl}</p>
+                        )}
+                        {/* Fecha + franja */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 7, flexWrap: 'wrap' as const }}>
+                          <span style={{ fontSize: 12, color: C.textSec, fontWeight: 500 }}>{fechaFmt}</span>
+                          <span style={{ fontSize: 11, color: 'rgba(148,163,184,0.3)' }}>·</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(148,163,184,0.07)', borderRadius: 6, padding: '2px 8px' }}>
+                            <span style={{ fontSize: 12, color: C.text, fontWeight: 600 }}>{horaI}</span>
+                            <span style={{ fontSize: 11, color: C.textSec }}>–</span>
+                            <span style={{ fontSize: 12, color: C.textSec, fontWeight: 500 }}>{horaF}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setSelectedCita(null)}
+                        style={{ background: 'rgba(148,163,184,0.07)', border: 'none', borderRadius: 8, cursor: 'pointer', color: C.textSec, padding: 7, display: 'flex', flexShrink: 0, marginLeft: 10 }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.13)'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.07)'; }}
+                      >
+                        <X size={15} />
+                      </button>
                     </div>
-                    <div>
-                      <label style={{ fontSize: 12, color: C.textSec, display: 'block', marginBottom: 6 }}>Hora fin</label>
-                      <input type="time" value={editHoraFin} onChange={e => setEditHoraFin(e.target.value)}
-                        style={{ width: '100%', background: C.surfaceAlt, border: 'none', borderRadius: 12, padding: '10px 14px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
-                    </div>
                   </div>
-                  {estadosCita.length > 0 && (
+
+                  {/* Cuerpo */}
+                  <div style={{ padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+                    {/* Servicio */}
+                    {svcNombre && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 11, color: C.textSec, fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase' as const, flexShrink: 0, width: 64 }}>Servicio</span>
+                        <span style={{ fontSize: 13, color: C.text, fontWeight: 500 }}>{svcNombre}</span>
+                      </div>
+                    )}
+
+                    {divider}
+
+                    {/* CAPA 1: Estado operativo */}
                     <div>
-                      <label style={{ fontSize: 12, color: C.textSec, display: 'block', marginBottom: 8 }}>Estado</label>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                        {estadosCita.map(estado => {
-                          const nombre = estado.nombre_personalizado || estado.nombre_defecto;
-                          const nombreNorm = nombre.toLowerCase();
-                          const selected = editEstado.toLowerCase() === nombreNorm;
-                          return (
-                            <button key={estado.id} onClick={() => setEditEstado(nombreNorm)}
-                              style={{ background: selected ? estado.color + '33' : 'rgba(255,255,255,0.05)', border: `1.5px solid ${selected ? estado.color : 'rgba(255,255,255,0.1)'}`, color: selected ? estado.color : C.textSec, borderRadius: 20, padding: '5px 12px', fontSize: 12, fontWeight: selected ? 700 : 400, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                              <span style={{ width: 7, height: 7, borderRadius: '50%', background: estado.color, display: 'inline-block' }} />
-                              {nombre}
-                            </button>
-                          );
-                        })}
+                      <p style={{ fontSize: 10, color: 'rgba(148,163,184,0.5)', fontWeight: 600, letterSpacing: 0.6, textTransform: 'uppercase' as const, margin: '0 0 7px' }}>Estado de la cita</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: stColor + '18', border: `1px solid ${stColor}30`, borderRadius: 8, padding: '5px 11px' }}>
+                          <span style={{ width: 7, height: 7, borderRadius: '50%', background: stColor, flexShrink: 0, display: 'inline-block' }} />
+                          <span style={{ fontSize: 12, fontWeight: 700, color: stColor }}>{stNombre}</span>
+                        </span>
                       </div>
                     </div>
-                  )}
-                  <div>
-                    <label style={{ fontSize: 12, color: C.textSec, display: 'block', marginBottom: 6 }}>Notas</label>
-                    <textarea value={editNotas} onChange={e => setEditNotas(e.target.value)} rows={3}
-                      style={{ width: '100%', background: C.surfaceAlt, border: 'none', borderRadius: 12, padding: '10px 14px', color: C.text, fontSize: 14, outline: 'none', resize: 'none', boxSizing: 'border-box' }}
-                      placeholder="Observaciones, preferencias..." />
+
+                    {divider}
+
+                    {/* CAPA 2: Respuesta del cliente por mensaje */}
+                    <div>
+                      <p style={{ fontSize: 10, color: 'rgba(148,163,184,0.5)', fontWeight: 600, letterSpacing: 0.6, textTransform: 'uppercase' as const, margin: '0 0 7px' }}>Respuesta del cliente</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <span style={{ fontSize: 13, color: confCfg.color, fontWeight: 600 }}>{confCfg.icon}</span>
+                        <span style={{ fontSize: 13, color: C.text, fontWeight: 500 }}>{confCfg.label}</span>
+                      </div>
+                    </div>
+
+                    {/* CAPA 3: Historial / comportamiento */}
+                    {risk?.show && (
+                      <>
+                        {divider}
+                        <div>
+                          <p style={{ fontSize: 10, color: 'rgba(148,163,184,0.5)', fontWeight: 600, letterSpacing: 0.6, textTransform: 'uppercase' as const, margin: '0 0 7px' }}>Historial</p>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: risk.color + '0D', border: `1px solid ${risk.color}28`, borderRadius: 8, padding: '7px 11px' }}>
+                            {risk.icon && <span style={{ fontSize: 13, flexShrink: 0 }}>{risk.icon}</span>}
+                            <span style={{ fontSize: 12, fontWeight: 600, color: risk.color }}>Cliente con incidencias previas</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Notas */}
+                    {sc.notas && (
+                      <>
+                        {divider}
+                        <div style={{ background: 'rgba(148,163,184,0.04)', borderRadius: 8, padding: '8px 11px', borderLeft: '2px solid rgba(148,163,184,0.15)' }}>
+                          <p style={{ fontSize: 11, color: C.textSec, fontWeight: 600, margin: '0 0 3px', textTransform: 'uppercase' as const, letterSpacing: 0.4 }}>Notas</p>
+                          <p style={{ fontSize: 13, color: C.text, margin: 0, lineHeight: 1.5 }}>{sc.notas}</p>
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <div style={{ display: 'flex', gap: 10 }}>
-                    <button onClick={() => cancelarCita(editingCita.id)}
-                      style={{ flex: 1, padding: '10px 0', borderRadius: 12, background: `${C.red}22`, border: `1px solid ${C.red}55`, color: C.red, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                      Cancelar cita
+
+                  {/* Footer acciones */}
+                  <div style={{ padding: '12px 20px 18px', borderTop: '1px solid rgba(148,163,184,0.07)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {/* CTA principal */}
+                    <button
+                      onClick={() => openEdit(selectedCita)}
+                      style={{ width: '100%', padding: '12px', borderRadius: 12, border: 'none', background: C.surfaceAlt, color: C.text, fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#2D3F57'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = C.surfaceAlt; }}
+                    >
+                      <Edit2 size={14} /> Editar cita
                     </button>
-                    <button onClick={guardarEdicion} disabled={editLoading}
-                      style={{ flex: 2, padding: '10px 0', borderRadius: 12, background: C.green, border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: editLoading ? 0.6 : 1 }}>
-                      {editLoading ? 'Guardando...' : 'Guardar cambios'}
-                    </button>
+                    {/* Acción destructiva: menor peso */}
+                    {!isCancelada && (
+                      <button
+                        onClick={() => cancelarCita(sc.id)}
+                        style={{ width: '100%', padding: '9px', borderRadius: 10, border: `1px solid rgba(239,68,68,0.25)`, background: 'rgba(239,68,68,0.06)', color: C.red, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.12)'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.06)'; }}
+                      >
+                        Cancelar cita
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
+
+          {/* ── MODAL EDITAR CITA ── */}
+          {editingCita && (() => {
+            const ec        = editingCita;
+            const nombreCl  = ec.clientes?.nombre || ec.cliente_nombre_libre || 'Cliente';
+            const telCl     = ec.clientes?.telefono;
+            const fechaObj  = ec.hora_inicio ? new Date(ec.hora_inicio) : null;
+            const fechaFmt  = fechaObj
+              ? fechaObj.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })
+              : null;
+
+            // duracion calculada
+            const durMin = (() => {
+              if (!editHoraInicio || !editHoraFin || editHoraFin <= editHoraInicio) return null;
+              const [h1, m1] = editHoraInicio.split(':').map(Number);
+              const [h2, m2] = editHoraFin.split(':').map(Number);
+              const d = (h2 * 60 + m2) - (h1 * 60 + m1);
+              if (d <= 0) return null;
+              if (d < 60) return `${d}min`;
+              const h = Math.floor(d / 60), m = d % 60;
+              return m === 0 ? `${h}h` : `${h}h ${m}min`;
+            })();
+
+            const labelStyle: React.CSSProperties = {
+              fontSize: 11, color: C.textSec, fontWeight: 700,
+              letterSpacing: 0.5, textTransform: 'uppercase', display: 'block', marginBottom: 5,
+            };
+            const inputStyle: React.CSSProperties = {
+              width: '100%', padding: '11px 14px',
+              background: C.surfaceAlt, border: '1px solid rgba(148,163,184,0.1)',
+              borderRadius: 10, color: C.text, fontSize: 14, outline: 'none',
+              boxSizing: 'border-box', transition: 'border-color 0.15s', colorScheme: 'dark' as any,
+            };
+
+            return (
+              <div
+                style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16, background: 'rgba(0,0,0,0.72)' }}
+                onClick={() => setEditingCita(null)}
+              >
+                <div
+                  style={{ background: C.surface, borderRadius: 20, width: '100%', maxWidth: 460, maxHeight: '92vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.6)' }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  {/* Cabecera */}
+                  <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid rgba(148,163,184,0.07)', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                      <div>
+                        <h3 style={{ fontSize: 16, fontWeight: 700, color: C.text, margin: 0, lineHeight: 1.2 }}>Editar cita</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5, flexWrap: 'wrap' as const }}>
+                          <span style={{ fontSize: 12, color: C.textSec, fontWeight: 500 }}>{nombreCl}</span>
+                          {telCl && <><span style={{ fontSize: 11, color: 'rgba(148,163,184,0.25)' }}>·</span><span style={{ fontSize: 12, color: C.textSec }}>{telCl}</span></>}
+                          {fechaFmt && <><span style={{ fontSize: 11, color: 'rgba(148,163,184,0.25)' }}>·</span><span style={{ fontSize: 12, color: C.textSec }}>{fechaFmt}</span></>}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setEditingCita(null)}
+                        style={{ background: 'rgba(148,163,184,0.07)', border: 'none', borderRadius: 8, cursor: 'pointer', color: C.textSec, padding: 7, display: 'flex', flexShrink: 0, marginLeft: 10 }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.13)'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.07)'; }}
+                      >
+                        <X size={15} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Cuerpo scrollable */}
+                  <div style={{ overflowY: 'auto', flex: 1, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+                    {/* Servicio */}
+                    <div>
+                      <label style={labelStyle}>Servicio</label>
+                      <input
+                        value={editServicio}
+                        onChange={e => setEditServicio(e.target.value)}
+                        placeholder="Nombre del servicio"
+                        style={inputStyle}
+                        onFocus={e => { e.currentTarget.style.borderColor = C.green; }}
+                        onBlur={e => { e.currentTarget.style.borderColor = 'rgba(148,163,184,0.1)'; }}
+                      />
+                    </div>
+
+                    {/* Fecha */}
+                    <div>
+                      <label style={labelStyle}>Fecha</label>
+                      <input
+                        type="date"
+                        value={editFecha}
+                        onChange={e => setEditFecha(e.target.value)}
+                        style={inputStyle}
+                        onFocus={e => { e.currentTarget.style.borderColor = C.green; }}
+                        onBlur={e => { e.currentTarget.style.borderColor = 'rgba(148,163,184,0.1)'; }}
+                      />
+                    </div>
+
+                    {/* Hora inicio + fin + duración */}
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={labelStyle}>Inicio</label>
+                        <input
+                          type="time"
+                          value={editHoraInicio}
+                          onChange={e => setEditHoraInicio(e.target.value)}
+                          style={inputStyle}
+                          onFocus={e => { e.currentTarget.style.borderColor = C.green; }}
+                          onBlur={e => { e.currentTarget.style.borderColor = 'rgba(148,163,184,0.1)'; }}
+                        />
+                      </div>
+                      <div style={{ paddingBottom: 11, color: C.textSec, fontSize: 14, flexShrink: 0 }}>–</div>
+                      <div style={{ flex: 1 }}>
+                        <label style={labelStyle}>Fin</label>
+                        <input
+                          type="time"
+                          value={editHoraFin}
+                          onChange={e => setEditHoraFin(e.target.value)}
+                          style={inputStyle}
+                          onFocus={e => { e.currentTarget.style.borderColor = C.green; }}
+                          onBlur={e => { e.currentTarget.style.borderColor = 'rgba(148,163,184,0.1)'; }}
+                        />
+                      </div>
+                      {durMin && (
+                        <div style={{ paddingBottom: 10, flexShrink: 0 }}>
+                          <div style={{ background: 'rgba(148,163,184,0.06)', borderRadius: 7, padding: '5px 9px' }}>
+                            <span style={{ fontSize: 11, color: C.textSec, fontWeight: 500 }}>{durMin}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Separador */}
+                    <div style={{ height: 1, background: 'rgba(148,163,184,0.07)' }} />
+
+                    {/* Estado operativo — compacto */}
+                    {estadosCita.length > 0 && (
+                      <div>
+                        <label style={{ ...labelStyle, marginBottom: 8 }}>Estado de la cita</label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
+                          {estadosCita.map(estado => {
+                            const nombre    = estado.nombre_personalizado || estado.nombre_defecto;
+                            const nombreNorm = nombre.toLowerCase();
+                            const sel       = editEstado.toLowerCase() === nombreNorm;
+                            const col       = estado.color || C.textSec;
+                            // Diferencia visual clara entre confirmada y completada
+                            return (
+                              <button
+                                key={estado.id}
+                                onClick={() => setEditEstado(nombreNorm)}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 6,
+                                  padding: '5px 11px',
+                                  borderRadius: 8,
+                                  border: sel ? `1px solid ${col}40` : '1px solid rgba(148,163,184,0.09)',
+                                  background: sel ? col + '14' : 'rgba(148,163,184,0.04)',
+                                  color: sel ? col : C.textSec,
+                                  fontSize: 12, fontWeight: sel ? 700 : 400,
+                                  cursor: 'pointer', transition: 'all 0.1s',
+                                }}
+                                onMouseEnter={e => { if (!sel) { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.08)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(148,163,184,0.18)'; } }}
+                                onMouseLeave={e => { if (!sel) { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.04)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(148,163,184,0.09)'; } }}
+                              >
+                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: col, flexShrink: 0, display: 'inline-block' }} />
+                                {nombre}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p style={{ fontSize: 11, color: 'rgba(148,163,184,0.4)', margin: '6px 0 0' }}>
+                          No confundir con la respuesta al recordatorio
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Notas */}
+                    <div>
+                      <label style={labelStyle}>Notas</label>
+                      <textarea
+                        value={editNotas}
+                        onChange={e => setEditNotas(e.target.value)}
+                        rows={2}
+                        placeholder="Observaciones, preferencias..."
+                        style={{ ...inputStyle, resize: 'vertical' as const, fontFamily: 'inherit', lineHeight: 1.5 }}
+                        onFocus={e => { e.currentTarget.style.borderColor = C.green; }}
+                        onBlur={e => { e.currentTarget.style.borderColor = 'rgba(148,163,184,0.1)'; }}
+                      />
+                    </div>
+
+                  </div>
+
+                  {/* Footer fijo */}
+                  <div style={{ padding: '12px 20px 18px', borderTop: '1px solid rgba(148,163,184,0.07)', flexShrink: 0, background: C.surface, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <button
+                      onClick={guardarEdicion}
+                      disabled={editLoading}
+                      style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: editLoading ? '#15803D' : C.green, color: '#fff', fontSize: 14, fontWeight: 700, cursor: editLoading ? 'not-allowed' : 'pointer', opacity: editLoading ? 0.75 : 1, transition: 'background 0.15s' }}
+                      onMouseEnter={e => { if (!editLoading) (e.currentTarget as HTMLElement).style.background = '#16A34A'; }}
+                      onMouseLeave={e => { if (!editLoading) (e.currentTarget as HTMLElement).style.background = C.green; }}
+                    >
+                      {editLoading ? 'Guardando...' : 'Guardar cambios'}
+                    </button>
+                    {(ec.estado || '').toLowerCase() !== 'cancelada' && (
+                      <button
+                        onClick={() => cancelarCita(ec.id)}
+                        style={{ width: '100%', padding: '9px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.06)', color: C.red, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.12)'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.06)'; }}
+                      >
+                        Cancelar cita
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ── MODAL ANOTACIÓN ── */}
           {anotacionModal.open && (
@@ -3082,7 +3315,7 @@ export default function Dashboard() {
       />
 
       <style>{`
-        @media (min-width: 1025px) {
+        @media (min-width: 768px) {
           .main-content-desktop {
             margin-left: ${sidebarCollapsed ? 56 : 240}px;
             transition: margin-left 0.2s cubic-bezier(0.4,0,0.2,1);
@@ -3090,31 +3323,12 @@ export default function Dashboard() {
           .show-mobile-flex { display: none !important; }
           .show-mobile-only { display: none !important; }
         }
-        @media (min-width: 768px) and (max-width: 1024px) {
-          .main-content-desktop {
-            margin-left: 56px !important;
-            transition: margin-left 0.2s cubic-bezier(0.4,0,0.2,1);
-          }
-          .show-mobile-flex { display: none !important; }
-          .show-mobile-only { display: none !important; }
-          .prof-filter-scroll {
-            max-width: 280px;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-          }
-          .prof-filter-scroll::-webkit-scrollbar { display: none; }
-        }
         @media (max-width: 767px) {
           .main-content-desktop { margin-left: 0 !important; width: 100% !important; }
           .hidden-mobile { display: none !important; }
           .show-mobile-flex { display: flex !important; }
           .show-mobile-only { display: flex !important; }
         }
-        .kpi-bar-scroll {
-          -webkit-overflow-scrolling: touch;
-        }
-        .kpi-bar-scroll::-webkit-scrollbar { display: none; }
         ${moveDrag?.active ? 'body { cursor: grabbing !important; }' : ''}
         @keyframes agendaSlideLeft {
           from { opacity: 0; transform: translateX(18px); }
