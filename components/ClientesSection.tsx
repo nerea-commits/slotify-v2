@@ -159,7 +159,6 @@ const DonutInteractivo = memo(function DonutInteractivo({ completadas, cancelada
         )}
       </div>
 
-      {/* Legend — horizontal compacta en móvil */}
       <div style={{ display: 'flex', gap: isMobile ? 8 : 20, flexWrap: 'wrap', justifyContent: 'center' }}>
         {segments.map(seg => {
           const isActive = segmentoActivo === seg.key;
@@ -262,15 +261,12 @@ const HistoryRow = memo(function HistoryRow({ cita, isLast, onChangeEstado }: Hi
   return (
     <div style={{ borderBottom: isLast ? 'none' : `1px solid ${C.divider}`, paddingBottom: isLast ? 0 : 10, marginBottom: isLast ? 0 : 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        {/* Date block */}
         <div style={{ flexShrink: 0, width: 40, textAlign: 'center' }}>
           <div style={{ fontSize: 15, fontWeight: 800, color: C.text, lineHeight: 1 }}>{date.getDate()}</div>
           <div style={{ fontSize: 9, color: C.textDim, fontWeight: 600, textTransform: 'uppercase' }}>
             {date.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '')}
           </div>
         </div>
-
-        {/* Time + service */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sv}</span>
@@ -278,20 +274,15 @@ const HistoryRow = memo(function HistoryRow({ cita, isLast, onChangeEstado }: Hi
           </div>
           <div style={{ fontSize: 11, color: C.textDim, marginTop: 1 }}>{hora} · {fmtRelative(date)}</div>
         </div>
-
-        {/* Status tag + dropdown toggle */}
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <button onClick={() => setOpen(o => !o)}
             style={{ display: 'flex', alignItems: 'center', gap: 4, background: cfg.bg, border: `1px solid ${cfg.color}30`, borderRadius: 20, padding: '4px 8px', cursor: 'pointer' }}>
             <span style={{ fontSize: 10, fontWeight: 700, color: cfg.color, whiteSpace: 'nowrap' }}>{cfg.label}</span>
             <ChevronDown size={9} style={{ color: cfg.color, transition: 'transform 0.15s', transform: open ? 'rotate(180deg)' : 'rotate(0)' }} />
           </button>
-
           {open && (
             <div style={{
-              position: 'fixed',
-              right: 16,
-              zIndex: 200,
+              position: 'fixed', right: 16, zIndex: 200,
               background: C.panelB, border: `1px solid ${C.divider}`, borderRadius: 10,
               boxShadow: '0 8px 24px rgba(0,0,0,0.6)', overflow: 'hidden', minWidth: 190,
             }}>
@@ -468,7 +459,6 @@ function VistaDetalle({ cliente, empresaId, mostrarImporte, onVolver, onCrearCit
 
       {/* ── HEADER ── */}
       <div style={{ background: C.panel, borderBottom: `1px solid ${C.divider}`, padding: isMobile ? '10px 14px' : '12px 20px', flexShrink: 0 }}>
-        {/* Fila 1: back + nombre + badge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: isMobile ? 10 : 0 }}>
           <button onClick={onVolver} style={{ color: C.textMid, background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', borderRadius: 6, flexShrink: 0 }}>
             <ArrowLeft size={20} />
@@ -489,7 +479,6 @@ function VistaDetalle({ cliente, empresaId, mostrarImporte, onVolver, onCrearCit
           <RiskBadge fiab={fiab} />
         </div>
 
-        {/* Fila 2 (móvil): botones de acción */}
         {isMobile ? (
           <div style={{ display: 'flex', gap: 8 }}>
             {clienteData.telefono && (
@@ -514,7 +503,6 @@ function VistaDetalle({ cliente, empresaId, mostrarImporte, onVolver, onCrearCit
             </button>
           </div>
         ) : (
-          /* Desktop: fila única con todo */
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}>
             <button onClick={() => setModalOpen(true)}
               style={{ display: 'flex', alignItems: 'center', gap: 5, color: C.textMid, background: C.panelAlt, border: `1px solid ${C.divider}`, cursor: 'pointer', padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
@@ -535,7 +523,6 @@ function VistaDetalle({ cliente, empresaId, mostrarImporte, onVolver, onCrearCit
           <AlertBanner fiab={fiab} />
         </div>
 
-        {/* Periodo filter */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <span style={{ fontSize: 12, color: C.textDim, fontWeight: 600 }}>Periodo</span>
           <div style={{ display: 'flex', background: C.panelAlt, borderRadius: 10, padding: 3, gap: 2 }}>
@@ -548,7 +535,6 @@ function VistaDetalle({ cliente, empresaId, mostrarImporte, onVolver, onCrearCit
           </div>
         </div>
 
-        {/* Donut */}
         <div style={{ background: C.panel, borderRadius: 16, padding: isMobile ? '14px 12px' : '18px 16px', marginBottom: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <DonutInteractivo
             completadas={stats.completadas} canceladas={stats.canceladas} noShows={stats.noShows}
@@ -557,7 +543,6 @@ function VistaDetalle({ cliente, empresaId, mostrarImporte, onVolver, onCrearCit
           />
         </div>
 
-        {/* KPIs 2x2 */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 10 }}>
           <KpiCard value={stats.freq ? `~${stats.freq}` : '—'} suffix={stats.freq ? 'días' : ''} label="Frecuencia media" color={C.textMid} />
           <KpiCard value={stats.daysSince !== null ? stats.daysSince : '—'} suffix={stats.daysSince !== null ? 'd' : ''} label="Desde última visita" color={C.textMid} />
@@ -565,7 +550,6 @@ function VistaDetalle({ cliente, empresaId, mostrarImporte, onVolver, onCrearCit
           <KpiCard value={stats.total} label={`Citas ${periodLabel(periodo).toLowerCase()}`} color={C.accent} active={segmento === 'all'} onClick={() => setSegmento('all')} />
         </div>
 
-        {/* Ingreso */}
         {mostrarImporte && stats.ingresos > 0 && (
           <div style={{ background: C.panel, borderRadius: 12, padding: '12px 14px', marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: isMobile ? 10 : 0 }}>
@@ -574,7 +558,6 @@ function VistaDetalle({ cliente, empresaId, mostrarImporte, onVolver, onCrearCit
                 <span style={{ fontSize: 18, fontWeight: 800, color: C.accent }}>{stats.ingresos.toFixed(0)}€</span>
                 <span style={{ fontSize: 11, color: C.textDim, marginLeft: 6 }}>total · {stats.mediaPor.toFixed(0)}€/visita</span>
               </div>
-              {/* Botones contacto en desktop inline, en móvil ya están en el header */}
               {!isMobile && clienteData.telefono && (
                 <div style={{ display: 'flex', gap: 8 }}>
                   <a href={`tel:${clienteData.telefono}`} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: `1px solid ${C.divider}`, color: C.textMid, textDecoration: 'none', fontSize: 12 }}>
@@ -590,7 +573,6 @@ function VistaDetalle({ cliente, empresaId, mostrarImporte, onVolver, onCrearCit
           </div>
         )}
 
-        {/* ── HISTORIAL ── */}
         <div style={{ background: C.panel, borderRadius: 16, overflow: 'hidden' }}>
           <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.divider}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -623,7 +605,6 @@ function VistaDetalle({ cliente, empresaId, mostrarImporte, onVolver, onCrearCit
           </div>
         </div>
 
-        {/* Datos cliente + eliminar */}
         <div style={{ background: C.panel, borderRadius: 12, padding: '14px', marginTop: 12 }}>
           <p style={{ fontSize: 10, color: C.textDim, fontWeight: 700, letterSpacing: 0.8, marginBottom: 8, textTransform: 'uppercase' }}>Contacto y datos</p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -656,7 +637,13 @@ function VistaDetalle({ cliente, empresaId, mostrarImporte, onVolver, onCrearCit
 }
 
 // ─── MAIN EXPORT ──────────────────────────────────────────────────────────────
-export default function ClientesSection({ empresaId }: { empresaId: string }) {
+export default function ClientesSection({
+  empresaId,
+  onCrearCita,
+}: {
+  empresaId: string;
+  onCrearCita?: (cliente: { id: string; nombre: string; telefono?: string }) => void;
+}) {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState('');
@@ -688,14 +675,20 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
 
   if (vistaDetalle) return (
     <VistaDetalle
-      cliente={vistaDetalle} empresaId={empresaId} mostrarImporte={mostrarImporte}
+      cliente={vistaDetalle}
+      empresaId={empresaId}
+      mostrarImporte={mostrarImporte}
       onVolver={() => setVistaDetalle(null)}
+      onCrearCita={(id) => onCrearCita?.({
+        id,
+        nombre: vistaDetalle.nombre,
+        telefono: vistaDetalle.telefono,
+      })}
     />
   );
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, color: C.text }}>
-      {/* Header */}
       <div style={{ background: C.panel, borderBottom: `1px solid ${C.divider}`, padding: '14px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Clientes</h2>
@@ -712,7 +705,6 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
         </div>
       </div>
 
-      {/* Lista */}
       <div style={{ padding: '10px 12px 100px' }}>
         {loading ? (
           <div style={{ textAlign: 'center', padding: 40, color: C.textMid }}>Cargando...</div>
@@ -729,7 +721,6 @@ export default function ClientesSection({ empresaId }: { empresaId: string }) {
               {filtered.map(cl => (
                 <button key={cl.id} onClick={() => setVistaDetalle(cl)}
                   style={{ background: C.panel, border: `1px solid ${C.divider}`, borderRadius: 14, padding: '12px 14px', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
-                  {/* Avatar */}
                   <div style={{ width: 40, height: 40, borderRadius: 11, background: C.accentDim, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: C.accent, flexShrink: 0 }}>
                     {cl.nombre[0].toUpperCase()}
                   </div>
