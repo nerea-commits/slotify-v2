@@ -125,6 +125,7 @@ export default function Dashboard() {
   const [preselectedTime, setPreselectedTime] = useState('');
   const [preselectedEndTime, setPreselectedEndTime] = useState('');
   const [preselectedDate, setPreselectedDate] = useState<Date | null>(null);
+  const [preselectedCliente, setPreselectedCliente] = useState<{ id: string; nombre: string; telefono?: string } | null>(null);
   const [currentMinutes, setCurrentMinutes] = useState(-1);
   const [activeSection, setActiveSection] = useState<string>('agenda');
   const [estadosCita, setEstadosCita] = useState<any[]>([]);
@@ -1685,7 +1686,18 @@ export default function Dashboard() {
 
         {activeSection !== 'agenda' && (
           <div className="flex-1 overflow-y-auto" style={{ background: C.bg, paddingBottom: 80 }}>
-            {activeSection === 'clientes' && <ClientesSection empresaId={empresa?.id || ''} />}
+            {activeSection === 'clientes' && (
+              <ClientesSection
+                empresaId={empresa?.id || ''}
+                onCrearCita={(cliente: { id: string; nombre: string; telefono?: string }) => {
+                  setPreselectedDate(selectedDate);
+                  setPreselectedTime('');
+                  setPreselectedEndTime('');
+                  setPreselectedCliente(cliente);
+                  setModalOpen(true);
+                }}
+              />
+            )}
             {activeSection === 'servicios' && <ServiciosSection empresaId={empresa?.id || ''} {...({canEdit: isAdmin || !!permisos.editar_servicios} as any)} />}
             {activeSection === 'estadisticas' && <EstadisticasSection empresaId={empresa?.id || ''} />}
             {activeSection === 'ausencias' && <AusenciasSection empresaId={empresa?.id || ''} isAdmin={isAdmin} />}
@@ -3331,13 +3343,14 @@ export default function Dashboard() {
 
         <NuevaCitaModal
           open={modalOpen}
-          onClose={() => setModalOpen(false)}
-          onCreated={() => { setModalOpen(false); loadAllCitas(); }}
+          onClose={() => { setModalOpen(false); setPreselectedCliente(null); }}
+          onCreated={() => { setModalOpen(false); setPreselectedCliente(null); loadAllCitas(); }}
           profesionalId={profesional?.id || ''}
           empresaId={empresa?.id || ''}
           selectedDate={preselectedDate || selectedDate}
           preselectedTime={preselectedTime}
           preselectedEndTime={preselectedEndTime}
+          preselectedCliente={preselectedCliente || undefined}
         />
       </div>
 
