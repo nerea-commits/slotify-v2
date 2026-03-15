@@ -923,7 +923,7 @@ export default function Dashboard() {
   }, []);
 
   const [hoveredCitaId, setHoveredCitaId] = useState<string | null>(null);
-  const [phoneTooltipId, setPhoneTooltipId] = useState<string | null>(null);
+
 
   async function marcarNoShow(id: string) {
     const estadoNoShow = estadosCita.find(e => {
@@ -943,76 +943,75 @@ export default function Dashboard() {
     window.open(`https://wa.me/${num}`, '_blank');
   }
 
-  const [quickActionsPos, setQuickActionsPos] = useState<{ top: number; left: number } | null>(null);
-
-  function handleCitaMouseEnter(e: React.MouseEvent, citaId: string) {
+  function handleCitaMouseEnter(citaId: string) {
     if (isMobile) return;
     setHoveredCitaId(citaId);
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setQuickActionsPos({ top: rect.top, left: rect.right + 6 });
   }
 
   function renderQuickActions(cita: any): React.ReactNode {
-    if (hoveredCitaId !== cita.id || !quickActionsPos) return null;
+    if (hoveredCitaId !== cita.id) return null;
     if (isCompletada(cita.estado)) return null;
     const tel = cita.clientes?.telefono || '';
     const yaCancelada = (cita.estado || '').toLowerCase() === 'cancelada';
-    const yaCompletada = isCompletada(cita.estado);
+    const yaNoShow = ['no-show', 'no_show'].includes((cita.estado || '').toLowerCase());
     const btnBase: React.CSSProperties = {
-      width: 26, height: 26,
-      borderRadius: 7,
+      width: 24, height: 24,
+      borderRadius: 6,
       border: 'none',
       cursor: 'pointer',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontSize: 13,
+      fontSize: 11,
       flexShrink: 0,
+      transition: 'opacity 0.1s',
     };
     return (
       <div
         style={{
-          position: 'fixed',
-          top: quickActionsPos.top,
-          left: quickActionsPos.left,
+          position: 'absolute',
+          top: 4,
+          right: 4,
           display: 'flex',
-          flexDirection: 'column',
-          gap: 4,
-          zIndex: 200,
-          background: '#1E293B',
-          border: '1px solid rgba(148,163,184,0.15)',
-          borderRadius: 10,
-          padding: 6,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+          flexDirection: 'row',
+          gap: 3,
+          zIndex: 10,
         }}
-        onMouseEnter={() => setHoveredCitaId(cita.id)}
-        onMouseLeave={() => { setHoveredCitaId(null); setQuickActionsPos(null); setPhoneTooltipId(null); }}
         onClick={e => e.stopPropagation()}
       >
-        <button title="Editar" onClick={e => { e.stopPropagation(); openEdit(cita); }}
-          style={{ ...btnBase, background: 'rgba(148,163,184,0.15)', color: '#F1F5F9' }}>✏️</button>
-        {!yaCancelada && !yaCompletada && (cita.estado || '').toLowerCase() !== 'no-show' && (cita.estado || '').toLowerCase() !== 'no_show' && (
-          <button title="No-show" onClick={e => { e.stopPropagation(); marcarNoShow(cita.id); }}
-            style={{ ...btnBase, background: 'rgba(251,146,60,0.15)', color: '#FB923C' }}>👻</button>
+        <button
+          title="Editar"
+          onClick={e => { e.stopPropagation(); openEdit(cita); }}
+          style={{ ...btnBase, background: 'rgba(148,163,184,0.18)', color: '#F1F5F9' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.32)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.18)'; }}
+        >✏️</button>
+        {!yaCancelada && !yaNoShow && (
+          <button
+            title="No-show"
+            onClick={e => { e.stopPropagation(); marcarNoShow(cita.id); }}
+            style={{ ...btnBase, background: 'rgba(251,146,60,0.18)', color: '#FB923C' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(251,146,60,0.32)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(251,146,60,0.18)'; }}
+          >👻</button>
         )}
-        {!yaCancelada && !yaCompletada && (
-          <button title="Cancelar cita" onClick={e => { e.stopPropagation(); cancelarCita(cita.id); }}
-            style={{ ...btnBase, background: 'rgba(239,68,68,0.15)', color: '#EF4444' }}>✕</button>
+        {!yaCancelada && (
+          <button
+            title="Cancelar"
+            onClick={e => { e.stopPropagation(); cancelarCita(cita.id); }}
+            style={{ ...btnBase, background: 'rgba(239,68,68,0.18)', color: '#EF4444' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.32)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.18)'; }}
+          >✕</button>
         )}
         {tel && (
-          <button title="WhatsApp" onClick={e => { e.stopPropagation(); abrirWhatsApp(tel); }}
-            style={{ ...btnBase, background: 'rgba(37,211,102,0.15)', color: '#25D366' }}>💬</button>
-        )}
-        {tel && (
-          <div style={{ position: 'relative' }}>
-            <button title={tel} onClick={e => { e.stopPropagation(); setPhoneTooltipId(phoneTooltipId === cita.id ? null : cita.id); }}
-              style={{ ...btnBase, background: 'rgba(96,165,250,0.15)', color: '#60A5FA' }}>📞</button>
-            {phoneTooltipId === cita.id && (
-              <div style={{ position: 'absolute', top: 0, left: 34, background: '#1E293B', border: '1px solid rgba(148,163,184,0.2)', borderRadius: 8, padding: '6px 10px', whiteSpace: 'nowrap', fontSize: 12, fontWeight: 600, color: '#F1F5F9', zIndex: 210, boxShadow: '0 4px 12px rgba(0,0,0,0.4)' }}>
-                <a href={`tel:${tel}`} style={{ color: '#60A5FA', textDecoration: 'none' }}>{tel}</a>
-              </div>
-            )}
-          </div>
+          <button
+            title="WhatsApp"
+            onClick={e => { e.stopPropagation(); abrirWhatsApp(tel); }}
+            style={{ ...btnBase, background: 'rgba(37,211,102,0.18)', color: '#25D366' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(37,211,102,0.32)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(37,211,102,0.18)'; }}
+          >💬</button>
         )}
       </div>
     );
@@ -1845,8 +1844,8 @@ export default function Dashboard() {
                                   <div key={cita.id}
                                     onClick={() => { if (!moveDrag) setSelectedCita(cita); }}
                                     onMouseDown={e => handleCitaMouseDown(e, cita, si, 0, selectedDate)}
-                                    onMouseEnter={e => handleCitaMouseEnter(e, cita.id)}
-                                    onMouseLeave={() => { setHoveredCitaId(null); setQuickActionsPos(null); setPhoneTooltipId(null); }}
+                                    onMouseEnter={() => handleCitaMouseEnter(cita.id)}
+                                    onMouseLeave={() => { setHoveredCitaId(null); }}
                                     style={{
                                       background: isCompletada(cita.estado) ? 'rgba(74,222,128,0.12)' : `${citaColor(cita.estado)}22`,
                                       borderLeft: `3px solid ${citaColor(cita.estado)}`,
@@ -2133,8 +2132,8 @@ export default function Dashboard() {
                                 <div
                                   onClick={() => setSelectedCita(citaHere)}
                                   onMouseDown={e => handleCitaMouseDown(e, citaHere, si, di, selectedDate)}
-                                  onMouseEnter={e => handleCitaMouseEnter(e, citaHere.id)}
-                                  onMouseLeave={() => { setHoveredCitaId(null); setQuickActionsPos(null); setPhoneTooltipId(null); }}
+                                  onMouseEnter={() => handleCitaMouseEnter(citaHere.id)}
+                                  onMouseLeave={() => { setHoveredCitaId(null); }}
                                   style={{
                                     position: 'absolute', inset: 2,
                                     background: isCompletada(citaHere.estado) ? 'rgba(74,222,128,0.12)' : `${citaColor(citaHere.estado)}22`,
@@ -2514,9 +2513,9 @@ export default function Dashboard() {
                               <div
                                 onClick={() => { if (!moveDrag) setSelectedCita(cita); }}
                                 onMouseDown={e => handleCitaMouseDown(e, cita, si, di, day)}
-                                onMouseEnter={e => handleCitaMouseEnter(e, cita.id)}
-                                onMouseLeave={() => { setHoveredCitaId(null); setQuickActionsPos(null); setPhoneTooltipId(null); }}
-                                style={{ position: 'absolute', inset: 0, background: isCompletada(cita.estado) ? 'rgba(74,222,128,0.12)' : `${citaColor(cita.estado)}22`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 8, padding: isMobile ? '4px 6px' : '6px 8px', cursor: isCompletada(cita.estado) ? 'pointer' : (isMobile ? 'pointer' : 'grab'), boxSizing: 'border-box' as const, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'visible', opacity: moveDrag?.cita?.id === cita.id ? 0.3 : 1, transition: 'opacity 0.15s' }}>
+                                onMouseEnter={() => handleCitaMouseEnter(cita.id)}
+                                onMouseLeave={() => { setHoveredCitaId(null); }}
+                                style={{ position: 'absolute', inset: 0, background: isCompletada(cita.estado) ? 'rgba(74,222,128,0.12)' : `${citaColor(cita.estado)}22`, borderLeft: `3px solid ${citaColor(cita.estado)}`, borderRadius: 8, padding: isMobile ? '4px 6px' : '6px 8px', cursor: isCompletada(cita.estado) ? 'pointer' : (isMobile ? 'pointer' : 'grab'), boxSizing: 'border-box' as const, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden', opacity: moveDrag?.cita?.id === cita.id ? 0.3 : 1, transition: 'opacity 0.15s' }}>
                                 {isCompletada(cita.estado) && (
                                   <div style={{ position: 'absolute', top: 3, right: 4, background: 'rgba(74,222,128,0.22)', border: '1px solid rgba(74,222,128,0.35)', borderRadius: 5, padding: '2px 6px' }}>
                                     <span style={{ fontSize: 9, color: '#4ADE80', fontWeight: 800 }}>✓</span>
@@ -3300,12 +3299,6 @@ export default function Dashboard() {
           preselectedEndTime={preselectedEndTime}
         />
       </div>
-
-      {/* ── TOOLTIP FLOTANTE ACCIONES RÁPIDAS ── */}
-      {hoveredCitaId && (() => {
-        const cita = allCitas.find(c => c.id === hoveredCitaId);
-        return cita ? renderQuickActions(cita) : null;
-      })()}
 
       <BottomNav
         activeSection={activeSection}
