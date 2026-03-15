@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import {
-  Calendar, Users, Scissors, BarChart3, Bell, Settings,
-  LogOut, UserCircle, ChevronLeft, ChevronRight, Palmtree, Lock,
+  CalendarDays, Contact, Sparkles, TrendingUp, BellRing, SlidersHorizontal,
+  LogOut, UserCircle, ChevronLeft, ChevronRight, Umbrella, Lock,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -47,18 +47,18 @@ export default function Sidebar({
   const [pinError, setPinError] = useState('');
 
   const navItems = [
-    { id: 'agenda',     label: 'Agenda',      icon: Calendar  },
-    { id: 'clientes',   label: 'Clientes',    icon: Users     },
-    { id: 'servicios',  label: 'Servicios',   icon: Scissors  },
-    { id: 'ausencias',  label: 'Ausencias',   icon: Palmtree  },
+    { id: 'agenda',     label: 'Agenda',      icon: CalendarDays  },
+    { id: 'clientes',   label: 'Clientes',    icon: Contact       },
+    { id: 'servicios',  label: 'Servicios',   icon: Sparkles      },
+    { id: 'ausencias',  label: 'Ausencias',   icon: Umbrella      },
     ...(isAdmin || permisos.ver_estadisticas
-      ? [{ id: 'estadisticas', label: 'Estadísticas', icon: BarChart3 }]
+      ? [{ id: 'estadisticas', label: 'Estadísticas', icon: TrendingUp }]
       : []),
   ];
 
   const sysItems = [
-    ...(isAdmin ? [{ id: 'notificaciones', label: 'Notificaciones', icon: Bell }] : []),
-    { id: 'configuracion', label: 'Configuración', icon: Settings },
+    ...(isAdmin ? [{ id: 'notificaciones', label: 'Notificaciones', icon: BellRing }] : []),
+    { id: 'configuracion', label: 'Configuración', icon: SlidersHorizontal },
   ];
 
   function logout() {
@@ -130,7 +130,7 @@ export default function Sidebar({
           style={{
             flexShrink: 0,
             color: active ? accent : '#64748B',
-            strokeWidth: active ? 2.5 : 1.8,
+            strokeWidth: active ? 2.2 : 1.6,
           }}
         />
         <span
@@ -414,7 +414,6 @@ export default function Sidebar({
             justify-content: center !important;
             padding: 10px 0 !important;
           }
-          /* Logo zona superior: forzar tamaño colapsado */
           .sidebar-desktop .sb-logo-zone {
             padding: 20px 0 16px !important;
           }
@@ -424,7 +423,6 @@ export default function Sidebar({
             border-radius: 10px !important;
             font-size: 14px !important;
           }
-          /* Zona inferior: centrar avatar */
           .sidebar-desktop .sb-bottom {
             padding: 12px 0 8px !important;
           }
