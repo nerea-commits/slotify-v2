@@ -955,62 +955,105 @@ export default function Dashboard() {
     const yaCancelada = (cita.estado || '').toLowerCase() === 'cancelada';
     const yaNoShow = ['no-show', 'no_show'].includes((cita.estado || '').toLowerCase());
     const btnBase: React.CSSProperties = {
-      width: 24, height: 24,
-      borderRadius: 6,
+      width: 26, height: 26,
+      borderRadius: 7,
       border: 'none',
       cursor: 'pointer',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontSize: 11,
+      fontSize: 12,
       flexShrink: 0,
-      transition: 'opacity 0.1s',
+      transition: 'background 0.1s',
     };
+    // Fila inline: se monta como flexShrink:0 al final de la fila del nombre
     return (
       <div
-        style={{
-          position: 'absolute',
-          top: 4,
-          right: 4,
-          display: 'flex',
-          flexDirection: 'row',
-          gap: 3,
-          zIndex: 10,
-        }}
+        style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}
         onClick={e => e.stopPropagation()}
       >
         <button
           title="Editar"
           onClick={e => { e.stopPropagation(); openEdit(cita); }}
-          style={{ ...btnBase, background: 'rgba(148,163,184,0.18)', color: '#F1F5F9' }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.32)'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.18)'; }}
+          style={{ ...btnBase, background: 'rgba(148,163,184,0.15)', color: '#E2E8F0' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.28)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.15)'; }}
         >✏️</button>
         {!yaCancelada && !yaNoShow && (
           <button
             title="No-show"
             onClick={e => { e.stopPropagation(); marcarNoShow(cita.id); }}
-            style={{ ...btnBase, background: 'rgba(251,146,60,0.18)', color: '#FB923C' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(251,146,60,0.32)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(251,146,60,0.18)'; }}
+            style={{ ...btnBase, background: 'rgba(251,146,60,0.15)', color: '#FB923C' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(251,146,60,0.28)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(251,146,60,0.15)'; }}
           >👻</button>
         )}
         {!yaCancelada && (
           <button
             title="Cancelar"
             onClick={e => { e.stopPropagation(); cancelarCita(cita.id); }}
-            style={{ ...btnBase, background: 'rgba(239,68,68,0.18)', color: '#EF4444' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.32)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.18)'; }}
+            style={{ ...btnBase, background: 'rgba(239,68,68,0.15)', color: '#EF4444' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.28)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.15)'; }}
           >✕</button>
         )}
         {tel && (
           <button
             title="WhatsApp"
             onClick={e => { e.stopPropagation(); abrirWhatsApp(tel); }}
-            style={{ ...btnBase, background: 'rgba(37,211,102,0.18)', color: '#25D366' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(37,211,102,0.32)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(37,211,102,0.18)'; }}
+            style={{ ...btnBase, background: 'rgba(37,211,102,0.15)', color: '#25D366' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(37,211,102,0.28)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(37,211,102,0.15)'; }}
+          >💬</button>
+        )}
+      </div>
+    );
+  }
+
+  // Versión compacta para vista semana/equipo (celdas pequeñas): solo iconos tiny absolute top-right
+  function renderQuickActionsCompact(cita: any): React.ReactNode {
+    if (hoveredCitaId !== cita.id) return null;
+    if (isCompletada(cita.estado)) return null;
+    const tel = cita.clientes?.telefono || '';
+    const yaCancelada = (cita.estado || '').toLowerCase() === 'cancelada';
+    const yaNoShow = ['no-show', 'no_show'].includes((cita.estado || '').toLowerCase());
+    const btnBase: React.CSSProperties = {
+      width: 18, height: 18,
+      borderRadius: 4,
+      border: 'none',
+      cursor: 'pointer',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: 9, flexShrink: 0, transition: 'background 0.1s',
+    };
+    return (
+      <div
+        style={{ position: 'absolute', top: 3, right: 3, display: 'flex', gap: 2, zIndex: 10, background: 'rgba(15,23,42,0.75)', borderRadius: 6, padding: '2px 3px', backdropFilter: 'blur(4px)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <button title="Editar" onClick={e => { e.stopPropagation(); openEdit(cita); }}
+          style={{ ...btnBase, background: 'transparent', color: '#CBD5E1' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.25)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+        >✏️</button>
+        {!yaCancelada && !yaNoShow && (
+          <button title="No-show" onClick={e => { e.stopPropagation(); marcarNoShow(cita.id); }}
+            style={{ ...btnBase, background: 'transparent', color: '#FB923C' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(251,146,60,0.25)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+          >👻</button>
+        )}
+        {!yaCancelada && (
+          <button title="Cancelar" onClick={e => { e.stopPropagation(); cancelarCita(cita.id); }}
+            style={{ ...btnBase, background: 'transparent', color: '#EF4444' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.25)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+          >✕</button>
+        )}
+        {tel && (
+          <button title="WhatsApp" onClick={e => { e.stopPropagation(); abrirWhatsApp(tel); }}
+            style={{ ...btnBase, background: 'transparent', color: '#25D366' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(37,211,102,0.25)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
           >💬</button>
         )}
       </div>
@@ -1864,36 +1907,34 @@ export default function Dashboard() {
                                         <span style={{ fontSize: 10, color: '#4ADE80', fontWeight: 700, letterSpacing: 0.2 }}>Completada</span>
                                       </div>
                                     )}
-                                    {!isMobile && renderQuickActions(cita)}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                       <p style={{ fontSize: isMobile ? 13 : 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, letterSpacing: 0.2, textTransform: 'uppercase' as const, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
                                         {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
                                         {cita.cliente_id && clientRiskCache[cita.cliente_id]?.show && <span style={{ marginLeft: 4, fontSize: 11 }}>{clientRiskCache[cita.cliente_id].icon}</span>}
                                       </p>
-                                      {/* Vista día desktop: badge estado texto + dot */}
-                                      {!isMobile && !isCompletada(cita.estado) && (() => {
-                                        const conf = (cita.confirmacion_estado || 'pendiente').toLowerCase();
-                                        const estadoBase = (cita.estado || '').toLowerCase();
-                                        if (['completada','cancelada','no-show','no_show'].includes(estadoBase)) return null;
-                                        const map: Record<string, { label: string; color: string }> = {
-                                          pendiente:     { label: 'Pendiente',      color: '#F59E0B' },
-                                          confirmada:    { label: 'Confirmada',     color: '#22C55E' },
-                                          no_confirmada: { label: 'Sin confirmar',  color: '#EF4444' },
-                                          cancelada:     { label: 'Cancelada',      color: '#94A3B8' },
-                                        };
-                                        const cfg = map[conf] || map['pendiente'];
-                                        return (
-                                          <div style={{
-                                            display: 'flex', alignItems: 'center', gap: 3,
-                                            padding: '2px 7px', borderRadius: 20, flexShrink: 0,
-                                            background: cfg.color + '20',
-                                            border: `1px solid ${cfg.color}40`,
-                                          }}>
-                                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: cfg.color, flexShrink: 0 }} />
-                                            <span style={{ fontSize: 9, fontWeight: 700, color: cfg.color, letterSpacing: 0.2, whiteSpace: 'nowrap' as const }}>{cfg.label}</span>
-                                          </div>
-                                        );
-                                      })()}
+                                      {/* Desktop: en hover → acciones; en reposo → badge confirmación */}
+                                      {!isMobile && !isCompletada(cita.estado) && (
+                                        hoveredCitaId === cita.id
+                                          ? renderQuickActions(cita)
+                                          : (() => {
+                                              const conf = (cita.confirmacion_estado || 'pendiente').toLowerCase();
+                                              const estadoBase = (cita.estado || '').toLowerCase();
+                                              if (['completada','cancelada','no-show','no_show'].includes(estadoBase)) return null;
+                                              const map: Record<string, { label: string; color: string }> = {
+                                                pendiente:     { label: 'Pendiente',     color: '#F59E0B' },
+                                                confirmada:    { label: 'Confirmada',    color: '#22C55E' },
+                                                no_confirmada: { label: 'Sin confirmar', color: '#EF4444' },
+                                                cancelada:     { label: 'Cancelada',     color: '#94A3B8' },
+                                              };
+                                              const cfg = map[conf] || map['pendiente'];
+                                              return (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '2px 7px', borderRadius: 20, flexShrink: 0, background: cfg.color + '20', border: `1px solid ${cfg.color}40` }}>
+                                                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: cfg.color, flexShrink: 0 }} />
+                                                  <span style={{ fontSize: 9, fontWeight: 700, color: cfg.color, letterSpacing: 0.2, whiteSpace: 'nowrap' as const }}>{cfg.label}</span>
+                                                </div>
+                                              );
+                                            })()
+                                      )}
                                       {/* Mobile: solo dot + hora */}
                                       {isMobile && renderConfirmacionDot(cita, 6)}
                                       {isMobile && (
@@ -2153,7 +2194,7 @@ export default function Dashboard() {
                                       <span style={{ fontSize: 9, color: '#4ADE80', fontWeight: 800 }}>✓</span>
                                     </div>
                                   )}
-                                  {renderQuickActions(citaHere)}
+                                  {renderQuickActionsCompact(citaHere)}
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden' }}>
                                     <p style={{
                                       fontSize: 10, fontWeight: 700, color: '#fff',
@@ -2521,7 +2562,7 @@ export default function Dashboard() {
                                     <span style={{ fontSize: 9, color: '#4ADE80', fontWeight: 800 }}>✓</span>
                                   </div>
                                 )}
-                                {!isMobile && renderQuickActions(cita)}
+                                {!isMobile && renderQuickActionsCompact(cita)}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden' }}>
                                   <p style={{ fontSize: isMobile ? 12 : 11, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3, textTransform: 'uppercase' as const, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1, minWidth: 0 }}>
                                     {cita.clientes?.nombre || cita.cliente_nombre_libre || 'Cliente'}
